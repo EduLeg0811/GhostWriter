@@ -217,6 +217,149 @@
     return result;
   }
 
+  async function macro2ManualNumberingSelection(payload) {
+    Asc.scope.macro2SpacingMode = String((payload || {}).spacingMode || "nbsp_double");
+
+    // Aplica apenas numeracao manual por paragrafo selecionado.
+    const result = await callCommand(function () {
+      try {
+        const doc = Api.GetDocument();
+        if (!doc) return { ok: false, error: "Documento indisponivel." };
+
+        let paragraphs = [];
+        if (doc.GetRangeBySelect) {
+          const selectedRange = doc.GetRangeBySelect();
+          if (selectedRange && selectedRange.GetAllParagraphs) {
+            paragraphs = selectedRange.GetAllParagraphs() || [];
+          }
+        }
+        if ((!paragraphs || paragraphs.length === 0) && doc.GetSelectedParagraphs) {
+          paragraphs = doc.GetSelectedParagraphs() || [];
+        }
+        if ((!paragraphs || paragraphs.length === 0) && doc.GetCurrentParagraph) {
+          const current = doc.GetCurrentParagraph();
+          if (current) paragraphs = [current];
+        }
+
+        if (!paragraphs || paragraphs.length === 0) {
+          return { ok: false, error: "Selecione uma lista numerada no documento." };
+        }
+
+        let converted = 0;
+        let hadNumbering = 0;
+        const totalSelected = paragraphs.length;
+        const useLeadingZero = totalSelected > 9;
+        const spacingMode = String((Asc.scope && Asc.scope.macro2SpacingMode) || "nbsp_double");
+        const spaceUnit = spacingMode.startsWith("nbsp") ? "\u00A0" : " ";
+        const spaceCount = spacingMode.endsWith("double") ? 2 : 1;
+        const suffix = spaceUnit.repeat(spaceCount);
+
+        for (let i = 0; i < paragraphs.length; i += 1) {
+          const paragraph = paragraphs[i];
+          if (!paragraph || !paragraph.GetText) continue;
+
+          let isNumbered = false;
+          try {
+            if (paragraph.IsNumberedList && paragraph.IsNumberedList()) isNumbered = true;
+            if (!isNumbered && paragraph.GetNumbering && paragraph.GetNumbering()) isNumbered = true;
+            if (!isNumbered && paragraph.GetNumPr && paragraph.GetNumPr()) isNumbered = true;
+          } catch (_err) {
+            // ignore detection errors
+          }
+
+          if (isNumbered) hadNumbering += 1;
+
+          // prefixo manual no inicio do paragrafo sem reconstruir runs
+          try {
+            const n = i + 1;
+            const prefixNumber = useLeadingZero ? String(n).padStart(2, "0") : String(n);
+            const prefix = prefixNumber + "." + suffix;
+            if (paragraph.GetRange) {
+              const startRange = paragraph.GetRange(0, 0);
+              if (startRange && startRange.AddText) {
+                startRange.AddText(prefix);
+                converted += 1;
+                continue;
+              }
+            }
+            if (paragraph.MoveCursorToStartPos) paragraph.MoveCursorToStartPos();
+            if (paragraph.AddText) { // fallback
+              paragraph.AddText(prefix);
+              converted += 1;
+            }
+          } catch (_err) {
+            // ignore paragraph-level error
+          }
+        }
+
+        if (converted <= 0) return { ok: false, error: "Nao foi possivel converter a selecao em lista manual." };
+        return { ok: true, converted: converted, hadNumbering: hadNumbering };
+      } catch (err) {
+        return { ok: false, error: err && err.message ? err.message : "Falha ao executar Macro2." };
+      }
+    });
+
+    if (!result || result.ok !== true) {
+      throw new Error((result && result.error) || "Falha ao executar Macro2.");
+    }
+    return result;
+  }
+
+  async function macro2ManualNumberingPreviewSelection() {
+    const result = await callCommand(function () {
+      try {
+        const doc = Api.GetDocument();
+        if (!doc) return { ok: false, error: "Documento indisponivel." };
+
+        let paragraphs = [];
+        if (doc.GetRangeBySelect) {
+          const selectedRange = doc.GetRangeBySelect();
+          if (selectedRange && selectedRange.GetAllParagraphs) {
+            paragraphs = selectedRange.GetAllParagraphs() || [];
+          }
+        }
+        if ((!paragraphs || paragraphs.length === 0) && doc.GetSelectedParagraphs) {
+          paragraphs = doc.GetSelectedParagraphs() || [];
+        }
+        if ((!paragraphs || paragraphs.length === 0) && doc.GetCurrentParagraph) {
+          const current = doc.GetCurrentParagraph();
+          if (current) paragraphs = [current];
+        }
+
+        if (!paragraphs || paragraphs.length === 0) {
+          return { ok: false, error: "Selecione uma lista numerada no documento." };
+        }
+
+        const wouldConvert = paragraphs.length;
+        let hadNumbering = 0;
+        for (let i = 0; i < paragraphs.length; i += 1) {
+          const paragraph = paragraphs[i];
+          if (!paragraph || !paragraph.GetText) continue;
+
+          let isNumbered = false;
+          try {
+            if (paragraph.IsNumberedList && paragraph.IsNumberedList()) isNumbered = true;
+            if (!isNumbered && paragraph.GetNumbering && paragraph.GetNumbering()) isNumbered = true;
+            if (!isNumbered && paragraph.GetNumPr && paragraph.GetNumPr()) isNumbered = true;
+          } catch (_err) {
+            // ignore
+          }
+
+          if (isNumbered) hadNumbering += 1;
+        }
+
+        return { ok: true, wouldConvert: wouldConvert, hadNumbering: hadNumbering };
+      } catch (err) {
+        return { ok: false, error: err && err.message ? err.message : "Falha ao executar preview da Macro2." };
+      }
+    });
+
+    if (!result || result.ok !== true) {
+      throw new Error((result && result.error) || "Falha ao executar preview da Macro2.");
+    }
+    return result;
+  }
+
   async function getSelectionSnapshot() {
     const selectionType = await exec("GetSelectionType", []);
     const text = await exec("GetSelectedText", [{ Numbering: false, Math: false, NewLineSeparator: "\n" }]);
@@ -415,6 +558,10 @@
         return await highlightTermsAcrossDocument(payload);
       case "macro1ClearHighlightDocument":
         return await clearTermsHighlightAcrossDocument(payload);
+      case "macro2ManualNumberingSelection":
+        return await macro2ManualNumberingSelection();
+      case "macro2ManualNumberingPreviewSelection":
+        return await macro2ManualNumberingPreviewSelection();
       default:
         throw new Error("Comando nao suportado: " + command);
     }
@@ -451,5 +598,3 @@
     }
   };
 })();
-
-

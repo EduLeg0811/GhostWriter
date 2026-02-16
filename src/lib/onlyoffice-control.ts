@@ -163,6 +163,18 @@ export class OnlyOfficeControlApi {
     return (result || {}) as { terms: number; matches: number; cleared: number };
   }
 
+  async runMacro2ManualNumberingSelection(
+    spacingMode: "normal_single" | "normal_double" | "nbsp_single" | "nbsp_double" = "nbsp_double",
+  ): Promise<{ converted: number; hadNumbering: number }> {
+    const result = await this.request("macro2ManualNumberingSelection", { spacingMode }, LONG_REQUEST_TIMEOUT_MS);
+    return (result || {}) as { converted: number; hadNumbering: number };
+  }
+
+  async previewMacro2ManualNumberingSelection(): Promise<{ wouldConvert: number; hadNumbering: number }> {
+    const result = await this.request("macro2ManualNumberingPreviewSelection", {}, LONG_REQUEST_TIMEOUT_MS);
+    return (result || {}) as { wouldConvert: number; hadNumbering: number };
+  }
+
   private request(command: string, payload: Record<string, unknown> = {}, timeoutMs = REQUEST_TIMEOUT_MS): Promise<unknown> {
     const target = this.bridgeWindow || this.getTargetWindow();
     if (!target) return Promise.reject(new Error("Iframe ONLYOFFICE indisponivel."));

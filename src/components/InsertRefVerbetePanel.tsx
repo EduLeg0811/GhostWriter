@@ -79,7 +79,7 @@ const InsertRefVerbetePanel = ({
             ) : (
               <>
               <ArrowDown className="mr-1 h-3.5 w-3.5 text-black relative z-10" />
-              <span className="relative z-10 text-blue-500">Criar Referências</span>
+              <span className="relative z-10 text-blue-500">Bibliografia</span>
               </>
             )}
 

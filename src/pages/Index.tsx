@@ -6,12 +6,16 @@ import RightPanel, { AIResponse } from "@/components/RightPanel";
 import OnlyOfficeEditor, { OnlyOfficeDocumentConfig } from "@/components/OnlyOfficeEditor";
 import InsertRefBookPanel from "@/components/InsertRefBookPanel";
 import InsertRefVerbetePanel from "@/components/InsertRefVerbetePanel";
+import BiblioGeralPanel from "@/components/BiblioGeralPanel";
 import Macro1HighlightPanel from "@/components/Macro1HighlightPanel";
+import Macro2ManualNumberingPanel from "@/components/Macro2ManualNumberingPanel";
+import type { Macro2SpacingMode } from "@/components/Macro2ManualNumberingPanel";
 import AiActionParametersPanel from "@/components/AiActionParametersPanel";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useTextStats } from "@/hooks/useTextStats";
 import {
   createBlankDocOnServer,
+  biblioGeralApp,
   fetchFileText,
   fetchOnlyOfficeConfig,
   forceSaveOnlyOffice,
@@ -42,7 +46,7 @@ const OPENAI_VECTOR_STORE_LO = (import.meta.env.VITE_OPENAI_VECTOR_STORE_LO as s
 const OPENAI_VECTOR_STORE_TRANSLATE_RAG = (import.meta.env.VITE_OPENAI_VECTOR_STORE_TRANSLATE_RAG as string | undefined)?.trim() || "";
 
 type MacroActionId = "macro1" | "macro2";
-type AppActionId = "app1" | "app2";
+type AppActionId = "app1" | "app2" | "app3";
 type AiActionId = "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate";
 type ParameterPanelTarget =
   | { section: "actions"; id: AiActionId }
@@ -55,10 +59,11 @@ const parameterAppMeta: Record<"app1", { title: string; description: string }> =
 };
 const parameterMacroMeta: Record<MacroActionId, { title: string; description: string }> = {
   macro1: { title: "Highlight", description: "Destaca termos no documento (highlight em cores)." },
-  macro2: { title: "Macro2", description: "Sem aÃ§Ã£o associada no momento." },
+  macro2: { title: "Macro2", description: "Converte lista numerada automatica da selecao para numeracao manual." },
 };
-const parameterAppsGenericMeta: Record<"app2", { title: string; description: string }> = {
+const parameterAppsGenericMeta: Record<"app2" | "app3", { title: string; description: string }> = {
   app2: { title: "Bibliografia de Verbetes", description: "Cria Listagem ou Bibliografia de verbetes da EnciclopÃ©dia." },
+  app3: { title: "Bibliografia Geral", description: "Busca 10 correspondencias bibliograficas a partir da caixa de entrada." },
 };
 const parameterActionMeta: Record<AiActionId, { title: string; description: string }> = {
   define: { title: "Definir", description: "Definologia conscienciologica." },
@@ -124,9 +129,16 @@ const Index = () => {
   const [isRunningInsertRefVerbete, setIsRunningInsertRefVerbete] = useState(false);
   const [insertRefVerbeteListResult, setInsertRefVerbeteListResult] = useState("");
   const [insertRefVerbeteBiblioResult, setInsertRefVerbeteBiblioResult] = useState("");
+  const [biblioGeralAuthor, setBiblioGeralAuthor] = useState("");
+  const [biblioGeralTitle, setBiblioGeralTitle] = useState("");
+  const [biblioGeralYear, setBiblioGeralYear] = useState("");
+  const [biblioGeralExtra, setBiblioGeralExtra] = useState("");
+  const [isRunningBiblioGeral, setIsRunningBiblioGeral] = useState(false);
+  const [biblioGeralResult, setBiblioGeralResult] = useState("");
   const [translateLanguage, setTranslateLanguage] = useState<(typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"]>("Ingles");
   const [macro1Term, setMacro1Term] = useState("");
   const [macro1ColorId, setMacro1ColorId] = useState<(typeof MACRO1_HIGHLIGHT_COLORS)[number]["id"]>("yellow");
+  const [macro2SpacingMode, setMacro2SpacingMode] = useState<Macro2SpacingMode>("nbsp_double");
 
   const stats = useTextStats(
     documentText || actionText,
@@ -368,6 +380,23 @@ const Index = () => {
     }
   }, [actionText, macro1Term]);
 
+  const handleRunMacro2ManualNumbering = useCallback(async () => {
+    if (!onlyOfficeControlApi || !currentFileId) {
+      toast.error("Abra um documento no ONLYOFFICE antes de executar Macro2.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await onlyOfficeControlApi.runMacro2ManualNumberingSelection(macro2SpacingMode);
+      toast.success(`Macro2 aplicada: ${result.converted} item(ns) convertidos para numeracao manual.`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Falha ao executar Macro2.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentFileId, macro2SpacingMode, onlyOfficeControlApi]);
+
   const handleRunMacro1Highlight = useCallback(async () => {
     if (!onlyOfficeControlApi || !currentFileId) {
       toast.error("Abra um documento no ONLYOFFICE antes de executar Highlight.");
@@ -480,6 +509,32 @@ const Index = () => {
     }
   }, [verbeteInput]);
 
+  const handleRunBiblioGeral = useCallback(async () => {
+    const author = biblioGeralAuthor.trim();
+    const title = biblioGeralTitle.trim();
+    const year = biblioGeralYear.trim();
+    const extra = biblioGeralExtra.trim();
+    if (!author && !title && !year && !extra) {
+      toast.error("Informe ao menos um campo para buscar bibliografias.");
+      return;
+    }
+
+    setIsRunningBiblioGeral(true);
+    try {
+      const data = await biblioGeralApp({ author, title, year, extra, topK: 10 });
+      setBiblioGeralResult(data.result.markdown || "");
+      if (!data.result.matches?.length) {
+        toast.info("Nenhuma bibliografia encontrada.");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Falha ao executar Bibliografia Geral.";
+      setBiblioGeralResult(msg);
+      toast.error(msg);
+    } finally {
+      setIsRunningBiblioGeral(false);
+    }
+  }, [biblioGeralAuthor, biblioGeralExtra, biblioGeralTitle, biblioGeralYear]);
+
   const handleInsertRefBookResponseIntoEditor = useCallback(async () => {
     if (!onlyOfficeControlApi) {
       toast.error("API do ONLYOFFICE indisponÃƒÂ­vel no momento.");
@@ -512,7 +567,11 @@ const Index = () => {
       setInsertRefVerbeteListResult("");
       setInsertRefVerbeteBiblioResult("");
     }
-  }, []);
+    if (type === "app3") {
+      setBiblioGeralResult("");
+      if (!biblioGeralTitle.trim() && actionText.trim()) setBiblioGeralTitle(actionText.trim());
+    }
+  }, [actionText, biblioGeralTitle]);
 
   const handleAction = useCallback(async (type: "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate" | "highlight") => {
     const text = actionText.trim();
@@ -664,7 +723,6 @@ const Index = () => {
             onSelectAllContent={handleSelectAllContent}
             onTriggerSave={handleTriggerSave}
             isLoading={isLoading}
-            openAiReady={openAiReady}
             hasVectorStoreLO={Boolean(OPENAI_VECTOR_STORE_LO)}
             hasDocumentOpen={Boolean(currentFileId)}
             onlyOfficeReady={Boolean(onlyOfficeControlApi)}
@@ -721,6 +779,16 @@ const Index = () => {
                       isRunning={isLoading}
                       onClose={() => setParameterPanelTarget(null)}
                     />
+                  ) : parameterPanelTarget.section === "macros" && parameterPanelTarget.id === "macro2" ? (
+                    <Macro2ManualNumberingPanel
+                      title={parameterMacroMeta.macro2.title}
+                      description={parameterMacroMeta.macro2.description}
+                      spacingMode={macro2SpacingMode}
+                      onSpacingModeChange={setMacro2SpacingMode}
+                      isRunning={isLoading}
+                      onRun={() => void handleRunMacro2ManualNumbering()}
+                      onClose={() => setParameterPanelTarget(null)}
+                    />
                   ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app1" ? (
                     <InsertRefBookPanel
                       title={parameterAppMeta.app1.title}
@@ -747,6 +815,23 @@ const Index = () => {
                       isRunning={isRunningInsertRefVerbete}
                       onClose={() => setParameterPanelTarget(null)}
                     />
+                  ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app3" ? (
+                    <BiblioGeralPanel
+                      title={parameterAppsGenericMeta.app3.title}
+                      description={parameterAppsGenericMeta.app3.description}
+                      author={biblioGeralAuthor}
+                      titleField={biblioGeralTitle}
+                      year={biblioGeralYear}
+                      extra={biblioGeralExtra}
+                      onAuthorChange={setBiblioGeralAuthor}
+                      onTitleFieldChange={setBiblioGeralTitle}
+                      onYearChange={setBiblioGeralYear}
+                      onExtraChange={setBiblioGeralExtra}
+                      onRun={() => void handleRunBiblioGeral()}
+                      resultMarkdown={biblioGeralResult}
+                      isRunning={isRunningBiblioGeral}
+                      onClose={() => setParameterPanelTarget(null)}
+                    />
                   ) : (
                     <div className="flex h-full flex-col">
                       <div className="flex items-center justify-between border-b border-border bg-[hsl(var(--panel-header))] px-4 py-3">
@@ -763,7 +848,7 @@ const Index = () => {
                       <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
                         {parameterPanelTarget.section === "macros"
                           ? `${parameterMacroMeta[parameterPanelTarget.id].title}: ${parameterMacroMeta[parameterPanelTarget.id].description}`
-                          : `${parameterAppsGenericMeta[parameterPanelTarget.id as "app2"]?.title || "App"}: ${parameterAppsGenericMeta[parameterPanelTarget.id as "app2"]?.description || "Sem configuraÃƒÂ§ÃƒÂ£o disponÃƒÂ­vel."}`}
+                          : `${parameterAppsGenericMeta[parameterPanelTarget.id as "app2" | "app3"]?.title || "App"}: ${parameterAppsGenericMeta[parameterPanelTarget.id as "app2" | "app3"]?.description || "Sem configuraÃƒÂ§ÃƒÂ£o disponÃƒÂ­vel."}`}
                       </div>
                     </div>
                   )}

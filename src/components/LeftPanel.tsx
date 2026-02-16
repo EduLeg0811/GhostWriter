@@ -31,14 +31,13 @@ interface LeftPanelProps {
   onCreateBlankDocument: () => Promise<void>;
   onAction: (type: "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate" | "highlight") => void;
   onActionMacros: (type: "macro1" | "macro2") => void;
-  onActionApps: (type: "app1" | "app2") => void;
+  onActionApps: (type: "app1" | "app2" | "app3") => void;
   actionText: string;
   onActionTextChange: (text: string) => void;
   onRetrieveSelectedText: () => Promise<void>;
   onSelectAllContent: () => Promise<void>;
   onTriggerSave: () => Promise<void>;
   isLoading: boolean;
-  openAiReady: boolean;
   hasVectorStoreLO: boolean;
   hasDocumentOpen: boolean;
   onlyOfficeReady: boolean;
@@ -104,8 +103,8 @@ const actionItemsMacros = [
   {
     id: "macro2" as const,
     icon: Repeat2,
-    title: "Macro2",
-    description: "Description Macro2",
+    title: "Lista Numerada",
+    description: "Aplica numeração manual",
   },
 ];
 
@@ -114,14 +113,20 @@ const actionItemsApps = [
   {
     id: "app1" as const,
     icon: BookOpen,
-    title: "Bibliografia de Livros",
-    description: "Cria Bibliografia de Livros",
+    title: "Bibliografia Livros WV",
+    description: "Cria Bibliografia de livros",
   },
   {
     id: "app2" as const,
     icon: Repeat2,
-    title: "Bibliografia de Verbetes",
+    title: "Bibliografia Verbetes",
     description: "Cria Bibliografia de verbetes",
+  },
+  {
+    id: "app3" as const,
+    icon: Search,
+    title: "Bibliografia Geral",
+    description: "Cria Bibliografia geral de autores",
   },
 ]; 
 
@@ -146,7 +151,6 @@ const LeftPanel = ({
   onSelectAllContent,
   onTriggerSave,
   isLoading,
-  openAiReady,
   hasVectorStoreLO,
   hasDocumentOpen,
   onlyOfficeReady,
@@ -156,7 +160,7 @@ const LeftPanel = ({
   const [fileName, setFileName] = useState("");
   const [activeActionId, setActiveActionId] = useState<LeftPanelActionId | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const actionDisabled = isLoading || !openAiReady;
+  const actionDisabled = isLoading;
 
   useEffect(() => {
     if (!isLoading) setActiveActionId(null);

@@ -115,6 +115,14 @@ class InsertRefVerbeteRequest(BaseModel):
     titles: str
 
 
+class BiblioGeralRequest(BaseModel):
+    author: str = ""
+    title: str = ""
+    year: str = ""
+    extra: str = ""
+    topK: int = 10
+
+
 class HighlightRequest(BaseModel):
     term: str
 
@@ -654,6 +662,42 @@ def api_insert_ref_verbete(payload: InsertRefVerbeteRequest) -> dict[str, Any]:
     if not result.get("ok"):
         raise HTTPException(status_code=500, detail=result.get("error") or "Falha ao executar App2 no Python.")
     return result
+
+
+@app.post("/api/apps/biblio-geral")
+def api_biblio_geral(payload: BiblioGeralRequest) -> dict[str, Any]:
+    author = (payload.author or "").strip()
+    title = (payload.title or "").strip()
+    year = (payload.year or "").strip()
+    extra = (payload.extra or "").strip()
+    if not any([author, title, year, extra]):
+        raise HTTPException(status_code=400, detail="Informe ao menos um campo: author, title, year ou extra.")
+
+    top_k = max(1, min(int(payload.topK or 10), 20))
+    excel_path = ROOT_DIR / "backend" / "Files" / "Refs.xlsx"
+    if not excel_path.exists():
+        raise HTTPException(status_code=500, detail="Base bibliografica Refs.xlsx nao encontrada.")
+
+    try:
+        from backend.functions.biblio_matcher import search_bibliography
+    except Exception:
+        from functions.biblio_matcher import search_bibliography
+
+    try:
+        matches = search_bibliography(str(excel_path), author=author, title=title, year=year, extra=extra, top_k=top_k)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Falha ao executar Bibliografia Geral: {exc}")
+
+    refs = [str(item.get("ref") or "").strip() for item in matches if str(item.get("ref") or "").strip()]
+    markdown = "\n".join(f"**{idx}.** {ref}" for idx, ref in enumerate(refs, start=1))
+    return {
+        "ok": True,
+        "result": {
+            "query": {"author": author, "title": title, "year": year, "extra": extra},
+            "matches": refs,
+            "markdown": markdown,
+        },
+    }
 
 
 @app.post("/api/files/upload")

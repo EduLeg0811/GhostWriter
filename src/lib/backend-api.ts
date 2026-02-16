@@ -90,3 +90,13 @@ export async function insertRefVerbeteApp(titles: string): Promise<{ ok: boolean
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
+
+export async function biblioGeralApp(payload: { author?: string; title?: string; year?: string; extra?: string; topK?: number }): Promise<{ ok: boolean; result: { query: { author: string; title: string; year: string; extra: string }; matches: string[]; markdown: string } }> {
+  const res = await fetch("/api/apps/biblio-geral", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
