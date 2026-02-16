@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Clock, Copy, FileText, MessageSquare, PenLine, Repeat2, Search, SendHorizontal, Trash2 } from "lucide-react";
+import { BookOpen, Clock, Copy, FileText, Languages, MessageSquare, PenLine, Repeat2, Search, SendHorizontal, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export interface AIResponse {
   id: string;
-  type: "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "chat" | "pensatas";
+  type: "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "translate" | "chat" | "pensatas";
   query: string;
   content: string;
   timestamp: Date;
@@ -18,6 +18,7 @@ const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactN
   epigraph: { label: "Epígrafe", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   rewrite: { label: "Reescrever", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
   summarize: { label: "Resumir", icon: <FileText className="h-3.5 w-3.5 text-primary" /> },
+  translate: { label: "Traduzir", icon: <Languages className="h-3.5 w-3.5 text-primary" /> },
   chat: { label: "Chat", icon: <MessageSquare className="h-3.5 w-3.5 text-primary" /> },
   pensatas: { label: "Pensatas LO", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
 };
@@ -50,8 +51,8 @@ const RightPanel = ({ responses, onClear, onSendMessage, isSending = false, chat
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border bg-[hsl(var(--panel-header))] px-4 py-3">
-        <h2 className="text-sm font-semibold text-foreground">Historico ({responses.length})</h2>
-        <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={onClear} title="Limpar historico">
+        <h2 className="text-sm font-semibold text-foreground">Histórico IA ({responses.length})</h2>
+        <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={onClear} title="Limpar histórico">
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>

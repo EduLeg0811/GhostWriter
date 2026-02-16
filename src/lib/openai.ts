@@ -118,6 +118,22 @@ export function buildSummarizePrompt(text: string): ChatMessage[] {
   ];
 }
 
+export function buildTranslatePrompt(text: string, targetLanguage: string, ragContext?: string): ChatMessage[] {
+  const systemBase =
+    "Voce é um tradutor de textos da Conscienciologia. Traduza com fidelidade sem adicionar explicações. Busque SEMPRE por traduções já existentes dos termos próprios da Conscienciologia (jargões) no material fornecido. APENAS se não encontrar tradução já existente, crie uma tradução nova ou mantenha o termo original em itálico. Preserve estrutura, paragrafos e pontuação. O texto traduzido final deve ser o mais fiel possível ao original, sem adicionar explicações ou comentarios.";
+  const system = ragContext
+    ? `${systemBase}\n\nContexto terminológico de referência da Conscienciologia(use para padronização terminológica quando aplicável):\n${ragContext}`
+    : systemBase;
+
+  return [
+    {
+      role: "system",
+      content: system,
+    },
+    { role: "user", content: `Traduza para ${targetLanguage}:\n\n${text}` },
+  ];
+}
+
 export function buildChatPrompt(fullText: string, userMessage: string, history: ChatMessage[]): ChatMessage[] {
   return [
     {

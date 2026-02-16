@@ -6,6 +6,7 @@ import re
 import subprocess
 import time
 import uuid
+import xml.etree.ElementTree as ET
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -41,6 +42,57 @@ openai_api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
 pdf2docx_python_cmd = (os.getenv("PDF2DOCX_PYTHON_CMD") or "python").strip()
 backend_python_cmd = (os.getenv("BACKEND_PYTHON_CMD") or pdf2docx_python_cmd or "python").strip()
 PLUGIN_GUID = "asc.{D9F53D71-CA6A-4A77-8BE0-0DA9675B5C16}"
+LETTER_CLASS = "A-Za-zÀ-ÖØ-öø-ÿ"
+KEEP_WORD_HYPHEN_PREFIXES = {
+    "além",
+    "ante",
+    "anti",
+    "arqui",
+    "auto",
+    "bem",
+    "co",
+    "contra",
+    "ex",
+    "extra",
+    "hiper",
+    "infra",
+    "inter",
+    "intra",
+    "macro",
+    "micro",
+    "mini",
+    "multi",
+    "neo",
+    "pós",
+    "pre",
+    "pró",
+    "proto",
+    "pseudo",
+    "recém",
+    "semi",
+    "sobre",
+    "sub",
+    "super",
+    "supra",
+    "tele",
+    "ultra",
+    "vice",
+}
+INLINE_HYPHENATED_WORD_RE = re.compile(rf"\b([{LETTER_CLASS}]{{2,}})-([{LETTER_CLASS}]{{2,}})\b")
+TRAILING_HYPHEN_FRAGMENT_RE = re.compile(rf"([{LETTER_CLASS}]{{2,}})-$")
+LEADING_WORD_FRAGMENT_RE = re.compile(rf"^([{LETTER_CLASS}]{{2,}})")
+RULE_ONLY_TEXT_RE = re.compile(r"^[\s\-\_=~\.·•]{8,}$")
+VML_WIDTH_STYLE_RE = re.compile(r"(\bwidth:)([0-9]+(?:\.[0-9]+)?)(pt\b)")
+NS_W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+NS_WP = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+NS_A = "http://schemas.openxmlformats.org/drawingml/2006/main"
+DOCX_XML_NAMESPACES = {
+    "w": NS_W,
+    "wp": NS_WP,
+    "a": NS_A,
+}
+for prefix, namespace in DOCX_XML_NAMESPACES.items():
+    ET.register_namespace(prefix, namespace)
 
 
 class VectorSearchRequest(BaseModel):
@@ -115,6 +167,312 @@ def ensure_run_highlight(run_xml: str, color: str = "yellow") -> str:
     return re.sub(r"<w:r(\s[^>]*)?>", lambda m: f"{m.group(0)}<w:rPr>{highlight_tag}</w:rPr>", run_xml, count=1)
 
 
+def should_merge_syllable_hyphen(left_fragment: str, right_fragment: str) -> bool:
+    left = left_fragment.lower()
+    right = right_fragment.lower()
+    if left in KEEP_WORD_HYPHEN_PREFIXES:
+        return False
+    if len(right) <= 2:
+        return False
+    return True
+
+
+def normalize_inline_hyphenation(text: str) -> tuple[str, int]:
+    changes = 0
+
+    def repl(match: re.Match[str]) -> str:
+        nonlocal changes
+        left_fragment, right_fragment = match.group(1), match.group(2)
+        if not should_merge_syllable_hyphen(left_fragment, right_fragment):
+            return match.group(0)
+        changes += 1
+        return f"{left_fragment}{right_fragment}"
+
+    return INLINE_HYPHENATED_WORD_RE.sub(repl, text), changes
+
+
+def normalize_rule_like_paragraphs(xml_root: ET.Element) -> int:
+    removed = 0
+    paragraph_tag = f"{{{NS_W}}}p"
+    for parent in xml_root.iter():
+        for node in list(parent):
+            if node.tag != paragraph_tag:
+                continue
+            paragraph_text = "".join((t.text or "") for t in node.findall(".//w:t", DOCX_XML_NAMESPACES)).strip()
+            if paragraph_text and RULE_ONLY_TEXT_RE.fullmatch(paragraph_text):
+                parent.remove(node)
+                removed += 1
+    return removed
+
+
+def normalize_cross_run_hyphenation(xml_root: ET.Element) -> int:
+    fixes = 0
+    for paragraph in xml_root.findall(".//w:p", DOCX_XML_NAMESPACES):
+        text_nodes = paragraph.findall(".//w:t", DOCX_XML_NAMESPACES)
+        if len(text_nodes) < 2:
+            continue
+        for index in range(len(text_nodes) - 1):
+            current_node = text_nodes[index]
+            next_node = text_nodes[index + 1]
+            current_text = current_node.text or ""
+            next_text = next_node.text or ""
+            if not current_text.endswith("-") or not next_text:
+                continue
+            if not next_text[0].isalpha() or not next_text[0].islower():
+                continue
+            left_match = TRAILING_HYPHEN_FRAGMENT_RE.search(current_text)
+            right_match = LEADING_WORD_FRAGMENT_RE.match(next_text)
+            if not left_match or not right_match:
+                continue
+            left_fragment = left_match.group(1)
+            right_fragment = right_match.group(1)
+            if not should_merge_syllable_hyphen(left_fragment, right_fragment):
+                continue
+            current_node.text = current_text[:-1]
+            fixes += 1
+    return fixes
+
+
+def get_max_content_width_twips(document_root: ET.Element) -> int:
+    section = document_root.find(".//w:body/w:sectPr", DOCX_XML_NAMESPACES)
+    if section is None:
+        section = document_root.find(".//w:sectPr", DOCX_XML_NAMESPACES)
+    default_width_twips = 9360
+    if section is None:
+        return default_width_twips
+
+    page_size = section.find("w:pgSz", DOCX_XML_NAMESPACES)
+    page_margin = section.find("w:pgMar", DOCX_XML_NAMESPACES)
+    page_width = int(page_size.attrib.get(f"{{{NS_W}}}w", "12240")) if page_size is not None else 12240
+    margin_left = int(page_margin.attrib.get(f"{{{NS_W}}}left", "1440")) if page_margin is not None else 1440
+    margin_right = int(page_margin.attrib.get(f"{{{NS_W}}}right", "1440")) if page_margin is not None else 1440
+    return max(3600, page_width - margin_left - margin_right)
+
+
+def parse_docx_numeric(raw_value: str | None) -> int | None:
+    if raw_value is None:
+        return None
+    text = raw_value.strip()
+    if not text:
+        return None
+    try:
+        return int(round(float(text)))
+    except ValueError:
+        return None
+
+
+def clamp_table_grid_columns(table_node: ET.Element, max_content_width_twips: int) -> int:
+    grid = table_node.find("w:tblGrid", DOCX_XML_NAMESPACES)
+    if grid is None:
+        return 0
+    columns = grid.findall("w:gridCol", DOCX_XML_NAMESPACES)
+    if not columns:
+        return 0
+
+    parsed_widths: list[int] = []
+    for col in columns:
+        width = parse_docx_numeric(col.attrib.get(f"{{{NS_W}}}w"))
+        parsed_widths.append(width if width is not None and width > 0 else 1)
+
+    total_width = sum(parsed_widths)
+    if total_width <= 0:
+        return 0
+
+    scale = max_content_width_twips / total_width
+    updated = [max(1, int(round(width * scale))) for width in parsed_widths]
+    diff = max_content_width_twips - sum(updated)
+    if updated:
+        updated[-1] = max(1, updated[-1] + diff)
+
+    changes = 0
+    for col, width in zip(columns, updated):
+        old_raw = col.attrib.get(f"{{{NS_W}}}w")
+        old_value = parse_docx_numeric(old_raw)
+        if old_value != width:
+            col.attrib[f"{{{NS_W}}}w"] = str(width)
+            changes += 1
+    return changes
+
+
+def clamp_table_cell_widths(table_node: ET.Element, max_content_width_twips: int) -> int:
+    cells = table_node.findall(".//w:tcPr/w:tcW", DOCX_XML_NAMESPACES)
+    if not cells:
+        return 0
+    parsed_cells: list[tuple[ET.Element, int]] = []
+    for cell in cells:
+        width_type = cell.attrib.get(f"{{{NS_W}}}type", "")
+        if width_type not in {"dxa", "", "nil"}:
+            continue
+        width_value = parse_docx_numeric(cell.attrib.get(f"{{{NS_W}}}w"))
+        if width_value is None:
+            continue
+        parsed_cells.append((cell, max(1, width_value)))
+
+    if not parsed_cells:
+        return 0
+
+    total_width = sum(width for _, width in parsed_cells)
+    if total_width <= 0:
+        return 0
+
+    scale = max_content_width_twips / total_width
+    updated = [max(1, int(round(width * scale))) for _, width in parsed_cells]
+    diff = max_content_width_twips - sum(updated)
+    updated[-1] = max(1, updated[-1] + diff)
+
+    changes = 0
+    for (cell, _), width in zip(parsed_cells, updated):
+        old_value = parse_docx_numeric(cell.attrib.get(f"{{{NS_W}}}w"))
+        if old_value != width:
+            cell.attrib[f"{{{NS_W}}}w"] = str(width)
+            cell.attrib[f"{{{NS_W}}}type"] = "dxa"
+            changes += 1
+    return changes
+
+
+def force_table_width_to_page(table_node: ET.Element, max_content_width_twips: int) -> int:
+    tbl_pr = table_node.find("w:tblPr", DOCX_XML_NAMESPACES)
+    if tbl_pr is None:
+        tbl_pr = ET.SubElement(table_node, f"{{{NS_W}}}tblPr")
+
+    changes = 0
+
+    tbl_width = tbl_pr.find("w:tblW", DOCX_XML_NAMESPACES)
+    if tbl_width is None:
+        tbl_width = ET.SubElement(tbl_pr, f"{{{NS_W}}}tblW")
+    old_type = tbl_width.attrib.get(f"{{{NS_W}}}type")
+    old_width = parse_docx_numeric(tbl_width.attrib.get(f"{{{NS_W}}}w"))
+    if old_type != "dxa" or old_width != max_content_width_twips:
+        tbl_width.attrib[f"{{{NS_W}}}type"] = "dxa"
+        tbl_width.attrib[f"{{{NS_W}}}w"] = str(max_content_width_twips)
+        changes += 1
+
+    tbl_indent = tbl_pr.find("w:tblInd", DOCX_XML_NAMESPACES)
+    if tbl_indent is not None:
+        indent_type = tbl_indent.attrib.get(f"{{{NS_W}}}type", "dxa")
+        indent_width = parse_docx_numeric(tbl_indent.attrib.get(f"{{{NS_W}}}w")) or 0
+        if indent_type != "dxa" or indent_width != 0:
+            tbl_indent.attrib[f"{{{NS_W}}}type"] = "dxa"
+            tbl_indent.attrib[f"{{{NS_W}}}w"] = "0"
+            changes += 1
+
+    return changes
+
+
+def clamp_layout_overflow(xml_root: ET.Element, max_content_width_twips: int) -> int:
+    changes = 0
+    max_content_width_emu = max_content_width_twips * 635
+
+    for width_node in (
+        xml_root.findall(".//w:tblW", DOCX_XML_NAMESPACES)
+        + xml_root.findall(".//w:tcW", DOCX_XML_NAMESPACES)
+        + xml_root.findall(".//w:tblInd", DOCX_XML_NAMESPACES)
+    ):
+        width_type = width_node.attrib.get(f"{{{NS_W}}}type", "")
+        width_value = parse_docx_numeric(width_node.attrib.get(f"{{{NS_W}}}w"))
+        if width_value is None:
+            continue
+        if width_type in {"dxa", "", "nil"} and width_value > max_content_width_twips:
+            width_node.attrib[f"{{{NS_W}}}w"] = str(max_content_width_twips)
+            width_node.attrib[f"{{{NS_W}}}type"] = "dxa"
+            changes += 1
+            continue
+        if width_type == "pct" and width_value > 5000:
+            width_node.attrib[f"{{{NS_W}}}w"] = "5000"
+            changes += 1
+
+    for extent_node in xml_root.findall(".//wp:extent", DOCX_XML_NAMESPACES) + xml_root.findall(".//a:ext", DOCX_XML_NAMESPACES):
+        raw_cx = extent_node.attrib.get("cx")
+        if raw_cx is None:
+            continue
+        try:
+            cx_value = int(raw_cx)
+        except ValueError:
+            continue
+        if cx_value > max_content_width_emu:
+            extent_node.attrib["cx"] = str(max_content_width_emu)
+            changes += 1
+
+    for table_node in xml_root.findall(".//w:tbl", DOCX_XML_NAMESPACES):
+        changes += force_table_width_to_page(table_node, max_content_width_twips)
+        changes += clamp_table_grid_columns(table_node, max_content_width_twips)
+        changes += clamp_table_cell_widths(table_node, max_content_width_twips)
+
+    return changes
+
+
+def clamp_vml_width_styles(xml_text: str, max_content_width_twips: int) -> tuple[str, int]:
+    changes = 0
+    max_width_points = max_content_width_twips / 20
+
+    def replace_width(match: re.Match[str]) -> str:
+        nonlocal changes
+        width_points = float(match.group(2))
+        if width_points <= max_width_points:
+            return match.group(0)
+        changes += 1
+        return f"{match.group(1)}{max_width_points:.2f}{match.group(3)}"
+
+    return VML_WIDTH_STYLE_RE.sub(replace_width, xml_text), changes
+
+
+def cleanup_converted_pdf_docx(docx_path: Path) -> None:
+    with zipfile.ZipFile(docx_path, "r") as zin:
+        files = {name: zin.read(name) for name in zin.namelist()}
+
+    document_xml = files.get("word/document.xml")
+    if not document_xml:
+        return
+
+    document_root = ET.fromstring(document_xml)
+    max_content_width_twips = get_max_content_width_twips(document_root)
+
+    xml_parts = ["word/document.xml"]
+    xml_parts.extend(name for name in files.keys() if re.fullmatch(r"word/(header|footer)\d+\.xml", name))
+
+    for part_name in xml_parts:
+        part_content = files.get(part_name)
+        if not part_content:
+            continue
+        try:
+            root = ET.fromstring(part_content)
+        except ET.ParseError:
+            continue
+
+        changed = False
+        for text_node in root.findall(".//w:t", DOCX_XML_NAMESPACES):
+            original_text = text_node.text
+            if not original_text:
+                continue
+            normalized_text, text_changes = normalize_inline_hyphenation(original_text)
+            if text_changes:
+                text_node.text = normalized_text
+                changed = True
+
+        if normalize_cross_run_hyphenation(root) > 0:
+            changed = True
+
+        if normalize_rule_like_paragraphs(root) > 0:
+            changed = True
+
+        if clamp_layout_overflow(root, max_content_width_twips) > 0:
+            changed = True
+
+        if not changed:
+            continue
+
+        serialized_xml = ET.tostring(root, encoding="utf-8", xml_declaration=True).decode("utf-8")
+        serialized_xml, style_changes = clamp_vml_width_styles(serialized_xml, max_content_width_twips)
+        if style_changes > 0:
+            changed = True
+        if changed:
+            files[part_name] = serialized_xml.encode("utf-8")
+
+    with zipfile.ZipFile(docx_path, "w") as zout:
+        for name, content in files.items():
+            zout.writestr(name, content)
+
+
 def run_pdf_to_docx(pdf_path: Path, docx_path: Path) -> None:
     py_code = "\n".join([
         "import sys",
@@ -131,6 +489,7 @@ def run_pdf_to_docx(pdf_path: Path, docx_path: Path) -> None:
     if proc.returncode != 0:
         details = proc.stderr.strip() or f"processo finalizado com codigo {proc.returncode}"
         raise RuntimeError(f"Falha na conversao PDF->DOCX: {details}")
+    cleanup_converted_pdf_docx(docx_path)
 
 
 def run_python_json_script(script_path: Path, args: list[str]) -> dict[str, Any]:

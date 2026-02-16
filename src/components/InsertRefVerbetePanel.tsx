@@ -56,7 +56,7 @@ const InsertRefVerbetePanel = ({
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Verbetes</Label>
             <p className="text-xs text-muted-foreground">Nomes dos verbetes separados por virgula ou ponto-e-virgula.</p>
             <Textarea
-              className="min-h-40 rounded-md border border-input bg-white px-3 py-2 text-xs leading-relaxed text-gray-500"
+              className="min-h-40 rounded-md border border-input bg-white px-3 py-2 text-xs leading-relaxed text-foreground"
               rows={4}
               value={verbeteInput}
               onChange={(e) => onVerbeteInputChange(e.target.value)}

@@ -1,20 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { UploadedFileMeta } from "@/lib/backend-api";
 import { TextStats } from "@/hooks/useTextStats";
 import {
   AlignLeft,
-  ArrowDown,
-  ArrowLeftRight,
-  ArrowRight,
   BookOpen,
   FileText,
   Hash,
+  Languages,
   Loader2,
-  MessageSquare,
   PenLine,
   RefreshCw,
   Repeat2,
@@ -29,13 +25,11 @@ import { toast } from "sonner";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 
 
-const DEFAULT_ONLYOFFICE_SERVER_URL = "http://localhost:8080";
-
 interface LeftPanelProps {
   stats: TextStats;
   onWordFileUpload: (file: File) => Promise<UploadedFileMeta>;
   onCreateBlankDocument: () => Promise<void>;
-  onAction: (type: "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "highlight") => void;
+  onAction: (type: "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate" | "highlight") => void;
   onActionMacros: (type: "macro1" | "macro2") => void;
   onActionApps: (type: "app1" | "app2") => void;
   actionText: string;
@@ -68,8 +62,8 @@ const actionItems = [
   {
     id: "epigraph" as const,
     icon: Search,
-    title: "Epígrafe",
-    description: "Sugerir epígrafe",
+    title: "Epigrafe",
+    description: "Sugerir epigrafe",
   },
 
   {
@@ -90,6 +84,12 @@ const actionItems = [
     title: "Resumir",
     description: "Síntese concisa",
   },
+  {
+    id: "translate" as const,
+    icon: Languages,
+    title: "Traduzir",
+    description: "Traduzir para outro idioma",
+  },
 ];
 
 
@@ -98,8 +98,8 @@ const actionItemsMacros = [
   {
     id: "macro1" as const,
     icon: BookOpen,
-    title: "Macro1",
-    description: "Description Macro1",
+    title: "Highlight",
+    description: "Destaca termos no documento",
   },
   {
     id: "macro2" as const,
@@ -156,7 +156,6 @@ const LeftPanel = ({
   const [fileName, setFileName] = useState("");
   const [activeActionId, setActiveActionId] = useState<LeftPanelActionId | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const selectionNeeded = !actionText.trim();
   const actionDisabled = isLoading || !openAiReady;
 
   useEffect(() => {
@@ -189,18 +188,18 @@ const LeftPanel = ({
   };
 
   const statCards = [
+    { icon: FileText, label: "Paginas", value: stats.pages },
+    { icon: AlignLeft, label: "Paragrafos", value: stats.paragraphs },
     { icon: Type, label: "Palavras", value: stats.words },
     { icon: Hash, label: "Caracteres", value: stats.characters },
-    { icon: AlignLeft, label: "Paragrafos", value: stats.paragraphs },
-    { icon: MessageSquare, label: "Frases", value: stats.sentences },
-    { icon: BookOpen, label: "Sesquipedais", value: stats.sesquipedal },
     { icon: Sparkles, label: "Logias", value: stats.logiaWords },
+    { icon: BookOpen, label: "Sesquipedais", value: stats.sesquipedal },
   ];
 
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-border bg-[hsl(var(--panel-header))] px-4 py-4">
-        <h1 className="text-sm font-semibold text-foreground">Parapreceptor  ● Ghost Writer Editor</h1>
+        <h1 className="text-sm font-semibold text-foreground">Parapreceptor ● Ghost Writer Editor</h1>
       </div>
 
       <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
@@ -286,51 +285,12 @@ const LeftPanel = ({
 
           <Separator />
 
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Texto de entrada</Label>
-            <div className="grid grid-cols-1 gap-1.5">
-
-            <Button
-              variant="secondary"
-              size="sm"
-              className={primaryActionButtonClass}
-              onClick={() => void onRetrieveSelectedText()}
-              disabled={isLoading || !hasDocumentOpen}
-            >
-              <ArrowDown className="mr-1 h-3.5 w-3.5 text-black relative z-10" />
-              <span className="relative z-10 text-blue-500">Select & Import</span>
-            </Button>
-
-           {/*  <Button
-              variant="secondary"
-              size="sm"
-              className={primaryActionButtonClass}
-              onClick={() => void onTriggerSave()}
-              disabled={isLoading || !hasDocumentOpen}
-            >
-              <ArrowRight className="mr-1 h-3.5 w-3.5 text-black relative z-10" />
-              <span className="relative z-10 text-blue-500">Insert</span>
-            </Button> */}
-
-
-            </div>
-            <textarea
-              rows={4}
-              value={actionText}
-              onChange={(e) => onActionTextChange(e.target.value)}
-              placeholder="Select text in the document and click to get selection."
-              className="min-h-[80px] w-full resize-none rounded-md border border-border bg-white px-3 py-2 text-xs outline-none focus:border-primary"
-            />
-          </div>
-
-          <Separator />
-
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ações IA</Label>
             {actionItems.map((item) => {
               const Icon = item.icon;
               const busy = isLoading && activeActionId === item.id;
-              const disabled = actionDisabled || selectionNeeded || (item.id === "pensatas" && !hasVectorStoreLO);
+              const disabled = actionDisabled || (item.id === "pensatas" && !hasVectorStoreLO);
               return (
                 <Button
                   key={item.id}
@@ -399,7 +359,7 @@ const LeftPanel = ({
             {actionItemsMacros.map((item) => {
               const Icon = item.icon;
               const busy = isLoading && activeActionId === item.id;
-              const disabled = isLoading;
+              const disabled = isLoading || !hasDocumentOpen;
               return (
                 <Button
                   key={item.id}
@@ -439,4 +399,5 @@ const LeftPanel = ({
 };
 
 export default LeftPanel;
+
 

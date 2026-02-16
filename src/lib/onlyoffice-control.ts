@@ -23,6 +23,7 @@ const APP_SOURCE = "parapreceptor-app";
 const PLUGIN_SOURCE = "parapreceptor-onlyoffice-plugin";
 const REQUEST_TIMEOUT_MS = 4000;
 const READY_TIMEOUT_MS = 12000;
+const LONG_REQUEST_TIMEOUT_MS = 30000;
 
 export class OnlyOfficeControlApi {
   private getTargetWindow: () => Window | null;
@@ -114,6 +115,24 @@ export class OnlyOfficeControlApi {
     await this.request("selectAllContent");
   }
 
+  async getDocumentPageCount(): Promise<number> {
+    const result = await this.request("getDocumentPageCount", {}, LONG_REQUEST_TIMEOUT_MS);
+    const count = Number(result || 0);
+    return Number.isFinite(count) && count >= 0 ? count : 0;
+  }
+
+  async getDocumentStats(): Promise<{ pages: number; paragraphs: number; words: number; symbols: number; symbolsWithSpaces: number }> {
+    const result = await this.request("getDocumentStats", {}, LONG_REQUEST_TIMEOUT_MS);
+    const data = (result || {}) as { pages?: number; paragraphs?: number; words?: number; symbols?: number; symbolsWithSpaces?: number };
+    return {
+      pages: Number.isFinite(Number(data.pages)) ? Number(data.pages) : 0,
+      paragraphs: Number.isFinite(Number(data.paragraphs)) ? Number(data.paragraphs) : 0,
+      words: Number.isFinite(Number(data.words)) ? Number(data.words) : 0,
+      symbols: Number.isFinite(Number(data.symbols)) ? Number(data.symbols) : 0,
+      symbolsWithSpaces: Number.isFinite(Number(data.symbolsWithSpaces)) ? Number(data.symbolsWithSpaces) : 0,
+    };
+  }
+
   async replaceSelection(text: string): Promise<void> {
     const content = text.trim();
     if (!content) throw new Error("Texto vazio para substituir.");
@@ -127,7 +146,24 @@ export class OnlyOfficeControlApi {
     await this.request("replaceSelection", { text: content, html: htmlContent });
   }
 
-  private request(command: string, payload: Record<string, unknown> = {}): Promise<unknown> {
+  async runMacro1HighlightDocument(
+    text: string,
+    color = "yellow",
+  ): Promise<{ terms: number; matches: number; highlighted: number; color: string }> {
+    const content = text.trim();
+    if (!content) throw new Error("Informe o Texto de entrada para a Macro1.");
+    const result = await this.request("macro1HighlightDocument", { text: content, color }, LONG_REQUEST_TIMEOUT_MS);
+    return (result || {}) as { terms: number; matches: number; highlighted: number; color: string };
+  }
+
+  async clearMacro1HighlightDocument(text: string): Promise<{ terms: number; matches: number; cleared: number }> {
+    const content = text.trim();
+    if (!content) throw new Error("Informe o Texto de entrada para limpar marcacoes da Macro1.");
+    const result = await this.request("macro1ClearHighlightDocument", { text: content }, LONG_REQUEST_TIMEOUT_MS);
+    return (result || {}) as { terms: number; matches: number; cleared: number };
+  }
+
+  private request(command: string, payload: Record<string, unknown> = {}, timeoutMs = REQUEST_TIMEOUT_MS): Promise<unknown> {
     const target = this.bridgeWindow || this.getTargetWindow();
     if (!target) return Promise.reject(new Error("Iframe ONLYOFFICE indisponivel."));
 
@@ -136,7 +172,7 @@ export class OnlyOfficeControlApi {
       const timer = window.setTimeout(() => {
         this.requestMap.delete(id);
         reject(new Error(`Timeout comando bridge: ${command}`));
-      }, REQUEST_TIMEOUT_MS);
+      }, timeoutMs);
 
       this.requestMap.set(id, { resolve, reject, timer });
       target.postMessage({ source: APP_SOURCE, type: "command", id, command, payload }, "*");

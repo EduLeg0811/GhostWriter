@@ -3,8 +3,9 @@ import { useMemo } from "react";
 export interface TextStats {
   words: number;
   characters: number;
+  charactersWithSpaces: number;
   paragraphs: number;
-  sentences: number;
+  pages: number;
   readingTime: string;
   sesquipedal: number;
   logiaWords: number;
@@ -18,19 +19,31 @@ function countSyllables(word: string): number {
   return vowels ? vowels.length : 1;
 }
 
-export function useTextStats(text: string, refreshKey = 0): TextStats {
+export function useTextStats(
+  text: string,
+  refreshKey = 0,
+  pageCountOverride: number | null = null,
+  paragraphCountOverride: number | null = null,
+  wordCountOverride: number | null = null,
+  characterCountOverride: number | null = null,
+  characterWithSpacesCountOverride: number | null = null,
+): TextStats {
   return useMemo(() => {
-    const trimmed = text.trim();
-    if (!trimmed) {
-      return { words: 0, characters: 0, paragraphs: 0, sentences: 0, readingTime: "0 min", sesquipedal: 0, logiaWords: 0 };
-    }
-
-    const wordList = trimmed.split(/\s+/).filter(Boolean);
-    const words = wordList.length;
-    const characters = trimmed.length;
-    const paragraphs = trimmed.split(/\n\s*\n/).filter(Boolean).length;
-    const sentences = trimmed.split(/[.!?]+/).filter(s => s.trim()).length;
-    const minutes = Math.max(1, Math.ceil(words / 200));
+    const normalized = text.replace(/\r\n/g, "\n");
+    const trimmed = normalized.trim();
+    const wordList = trimmed ? trimmed.split(/\s+/).filter(Boolean) : [];
+    const words = wordCountOverride !== null ? Math.max(0, wordCountOverride) : 0;
+    const characters = characterCountOverride !== null ? Math.max(0, characterCountOverride) : 0;
+    const charactersWithSpaces = characterWithSpacesCountOverride !== null
+      ? Math.max(0, characterWithSpacesCountOverride)
+      : 0;
+    const paragraphs = paragraphCountOverride !== null
+      ? Math.max(0, paragraphCountOverride)
+      : 0;
+    const pages = pageCountOverride !== null
+      ? Math.max(0, pageCountOverride)
+      : 0;
+    const minutes = words > 0 ? Math.max(1, Math.ceil(words / 200)) : 0;
     const readingTime = `${minutes} min`;
 
     let sesquipedal = 0;
@@ -40,6 +53,6 @@ export function useTextStats(text: string, refreshKey = 0): TextStats {
       if (/logia$/i.test(w.replace(/[^a-záàâãéèêíïóôõúüç]/gi, ""))) logiaWords++;
     }
 
-    return { words, characters, paragraphs, sentences, readingTime, sesquipedal, logiaWords };
-  }, [text, refreshKey]);
+    return { words, characters, charactersWithSpaces, paragraphs, pages, readingTime, sesquipedal, logiaWords };
+  }, [text, refreshKey, pageCountOverride, paragraphCountOverride, wordCountOverride, characterCountOverride, characterWithSpacesCountOverride]);
 }
