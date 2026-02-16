@@ -104,7 +104,7 @@ const actionItemsMacros = [
     id: "macro2" as const,
     icon: Repeat2,
     title: "Lista Numerada",
-    description: "Aplica numeração manual",
+    description: "Aplica numeração manual.",
   },
 ];
 
