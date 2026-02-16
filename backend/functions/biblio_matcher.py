@@ -1,4 +1,4 @@
-﻿import re
+import re
 import unicodedata
 from difflib import SequenceMatcher
 from typing import List, Dict, Any, Optional
