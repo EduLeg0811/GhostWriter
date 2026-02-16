@@ -32,7 +32,7 @@ PYTHON_DIR = Path(__file__).resolve().parent / "python"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 META_DIR.mkdir(parents=True, exist_ok=True)
 
-PORT = int(os.getenv("SERVER_PORT", "8787"))
+PORT = int(os.getenv("PORT") or os.getenv("SERVER_PORT", "8787"))
 backend_onlyoffice_url = (os.getenv("BACKEND_ONLYOFFICE_URL") or os.getenv("BACKEND_PUBLIC_URL") or f"http://host.docker.internal:{PORT}").rstrip("/")
 backend_browser_url = (os.getenv("BACKEND_BROWSER_URL") or f"http://localhost:{PORT}").rstrip("/")
 plugin_public_url = (os.getenv("ONLYOFFICE_PLUGIN_PUBLIC_URL") or backend_browser_url).rstrip("/")
