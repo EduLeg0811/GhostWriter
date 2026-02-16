@@ -19,16 +19,19 @@ export interface OnlyOfficeServerConfig {
   file: UploadedFileMeta;
 }
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const apiUrl = (path: string): string => `${API_BASE_URL}${path}`;
+
 export async function uploadFileToServer(file: File): Promise<UploadedFileMeta> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch("/api/files/upload", { method: "POST", body: form });
+  const res = await fetch(apiUrl("/api/files/upload"), { method: "POST", body: form });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function createBlankDocOnServer(title = "novo-documento.docx"): Promise<UploadedFileMeta> {
-  const res = await fetch("/api/files/create-blank", {
+  const res = await fetch(apiUrl("/api/files/create-blank"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title }),
@@ -38,25 +41,25 @@ export async function createBlankDocOnServer(title = "novo-documento.docx"): Pro
 }
 
 export async function fetchOnlyOfficeConfig(fileId: string): Promise<OnlyOfficeServerConfig> {
-  const res = await fetch(`/api/onlyoffice/config/${encodeURIComponent(fileId)}`);
+  const res = await fetch(apiUrl(`/api/onlyoffice/config/${encodeURIComponent(fileId)}`));
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function forceSaveOnlyOffice(fileId: string): Promise<{ ok: boolean; response?: unknown; error?: string }> {
-  const res = await fetch(`/api/onlyoffice/forcesave/${encodeURIComponent(fileId)}`, { method: "POST" });
+  const res = await fetch(apiUrl(`/api/onlyoffice/forcesave/${encodeURIComponent(fileId)}`), { method: "POST" });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function fetchFileText(fileId: string): Promise<{ id: string; ext: string; text: string; updatedAt: string }> {
-  const res = await fetch(`/api/files/${encodeURIComponent(fileId)}/text?t=${Date.now()}`, { cache: "no-store" });
+  const res = await fetch(apiUrl(`/api/files/${encodeURIComponent(fileId)}/text?t=${Date.now()}`), { cache: "no-store" });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function highlightFileTerm(fileId: string, term: string): Promise<{ ok: boolean; updated: boolean; matches: number; term: string; color: string }> {
-  const res = await fetch(`/api/files/${encodeURIComponent(fileId)}/highlight`, {
+  const res = await fetch(apiUrl(`/api/files/${encodeURIComponent(fileId)}/highlight`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ term }),
@@ -66,13 +69,13 @@ export async function highlightFileTerm(fileId: string, term: string): Promise<{
 }
 
 export async function healthCheck(): Promise<{ ok: boolean; onlyofficeConfigured: boolean; openaiConfigured: boolean }> {
-  const res = await fetch("/api/health");
+  const res = await fetch(apiUrl("/api/health"));
   if (!res.ok) throw new Error("Backend indisponivel.");
   return res.json();
 }
 
 export async function insertRefBookMacro(book: string): Promise<{ ok: boolean; result: string }> {
-  const res = await fetch("/api/macros/insert-ref-book", {
+  const res = await fetch(apiUrl("/api/macros/insert-ref-book"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ book }),
@@ -82,7 +85,7 @@ export async function insertRefBookMacro(book: string): Promise<{ ok: boolean; r
 }
 
 export async function insertRefVerbeteApp(titles: string): Promise<{ ok: boolean; result: { ref_list: string; ref_biblio: string } }> {
-  const res = await fetch("/api/apps/insert-ref-verbete", {
+  const res = await fetch(apiUrl("/api/apps/insert-ref-verbete"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ titles }),
@@ -92,7 +95,7 @@ export async function insertRefVerbeteApp(titles: string): Promise<{ ok: boolean
 }
 
 export async function biblioGeralApp(payload: { author?: string; title?: string; year?: string; extra?: string; topK?: number }): Promise<{ ok: boolean; result: { query: { author: string; title: string; year: string; extra: string }; matches: string[]; markdown: string } }> {
-  const res = await fetch("/api/apps/biblio-geral", {
+  const res = await fetch(apiUrl("/api/apps/biblio-geral"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
