@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import LeftPanel from "@/components/LeftPanel";
@@ -59,18 +59,18 @@ const parameterAppMeta: Record<"app1", { title: string; description: string }> =
 };
 const parameterMacroMeta: Record<MacroActionId, { title: string; description: string }> = {
   macro1: { title: "Highlight", description: "Destaca termos no documento (highlight em cores)." },
-  macro2: { title: "Numera lista", description: "Aplica numeraÃ§Ã£o manual a lista de itens." },
+  macro2: { title: "Numera lista", description: "Aplica numeração manual a lista de itens." },
 };
 const parameterAppsGenericMeta: Record<"app2" | "app3", { title: string; description: string }> = {
-  app2: { title: "Bibliografia de Verbetes", description: "Monta Listagem ou Bibliografia de verbetes da EnciclopÃ©dia." },
-  app3: { title: "Bibliografia Geral", description: "Busca correspondÃªncias bibliogrÃ¡ficas." },
+  app2: { title: "Bibliografia de Verbetes", description: "Monta Listagem ou Bibliografia de verbetes da Enciclopédia." },
+  app3: { title: "Bibliografia Geral", description: "Busca correspondências bibliográficas." },
 };
 const parameterActionMeta: Record<AiActionId, { title: string; description: string }> = {
-  define: { title: "Definir", description: "Definologia conscienciolÃ³gica." },
-  synonyms: { title: "SinonÃ­mia", description: "Sinonimologia." },
-  epigraph: { title: "EpÃ­grafe", description: "Sugere epÃ­grafe." },
+  define: { title: "Definir", description: "Definologia conscienciológica." },
+  synonyms: { title: "Sinonímia", description: "Sinonimologia." },
+  epigraph: { title: "Epígrafe", description: "Sugere epígrafe." },
   rewrite: { title: "Reescrever", description: "Melhora clareza e fluidez." },
-  summarize: { title: "Resumir", description: "SÃ­ntese concisa." },
+  summarize: { title: "Resumir", description: "Síntese concisa." },
   pensatas: { title: "Pensatas LO", description: "Pensatas afins." },
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
 };
@@ -409,11 +409,11 @@ const Index = () => {
     try {
       const result = await editorApi.runMacro1HighlightDocument(input, macro1ColorId);
       if (result.matches <= 0) {
-        toast.info("Highlight executado. Nenhuma ocorrÃªncia encontrada.");
+        toast.info("Highlight executado. Nenhuma ocorrência encontrada.");
         return;
       }
       toast.success(
-        `Highlight executado: ${result.matches} ocorrÃªncia(s) encontradas e ${result.highlighted} destacada(s).`,
+        `Highlight executado: ${result.matches} ocorrência(s) encontradas e ${result.highlighted} destacada(s).`,
       );
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Falha ao executar Highlight.");
@@ -425,7 +425,7 @@ const Index = () => {
   const handleClearMacro1Highlight = useCallback(async () => {
     const editorApi = await getEditorApi();
     if (!editorApi) {
-      toast.error("Abra o editor antes de limpar marcaÃ§Ã£o.");
+      toast.error("Abra o editor antes de limpar marcação.");
       return;
     }
 
@@ -439,12 +439,12 @@ const Index = () => {
     try {
       const result = await editorApi.clearMacro1HighlightDocument(input);
       if (result.matches <= 0 || result.cleared <= 0) {
-        toast.info("Nenhuma marcaÃ§Ã£o encontrada para limpar.");
+        toast.info("Nenhuma marcação encontrada para limpar.");
         return;
       }
-      toast.success(`MarcaÃ§Ã£o limpa em ${result.cleared} ocorrÃªncia(s).`);
+      toast.success(`Marcação limpa em ${result.cleared} ocorrência(s).`);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Falha ao limpar marcaÃ§Ã£o.");
+      toast.error(err instanceof Error ? err.message : "Falha ao limpar marcação.");
     } finally {
       setIsLoading(false);
     }
@@ -569,7 +569,7 @@ const Index = () => {
       try {
         const chunks = await searchVectorStore(OPENAI_VECTOR_STORE_LO, text);
         if (chunks.length === 0) {
-          toast.info("Nenhuma correspondÃƒÆ’Ã‚Âªncia encontrada na Vector Store LO.");
+          toast.info("Nenhuma correspondência encontrada na Vector Store LO.");
         } else {
           const allParagraphs = chunks.flatMap((c) => c.split(/\n/)).map((p) => p.trim()).filter(Boolean).slice(0, 10);
           const content = allParagraphs.map((p, i) => `**${i + 1}.** ${p}`).join("\n\n");
@@ -816,7 +816,7 @@ const Index = () => {
                       <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
                         {parameterPanelTarget.section === "macros"
                           ? `${parameterMacroMeta[parameterPanelTarget.id].title}: ${parameterMacroMeta[parameterPanelTarget.id].description}`
-                          : `${parameterAppsGenericMeta[parameterPanelTarget.id as "app2" | "app3"]?.title || "App"}: ${parameterAppsGenericMeta[parameterPanelTarget.id as "app2" | "app3"]?.description || "Sem configuraÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o disponÃƒÆ’Ã‚Â­vel."}`}
+                          : `${parameterAppsGenericMeta[parameterPanelTarget.id as "app2" | "app3"]?.title || "App"}: ${parameterAppsGenericMeta[parameterPanelTarget.id as "app2" | "app3"]?.description || "Sem configuração disponível."}`}
                       </div>
                     </div>
                   )}
