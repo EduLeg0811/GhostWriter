@@ -1,12 +1,25 @@
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Clock, Copy, FileText, Languages, MessageSquare, PenLine, Repeat2, Search, SendHorizontal, Trash2 } from "lucide-react";
+import { BookOpen, Clock, Copy, FileText, Languages, Loader2, MessageSquare, PenLine, Repeat2, Search, SendHorizontal, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { markdownToEditorHtml, normalizeHistoryContentToMarkdown } from "@/lib/markdown";
 
 export interface AIResponse {
   id: string;
-  type: "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "translate" | "chat" | "pensatas";
+  type:
+    | "define"
+    | "synonyms"
+    | "epigraph"
+    | "rewrite"
+    | "summarize"
+    | "translate"
+    | "chat"
+    | "pensatas"
+    | "app_ref_book"
+    | "app_ref_verbete_list"
+    | "app_ref_verbete_biblio"
+    | "app_biblio_geral";
   query: string;
   content: string;
   timestamp: Date;
@@ -21,6 +34,10 @@ const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactN
   translate: { label: "Traduzir", icon: <Languages className="h-3.5 w-3.5 text-primary" /> },
   chat: { label: "Chat", icon: <MessageSquare className="h-3.5 w-3.5 text-primary" /> },
   pensatas: { label: "Pensatas LO", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
+  app_ref_book: { label: "Bibliografia de Livros", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
+  app_ref_verbete_list: { label: "Listagem de Verbetes", icon: <FileText className="h-3.5 w-3.5 text-primary" /> },
+  app_ref_verbete_biblio: { label: "Bibliografia de Verbetes", icon: <FileText className="h-3.5 w-3.5 text-primary" /> },
+  app_biblio_geral: { label: "Bibliografia Geral", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
 };
 
 interface RightPanelProps {
@@ -34,8 +51,30 @@ interface RightPanelProps {
 const RightPanel = ({ responses, onClear, onSendMessage, isSending = false, chatDisabled = false }: RightPanelProps) => {
   const [prompt, setPrompt] = useState("");
 
-  const copyToClipboard = async (text: string) => {
-    await navigator.clipboard.writeText(text);
+  const responseToEditorHtml = (content: string): string => {
+    const markdown = normalizeHistoryContentToMarkdown(content);
+    return markdownToEditorHtml(markdown);
+  };
+
+  const htmlToPlainText = (html: string): string => {
+    const temp = document.createElement("div");
+    temp.innerHTML = html;
+    return (temp.textContent || "").replace(/\u00a0/g, " ").trim();
+  };
+
+  const copyToClipboard = async (content: string) => {
+    const html = responseToEditorHtml(content);
+    const text = htmlToPlainText(html);
+
+    if (window.ClipboardItem && navigator.clipboard?.write) {
+      const item = new ClipboardItem({
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([text], { type: "text/plain" }),
+      });
+      await navigator.clipboard.write([item]);
+    } else {
+      await navigator.clipboard.writeText(text);
+    }
     toast.success("Conteudo copiado.");
   };
 
@@ -52,9 +91,17 @@ const RightPanel = ({ responses, onClear, onSendMessage, isSending = false, chat
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border bg-[hsl(var(--panel-header))] px-4 py-3">
         <h2 className="text-sm font-semibold text-foreground">Histórico IA ({responses.length})</h2>
-        <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={onClear} title="Limpar histórico">
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          {isSending && (
+            <div className="inline-flex h-6 items-center gap-1.5 rounded-full border border-green-200 bg-green-50/95 px-2.5 text-[11px] font-semibold leading-none text-green-800 ring-1 ring-green-100">
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-green-700" />
+              <span className="leading-none">Processando</span>
+            </div>
+          )}
+          <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={onClear} title="Limpar histórico">
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="scrollbar-thin flex-1 overflow-y-auto">
@@ -85,15 +132,7 @@ const RightPanel = ({ responses, onClear, onSendMessage, isSending = false, chat
                     </p>
                   )}
 
-                  <div
-                    className="prose prose-sm max-w-none text-xs text-foreground"
-                    dangerouslySetInnerHTML={{
-                      __html: r.content
-                        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-                        .replace(/\*(.*?)\*/g, "<em>$1</em>")
-                        .replace(/\n/g, "<br/>"),
-                    }}
-                  />
+                  <div className="prose prose-sm max-w-none text-xs text-foreground" dangerouslySetInnerHTML={{ __html: responseToEditorHtml(r.content) }} />
 
                   <div className="flex justify-end">
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => void copyToClipboard(r.content)} title="Copiar resposta">
@@ -119,7 +158,7 @@ const RightPanel = ({ responses, onClear, onSendMessage, isSending = false, chat
                 void submit();
               }
             }}
-            placeholder="Pergunte algo para a LLM..."
+            placeholder="Pergunte algo para a IA..."
             className="flex-1 resize-none bg-transparent px-1 text-sm text-foreground outline-none placeholder:text-muted-foreground"
             disabled={chatDisabled || isSending}
           />
@@ -140,3 +179,4 @@ const RightPanel = ({ responses, onClear, onSendMessage, isSending = false, chat
 };
 
 export default RightPanel;
+

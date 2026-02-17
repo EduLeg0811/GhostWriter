@@ -1,8 +1,7 @@
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { ArrowDown, Loader2, X } from "lucide-react";
-import { DEFAULT_MARKDOWN_PLACEHOLDER_HTML, renderBasicMarkdown } from "@/lib/markdown";
+import { Loader2, Play, X } from "lucide-react";
 import { Textarea } from "./ui/textarea";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 
@@ -37,8 +36,6 @@ interface InsertRefBookPanelProps {
   onSelectRefBook: (value: string) => void;
   onRefBookPagesChange: (value: string) => void;
   onRunInsertRefBook: () => void;
-  onInsertResponseIntoEditor: () => void;
-  insertRefBookResult: string;
   isRunningInsertRefBook: boolean;
   onClose: () => void;
 }
@@ -51,8 +48,6 @@ const InsertRefBookPanel = ({
   onSelectRefBook,
   onRefBookPagesChange,
   onRunInsertRefBook,
-  onInsertResponseIntoEditor,
-  insertRefBookResult,
   isRunningInsertRefBook,
   onClose,
 }: InsertRefBookPanelProps) => {
@@ -105,7 +100,6 @@ const InsertRefBookPanel = ({
           </div>
 
           <div className="grid grid-cols-1 gap-2">
-
             <Button
               variant="secondary"
               size="sm"
@@ -120,33 +114,11 @@ const InsertRefBookPanel = ({
                 </>
               ) : (
                 <>
-                  <ArrowDown className="mr-1 h-3.5 w-3.5 text-black relative z-10" />
+                  <Play className="mr-2 h-4 w-4 text-black relative z-10" />
                   <span className="relative z-10 text-blue-500">Bibliografia</span>
                 </>
               )}
             </Button>
-
-
-           {/*  <Button
-              variant="secondary"
-              size="sm"
-              className={primaryActionButtonClass}
-              onClick={onInsertResponseIntoEditor}
-              disabled={isRunningInsertRefBook}
-            >
-              <ArrowDown className="mr-1 h-3.5 w-3.5 text-black relative z-10" />
-              <span className="relative z-10 text-blue-500">Inserir</span>
-            </Button> */}
-
-
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bibliografia</Label>
-            <div
-              className="min-h-10 rounded-md border border-input bg-white px-3 py-1 text-xs leading-relaxed text-foreground"
-              dangerouslySetInnerHTML={{ __html: insertRefBookResult ? renderBasicMarkdown(insertRefBookResult) : DEFAULT_MARKDOWN_PLACEHOLDER_HTML }}
-            />
           </div>
         </div>
       </div>

@@ -16,7 +16,8 @@ def main() -> int:
         print(json.dumps({"ok": False, "error": "Parametro 'titles' e obrigatorio."}))
         return 1
 
-    titles = [part.strip() for part in re.split(r"[;,]", raw_titles) if part.strip()]
+    # Accept comma, semicolon, or line breaks as title separators.
+    titles = [part.strip() for part in re.split(r"[;,\r\n]+", raw_titles) if part.strip()]
     if not titles:
         print(json.dumps({"ok": False, "error": "Nenhum verbete valido informado."}))
         return 1

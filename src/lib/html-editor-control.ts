@@ -15,6 +15,15 @@ const SPACING_SUFFIX_MAP = {
   nbsp_double: "\u00A0\u00A0",
 } as const;
 
+const HIGHLIGHT_COLOR_MAP: Record<string, string> = {
+  yellow: "#fef08a",
+  green: "#86efac",
+  cyan: "#a5f3fc",
+  magenta: "#f5d0fe",
+  blue: "#bfdbfe",
+  red: "#fecaca",
+};
+
 function documentStatsFromText(text: string) {
   const raw = text || "";
   const trimmed = raw.trim();
@@ -30,6 +39,12 @@ function documentStatsFromText(text: string) {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function resolveHighlightColor(color: string): string {
+  const key = (color || "").trim().toLowerCase();
+  if (!key) return HIGHLIGHT_COLOR_MAP.yellow;
+  return HIGHLIGHT_COLOR_MAP[key] || color;
 }
 
 function highlightInHtml(html: string, term: string, color: string): { html: string; matches: number } {
@@ -165,9 +180,10 @@ export class HtmlEditorControlApi {
     const term = (text || "").trim();
     if (!term) throw new Error("Informe o Texto de entrada para a Macro1.");
 
-    const { html, matches } = highlightInHtml(this.editor.getHTML(), term, color);
+    const resolvedColor = resolveHighlightColor(color);
+    const { html, matches } = highlightInHtml(this.editor.getHTML(), term, resolvedColor);
     this.editor.commands.setContent(html, { emitUpdate: true });
-    return { terms: 1, matches, highlighted: matches, color };
+    return { terms: 1, matches, highlighted: matches, color: resolvedColor };
   }
 
   async clearMacro1HighlightDocument(text: string): Promise<{ terms: number; matches: number; cleared: number }> {
@@ -182,24 +198,36 @@ export class HtmlEditorControlApi {
   async runMacro2ManualNumberingSelection(
     spacingMode: "normal_single" | "normal_double" | "nbsp_single" | "nbsp_double" = "nbsp_double",
   ): Promise<{ converted: number; hadNumbering: number }> {
-    const { from, to } = this.editor.state.selection;
-    const selected = this.editor.state.doc.textBetween(from, to, "\n").trim();
-    if (!selected) throw new Error("Selecione uma lista no editor.");
+    const { state, view } = this.editor;
+    const { from, to } = state.selection;
 
-    const lines = selected.split(/\n+/).map((item) => item.trim()).filter(Boolean);
-    if (lines.length === 0) throw new Error("Selecione uma lista no editor.");
-
-    const suffix = SPACING_SUFFIX_MAP[spacingMode] || SPACING_SUFFIX_MAP.nbsp_double;
-    const useLeadingZero = lines.length > 9;
-    const numbered = lines.map((line, index) => {
-      const number = index + 1;
-      const prefix = useLeadingZero ? String(number).padStart(2, "0") : String(number);
-      return `${prefix}.${suffix}${line}`;
+    const selectedParagraphStarts: number[] = [];
+    state.doc.nodesBetween(from, to, (node, pos) => {
+      if (node.type.name !== "paragraph") return;
+      if (!node.textContent.trim()) return;
+      selectedParagraphStarts.push(pos + 1);
     });
 
-    this.editor.commands.focus();
-    this.editor.commands.insertContentAt({ from, to }, numbered.join("\n"));
-    return { converted: lines.length, hadNumbering: lines.length };
+    if (selectedParagraphStarts.length === 0) {
+      throw new Error("Selecione uma lista no editor.");
+    }
+
+    const suffix = SPACING_SUFFIX_MAP[spacingMode] || SPACING_SUFFIX_MAP.nbsp_double;
+    const useLeadingZero = selectedParagraphStarts.length > 9;
+    let tr = state.tr;
+
+    // Insert from bottom to top so previously inserted prefixes don't shift upcoming positions.
+    for (let i = selectedParagraphStarts.length - 1; i >= 0; i -= 1) {
+      const itemNumber = i + 1;
+      const number = useLeadingZero ? String(itemNumber).padStart(2, "0") : String(itemNumber);
+      tr = tr.insertText(`${number}.${suffix}`, selectedParagraphStarts[i], selectedParagraphStarts[i]);
+    }
+
+    if (tr.docChanged) {
+      view.dispatch(tr);
+    }
+
+    return { converted: selectedParagraphStarts.length, hadNumbering: selectedParagraphStarts.length };
   }
 
   private emitSelectionChange = () => {

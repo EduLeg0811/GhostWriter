@@ -1,7 +1,11 @@
 export const primaryActionButtonClass =
-  "w-full bg-orange-50 relative border border-orange-100 rounded-xl " +
-  "shadow-sm hover:shadow-md active:shadow-inner transition-shadow " +
-  "before:absolute before:inset-0 before:rounded-xl " +
-  "before:bg-gradient-to-b before:from-white/60 before:to-transparent " +
-  "before:pointer-events-none " +
-  "disabled:opacity-100";
+  "h-9 w-full rounded-lg border border-green-300 bg-green-50 px-3 text-sm font-medium text-green-900 shadow-sm " +
+  "transition-colors hover:bg-green-100 hover:border-green-400 " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/30 focus-visible:ring-offset-1 " +
+  "disabled:cursor-not-allowed disabled:opacity-50";
+
+export const sectionActionButtonClass =
+  "h-auto w-full justify-start rounded-lg border border-border bg-white px-3 py-2 text-left shadow-sm " +
+  "transition-colors hover:bg-muted/60 hover:border-primary/30 " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-1 " +
+  "disabled:cursor-not-allowed disabled:opacity-50";

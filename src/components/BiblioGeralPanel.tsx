@@ -1,10 +1,8 @@
-﻿import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { ArrowDown, Loader2, X } from "lucide-react";
-import { DEFAULT_MARKDOWN_PLACEHOLDER_HTML, renderBasicMarkdown } from "@/lib/markdown";
+import { Loader2, Play, X } from "lucide-react";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 
 interface BiblioGeralPanelProps {
@@ -19,7 +17,6 @@ interface BiblioGeralPanelProps {
   onYearChange: (value: string) => void;
   onExtraChange: (value: string) => void;
   onRun: () => void;
-  resultMarkdown: string;
   isRunning: boolean;
   onClose: () => void;
 }
@@ -36,14 +33,9 @@ const BiblioGeralPanel = ({
   onYearChange,
   onExtraChange,
   onRun,
-  resultMarkdown,
   isRunning,
   onClose,
 }: BiblioGeralPanelProps) => {
-  const resultHtml = useMemo(
-    () => (resultMarkdown ? renderBasicMarkdown(resultMarkdown) : DEFAULT_MARKDOWN_PLACEHOLDER_HTML),
-    [resultMarkdown],
-  );
   const canRun = (author.trim() || titleField.trim() || year.trim() || extra.trim()) && !isRunning;
 
   return (
@@ -92,19 +84,12 @@ const BiblioGeralPanel = ({
               </>
             ) : (
               <>
-                <ArrowDown className="mr-1 h-3.5 w-3.5 text-black relative z-10" />
+                <Play className="mr-2 h-4 w-4 text-black relative z-10" />
                 <span className="relative z-10 text-blue-500">Bibliografia</span>
               </>
             )}
           </Button>
 
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bibliografia</Label>
-            <div
-              className="min-h-20 rounded-md border border-input bg-white px-3 py-2 text-xs leading-relaxed text-foreground"
-              dangerouslySetInnerHTML={{ __html: resultHtml }}
-            />
-          </div>
         </div>
       </div>
     </div>

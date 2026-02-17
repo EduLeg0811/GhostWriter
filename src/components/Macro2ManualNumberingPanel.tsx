@@ -53,7 +53,7 @@ const Macro2ManualNumberingPanel = ({
           </div> */}
 
           <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Espacamento</Label>
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Espaçamento</Label>
             <div className="space-y-1 text-xs text-foreground">
               <label className="flex items-center gap-2">
                 <input
@@ -63,7 +63,7 @@ const Macro2ManualNumberingPanel = ({
                   checked={spacingMode === "normal_single"}
                   onChange={() => onSpacingModeChange("normal_single")}
                 />
-                <span>Espaco simples</span>
+                <span>Espaço simples</span>
               </label>
               <label className="flex items-center gap-2">
                 <input
@@ -73,7 +73,7 @@ const Macro2ManualNumberingPanel = ({
                   checked={spacingMode === "normal_double"}
                   onChange={() => onSpacingModeChange("normal_double")}
                 />
-                <span>Espaco duplo</span>
+                <span>Espaço duplo</span>
               </label>
               <label className="flex items-center gap-2">
                 <input
@@ -83,7 +83,7 @@ const Macro2ManualNumberingPanel = ({
                   checked={spacingMode === "nbsp_single"}
                   onChange={() => onSpacingModeChange("nbsp_single")}
                 />
-                <span>Espaco rigido simples</span>
+                <span>Espaço rígido simples</span>
               </label>
               <label className="flex items-center gap-2">
                 <input
@@ -93,7 +93,7 @@ const Macro2ManualNumberingPanel = ({
                   checked={spacingMode === "nbsp_double"}
                   onChange={() => onSpacingModeChange("nbsp_double")}
                 />
-                <span>Espaco rigido duplo</span>
+                <span>Espaço rígido duplo</span>
               </label>
             </div>
           </div>
@@ -108,7 +108,7 @@ const Macro2ManualNumberingPanel = ({
               ) : (
                 <>
                   <ListOrdered className="mr-2 h-4 w-4 text-black relative z-10" />
-                  <span className="relative z-10 text-blue-500">Converter Lista</span>
+                  <span className="relative z-10 text-blue-500">Numerar Lista</span>
                 </>
               )}
             </Button>

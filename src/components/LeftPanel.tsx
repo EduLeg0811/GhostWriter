@@ -22,7 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { primaryActionButtonClass } from "@/styles/buttonStyles";
+import { primaryActionButtonClass, sectionActionButtonClass } from "@/styles/buttonStyles";
 
 
 interface LeftPanelProps {
@@ -103,8 +103,8 @@ const actionItemsMacros = [
   {
     id: "macro2" as const,
     icon: Repeat2,
-    title: "Lista Numerada",
-    description: "Aplica numeração manual.",
+    title: "Numera Lista",
+    description: "Aplica numeração manual a listas.",
   },
 ];
 
@@ -114,19 +114,19 @@ const actionItemsApps = [
     id: "app1" as const,
     icon: BookOpen,
     title: "Bibliografia Livros WV",
-    description: "Cria Bibliografia de livros",
+    description: "MontaBibliografia de livros",
   },
   {
     id: "app2" as const,
     icon: Repeat2,
     title: "Bibliografia Verbetes",
-    description: "Cria Bibliografia de verbetes",
+    description: "Monta Bibliografia de verbetes",
   },
   {
     id: "app3" as const,
     icon: Search,
     title: "Bibliografia Geral",
-    description: "Cria Bibliografia geral de autores",
+    description: "Monta Bibliografia geral de autores",
   },
 ]; 
 
@@ -153,6 +153,7 @@ const LeftPanel = ({
   isLoading,
   hasVectorStoreLO,
   hasDocumentOpen,
+  editorReady,
   onRefreshStats,
 }: LeftPanelProps) => {
   const [importing, setImporting] = useState(false);
@@ -217,8 +218,8 @@ const LeftPanel = ({
               onClick={() => void onCreateBlankDocument()}
               disabled={isLoading || importing}
             >
-              <FileText className="mr-1 h-3.5 w-3.5 text-black relative z-10" />
-              <span className="relative z-10 text-blue-500">Novo Documento em Branco</span>
+              <FileText className="mr-2 h-4 w-4" />
+              <span>Novo Documento em Branco</span>
             </Button>
           </div>
 
@@ -298,7 +299,7 @@ const LeftPanel = ({
                 <Button
                   key={item.id}
                   variant="ghost"
-                  className="h-auto w-full justify-start px-3 py-2 hover:bg-primary/5"
+                  className={sectionActionButtonClass}
                   onClick={() => {
                     setActiveActionId(item.id);
                     onAction(item.id);
@@ -333,7 +334,7 @@ const LeftPanel = ({
                 <Button
                   key={item.id}
                   variant="ghost"
-                  className="h-auto w-full justify-start px-3 py-2 hover:bg-primary/5"
+                  className={sectionActionButtonClass}
                   onClick={() => {
                     setActiveActionId(item.id);
                     onActionApps(item.id);
@@ -367,7 +368,7 @@ const LeftPanel = ({
                 <Button
                   key={item.id}
                   variant="ghost"
-                  className="h-auto w-full justify-start px-3 py-2 hover:bg-primary/5"
+                  className={sectionActionButtonClass}
                   onClick={() => {
                     setActiveActionId(item.id);
                     onActionMacros(item.id);

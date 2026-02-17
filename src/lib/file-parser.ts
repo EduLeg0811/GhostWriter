@@ -1,6 +1,18 @@
-﻿import mammoth from "mammoth";
+let mammothModulePromise: Promise<typeof import("mammoth")> | null = null;
+
+async function getMammoth() {
+  if (!mammothModulePromise) {
+    mammothModulePromise = import("mammoth");
+  }
+  return mammothModulePromise;
+}
+
+export async function warmupDocxParser(): Promise<void> {
+  await getMammoth();
+}
 
 export async function parseDocxArrayBuffer(arrayBuffer: ArrayBuffer): Promise<string> {
+  const mammoth = await getMammoth();
   const result = await mammoth.convertToHtml(
     { arrayBuffer },
     {

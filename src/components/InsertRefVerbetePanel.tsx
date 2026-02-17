@@ -1,10 +1,8 @@
-import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowDown, Loader2, X } from "lucide-react";
-import { DEFAULT_MARKDOWN_PLACEHOLDER_HTML, renderBasicMarkdown } from "@/lib/markdown";
+import { Loader2, Play, X } from "lucide-react";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 
 interface InsertRefVerbetePanelProps {
@@ -13,8 +11,6 @@ interface InsertRefVerbetePanelProps {
   verbeteInput: string;
   onVerbeteInputChange: (value: string) => void;
   onRun: () => void;
-  refListResult: string;
-  refBiblioResult: string;
   isRunning: boolean;
   onClose: () => void;
 }
@@ -25,13 +21,9 @@ const InsertRefVerbetePanel = ({
   verbeteInput,
   onVerbeteInputChange,
   onRun,
-  refListResult,
-  refBiblioResult,
   isRunning,
   onClose,
 }: InsertRefVerbetePanelProps) => {
-  const refListHtml = useMemo(() => (refListResult ? renderBasicMarkdown(refListResult) : DEFAULT_MARKDOWN_PLACEHOLDER_HTML), [refListResult]);
-  const refBiblioHtml = useMemo(() => (refBiblioResult ? renderBasicMarkdown(refBiblioResult) : DEFAULT_MARKDOWN_PLACEHOLDER_HTML), [refBiblioResult]);
   const canRun = verbeteInput.trim().length > 0 && !isRunning;
 
   return (
@@ -54,13 +46,13 @@ const InsertRefVerbetePanel = ({
 
           <div className="space-y-2">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Verbetes</Label>
-            <p className="text-xs text-muted-foreground">Nomes dos verbetes separados por virgula ou ponto-e-virgula.</p>
+            <p className="text-xs text-muted-foreground">Nomes dos verbetes separados por virgula, ponto-e-virgula ou quebra de linha.</p>
             <Textarea
               className="min-h-40 rounded-md border border-input bg-white px-3 py-2 text-xs leading-relaxed text-foreground"
               rows={4}
               value={verbeteInput}
               onChange={(e) => onVerbeteInputChange(e.target.value)}
-              placeholder="Ex.: Abertismo Consciencial, Consciex Livre, Localização"
+              //placeholder="Ex.: Abertismo Consciencial, Consciex Livre, Localização"
             />
           </div>
 
@@ -78,7 +70,7 @@ const InsertRefVerbetePanel = ({
               </>
             ) : (
               <>
-              <ArrowDown className="mr-1 h-3.5 w-3.5 text-black relative z-10" />
+              <Play className="mr-2 h-4 w-4 text-black relative z-10" />
               <span className="relative z-10 text-blue-500">Bibliografia</span>
               </>
             )}
@@ -87,21 +79,6 @@ const InsertRefVerbetePanel = ({
 
           </Button>
 
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Listagem Ordenada</Label>
-            <div
-              className="min-h-20 rounded-md border border-input bg-white px-3 py-2 text-xs leading-relaxed text-foreground"
-              dangerouslySetInnerHTML={{ __html: refListHtml }}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Bibliografia</Label>
-            <div
-              className="min-h-20 rounded-md border border-input bg-white px-3 py-2 text-xs leading-relaxed text-foreground"
-              dangerouslySetInnerHTML={{ __html: refBiblioHtml }}
-            />
-          </div>
         </div>
       </div>
     </div>

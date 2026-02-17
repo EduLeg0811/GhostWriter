@@ -39,6 +39,8 @@ const Macro1HighlightPanel = ({
   onClose,
 }: Macro1HighlightPanelProps) => {
   const canRun = term.trim().length > 0 && !isRunning;
+  const selectedHighlightColor =
+    colorOptions.find((option) => option.id === selectedColorId)?.swatch || "#fef08a";
 
   return (
     <div className="flex h-full flex-col">
@@ -64,7 +66,7 @@ const Macro1HighlightPanel = ({
               value={term}
               onChange={(e) => onTermChange(e.target.value)}
               placeholder="Digite o termo para destacar"
-              className="h-9 text-xs bg-white"
+              className="h-9 bg-white text-xs placeholder:text-xs md:text-xs"
             />
           </div>
 
@@ -93,7 +95,8 @@ const Macro1HighlightPanel = ({
             <Button
               variant="secondary"
               size="sm"
-              className={primaryActionButtonClass}
+              className="h-9 w-full rounded-lg border px-3 text-sm font-medium text-black shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ backgroundColor: selectedHighlightColor, borderColor: selectedHighlightColor }}
               onClick={onRunHighlight}
               disabled={!canRun}
             >

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import LeftPanel from "@/components/LeftPanel";
@@ -26,7 +26,7 @@ import {
   uploadFileToServer,
 } from "@/lib/backend-api";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
-import { parseDocxArrayBuffer } from "@/lib/file-parser";
+import { parseDocxArrayBuffer, warmupDocxParser } from "@/lib/file-parser";
 import { markdownToEditorHtml, normalizeHistoryContentToMarkdown, plainTextToEditorHtml } from "@/lib/markdown";
 import {
   callOpenAI,
@@ -55,22 +55,22 @@ type ParameterPanelTarget =
   | null;
 
 const parameterAppMeta: Record<"app1", { title: string; description: string }> = {
-  app1: { title: "Bibliografia de Livros", description: "Cria Bibliografia de livros de Waldo Vieira." },
+  app1: { title: "Bibliografia de Livros", description: "Monta Bibliografia de livros de Waldo Vieira." },
 };
 const parameterMacroMeta: Record<MacroActionId, { title: string; description: string }> = {
   macro1: { title: "Highlight", description: "Destaca termos no documento (highlight em cores)." },
-  macro2: { title: "Macro2", description: "Converte lista numerada automática para numeração manual." },
+  macro2: { title: "Numera lista", description: "Aplica numeraÃ§Ã£o manual a lista de itens." },
 };
 const parameterAppsGenericMeta: Record<"app2" | "app3", { title: string; description: string }> = {
-  app2: { title: "Bibliografia de Verbetes", description: "Cria Listagem ou Bibliografia de verbetes da Enciclopédia." },
-  app3: { title: "Bibliografia Geral", description: "Busca correspondências bibliográficas." },
+  app2: { title: "Bibliografia de Verbetes", description: "Monta Listagem ou Bibliografia de verbetes da EnciclopÃ©dia." },
+  app3: { title: "Bibliografia Geral", description: "Busca correspondÃªncias bibliogrÃ¡ficas." },
 };
 const parameterActionMeta: Record<AiActionId, { title: string; description: string }> = {
-  define: { title: "Definir", description: "Definologia conscienciológica." },
-  synonyms: { title: "Sinonimia", description: "Sinonimologia." },
-  epigraph: { title: "Epigrafe", description: "Sugere epígrafe." },
+  define: { title: "Definir", description: "Definologia conscienciolÃ³gica." },
+  synonyms: { title: "SinonÃ­mia", description: "Sinonimologia." },
+  epigraph: { title: "EpÃ­grafe", description: "Sugere epÃ­grafe." },
   rewrite: { title: "Reescrever", description: "Melhora clareza e fluidez." },
-  summarize: { title: "Resumir", description: "Síntese concisa." },
+  summarize: { title: "Resumir", description: "SÃ­ntese concisa." },
   pensatas: { title: "Pensatas LO", description: "Pensatas afins." },
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
 };
@@ -116,6 +116,7 @@ const Index = () => {
   const [documentSymbolWithSpacesCount, setDocumentSymbolWithSpacesCount] = useState<number | null>(null);
   const [currentFileId, setCurrentFileId] = useState("");
   const [statsKey, setStatsKey] = useState(0);
+  const [openedDocumentVersion, setOpenedDocumentVersion] = useState(0);
   const [editorContentHtml, setEditorContentHtml] = useState("<p></p>");
   const [isOpeningDocument, setIsOpeningDocument] = useState(false);
   const [openAiReady, setOpenAiReady] = useState(false);
@@ -124,22 +125,19 @@ const Index = () => {
   const [selectedRefBook, setSelectedRefBook] = useState("LO");
   const [refBookPages, setRefBookPages] = useState("");
   const [isRunningInsertRefBook, setIsRunningInsertRefBook] = useState(false);
-  const [insertRefBookResult, setInsertRefBookResult] = useState("");
   const [verbeteInput, setVerbeteInput] = useState("");
   const [isRunningInsertRefVerbete, setIsRunningInsertRefVerbete] = useState(false);
-  const [insertRefVerbeteListResult, setInsertRefVerbeteListResult] = useState("");
-  const [insertRefVerbeteBiblioResult, setInsertRefVerbeteBiblioResult] = useState("");
   const [biblioGeralAuthor, setBiblioGeralAuthor] = useState("");
   const [biblioGeralTitle, setBiblioGeralTitle] = useState("");
   const [biblioGeralYear, setBiblioGeralYear] = useState("");
   const [biblioGeralExtra, setBiblioGeralExtra] = useState("");
   const [isRunningBiblioGeral, setIsRunningBiblioGeral] = useState(false);
-  const [biblioGeralResult, setBiblioGeralResult] = useState("");
   const [translateLanguage, setTranslateLanguage] = useState<(typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"]>("Ingles");
   const [macro1Term, setMacro1Term] = useState("");
   const [macro1ColorId, setMacro1ColorId] = useState<(typeof MACRO1_HIGHLIGHT_COLORS)[number]["id"]>("yellow");
   const [macro2SpacingMode, setMacro2SpacingMode] = useState<Macro2SpacingMode>("nbsp_double");
   const saveTimerRef = useRef<number | null>(null);
+  const htmlEditorControlApiRef = useRef<HtmlEditorControlApi | null>(null);
 
   const stats = useTextStats(
     documentText || actionText,
@@ -164,6 +162,10 @@ const Index = () => {
       window.removeEventListener("focus", refreshHealth);
     };
   }, [refreshHealth]);
+
+  useEffect(() => {
+    void warmupDocxParser();
+  }, []);
 
   const refreshDocumentText = useCallback(async (fileId: string) => {
     if (!fileId) {
@@ -205,6 +207,8 @@ const Index = () => {
     } catch (_err) {
       setDocumentText("");
       setEditorContentHtml("<p></p>");
+    } finally {
+      setOpenedDocumentVersion((v) => v + 1);
     }
   }, []);
   const refreshDocumentPageCount = useCallback(async () => {
@@ -239,6 +243,15 @@ const Index = () => {
     void refreshDocumentPageCount();
   }, [refreshDocumentPageCount]);
 
+  useEffect(() => {
+    if (!currentFileId) return;
+    const timerId = window.setTimeout(() => {
+      void refreshDocumentPageCount();
+      setStatsKey((k) => k + 1);
+    }, 0);
+    return () => window.clearTimeout(timerId);
+  }, [currentFileId, openedDocumentVersion, refreshDocumentPageCount]);
+
   const handleWordFileUpload = useCallback(async (file: File): Promise<UploadedFileMeta> => {
     setIsOpeningDocument(true);
     try {
@@ -250,7 +263,6 @@ const Index = () => {
 
       setActionText("");
       setCurrentFileId(uploaded.id);
-      void refreshDocumentText(uploaded.id);
       return uploaded;
     } finally {
       setIsOpeningDocument(false);
@@ -263,7 +275,6 @@ const Index = () => {
       const created = await createBlankDocOnServer("novo-documento.docx");
       setActionText("");
       setCurrentFileId(created.id);
-      void refreshDocumentText(created.id);
     } finally {
       setIsOpeningDocument(false);
     }
@@ -351,26 +362,40 @@ const Index = () => {
     }
   }, [actionText, macro1Term]);
 
+  const getEditorApi = useCallback(async (): Promise<HtmlEditorControlApi | null> => {
+    const immediate = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
+    if (immediate) return immediate;
+    await new Promise((resolve) => window.setTimeout(resolve, 60));
+    return htmlEditorControlApiRef.current ?? htmlEditorControlApi;
+  }, [htmlEditorControlApi]);
+
   const handleRunMacro2ManualNumbering = useCallback(async () => {
-    if (!htmlEditorControlApi || !currentFileId) {
-      toast.error("Abra um documento no editor antes de executar Macro2.");
+    const editorApi = await getEditorApi();
+    if (!editorApi) {
+      toast.error("Abra o editor antes de executar Macro2.");
       return;
     }
 
     setIsLoading(true);
     try {
-      const result = await htmlEditorControlApi.runMacro2ManualNumberingSelection(macro2SpacingMode);
+      const result = await editorApi.runMacro2ManualNumberingSelection(macro2SpacingMode);
       toast.success(`Macro2 aplicada: ${result.converted} item(ns) convertidos para numeracao manual.`);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Falha ao executar Macro2.");
     } finally {
       setIsLoading(false);
     }
-  }, [currentFileId, htmlEditorControlApi, macro2SpacingMode]);
+  }, [getEditorApi, macro2SpacingMode]);
+
+  const handleEditorControlApiReady = useCallback((api: HtmlEditorControlApi | null) => {
+    htmlEditorControlApiRef.current = api;
+    setHtmlEditorControlApi(api);
+  }, []);
 
   const handleRunMacro1Highlight = useCallback(async () => {
-    if (!htmlEditorControlApi || !currentFileId) {
-      toast.error("Abra um documento no editor antes de executar Highlight.");
+    const editorApi = await getEditorApi();
+    if (!editorApi) {
+      toast.error("Abra o editor antes de executar Highlight.");
       return;
     }
 
@@ -382,7 +407,7 @@ const Index = () => {
 
     setIsLoading(true);
     try {
-      const result = await htmlEditorControlApi.runMacro1HighlightDocument(input, macro1ColorId);
+      const result = await editorApi.runMacro1HighlightDocument(input, macro1ColorId);
       if (result.matches <= 0) {
         toast.info("Highlight executado. Nenhuma ocorrÃªncia encontrada.");
         return;
@@ -395,11 +420,12 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentFileId, htmlEditorControlApi, macro1ColorId, macro1Term]);
+  }, [getEditorApi, macro1ColorId, macro1Term]);
 
   const handleClearMacro1Highlight = useCallback(async () => {
-    if (!htmlEditorControlApi || !currentFileId) {
-      toast.error("Abra um documento no editor antes de limpar marcacao.");
+    const editorApi = await getEditorApi();
+    if (!editorApi) {
+      toast.error("Abra o editor antes de limpar marcaÃ§Ã£o.");
       return;
     }
 
@@ -411,18 +437,18 @@ const Index = () => {
 
     setIsLoading(true);
     try {
-      const result = await htmlEditorControlApi.clearMacro1HighlightDocument(input);
+      const result = await editorApi.clearMacro1HighlightDocument(input);
       if (result.matches <= 0 || result.cleared <= 0) {
-        toast.info("Nenhuma marcacao encontrada para limpar.");
+        toast.info("Nenhuma marcaÃ§Ã£o encontrada para limpar.");
         return;
       }
-      toast.success(`Marcacao limpa em ${result.cleared} ocorrencia(s).`);
+      toast.success(`MarcaÃ§Ã£o limpa em ${result.cleared} ocorrÃªncia(s).`);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Falha ao limpar marcacao.");
+      toast.error(err instanceof Error ? err.message : "Falha ao limpar marcaÃ§Ã£o.");
     } finally {
       setIsLoading(false);
     }
-  }, [currentFileId, htmlEditorControlApi, macro1Term]);
+  }, [getEditorApi, macro1Term]);
 
   const handleSelectRefBook = useCallback((book: string) => {
     setSelectedRefBook(book);
@@ -436,27 +462,22 @@ const Index = () => {
       .join(", ");
   }, []);
 
-  const insertRefBookResultWithPages = useMemo(() => {
-    const reference = (insertRefBookResult || "").trim();
-    if (!reference) return "";
-    const pages = normalizeRefPages(refBookPages);
-    if (!pages) return reference;
-    return `${reference}; p. ${pages}.`;
-  }, [insertRefBookResult, normalizeRefPages, refBookPages]);
-
   const handleRunInsertRefBook = useCallback(async () => {
     setIsRunningInsertRefBook(true);
     try {
-      const result = await insertRefBook(selectedRefBook);
-      setInsertRefBookResult(result);
+      const rawResult = (await insertRefBook(selectedRefBook)).trim();
+      const pages = normalizeRefPages(refBookPages);
+      const result = pages ? `${rawResult}; p. ${pages}.` : rawResult;
+      if (result) {
+        addResponse("app_ref_book", `Livro: ${selectedRefBook}${pages ? ` | p. ${pages}` : ""}`, result);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Insert Ref Book.";
-      setInsertRefBookResult(msg);
       toast.error(msg);
     } finally {
       setIsRunningInsertRefBook(false);
     }
-  }, [insertRefBook, selectedRefBook]);
+  }, [insertRefBook, normalizeRefPages, refBookPages, selectedRefBook]);
 
   const handleRunInsertRefVerbete = useCallback(async () => {
     const raw = verbeteInput.trim();
@@ -468,12 +489,13 @@ const Index = () => {
     setIsRunningInsertRefVerbete(true);
     try {
       const data = await insertRefVerbeteApp(raw);
-      setInsertRefVerbeteListResult(data.result.ref_list || "");
-      setInsertRefVerbeteBiblioResult(data.result.ref_biblio || "");
+      const refList = (data.result.ref_list || "").trim();
+      const refBiblio = (data.result.ref_biblio || "").trim();
+
+      if (refList) addResponse("app_ref_verbete_list", `Verbetes: ${raw}`, refList);
+      if (refBiblio) addResponse("app_ref_verbete_biblio", `Verbetes: ${raw}`, refBiblio);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Insert Ref Verbete.";
-      setInsertRefVerbeteListResult(msg);
-      setInsertRefVerbeteBiblioResult(msg);
       toast.error(msg);
     } finally {
       setIsRunningInsertRefVerbete(false);
@@ -493,53 +515,33 @@ const Index = () => {
     setIsRunningBiblioGeral(true);
     try {
       const data = await biblioGeralApp({ author, title, year, extra, topK: 10 });
-      setBiblioGeralResult(data.result.markdown || "");
+      const markdown = (data.result.markdown || "").trim();
+      if (markdown) {
+        const queryParts = [
+          author && `autor: ${author}`,
+          title && `titulo: ${title}`,
+          year && `ano: ${year}`,
+          extra && `extra: ${extra}`,
+        ].filter(Boolean);
+        addResponse("app_biblio_geral", queryParts.join(" | "), markdown);
+      }
       if (!data.result.matches?.length) {
         toast.info("Nenhuma bibliografia encontrada.");
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Bibliografia Geral.";
-      setBiblioGeralResult(msg);
       toast.error(msg);
     } finally {
       setIsRunningBiblioGeral(false);
     }
   }, [biblioGeralAuthor, biblioGeralExtra, biblioGeralTitle, biblioGeralYear]);
 
-  const handleInsertRefBookResponseIntoEditor = useCallback(async () => {
-    if (!htmlEditorControlApi) {
-      toast.error("API do editor indisponivel no momento.");
-      return;
-    }
-
-    const content = (insertRefBookResultWithPages || "").trim();
-    if (!content) {
-      toast.error("A resposta da referencia esta vazia.");
-      return;
-    }
-
-    try {
-      const markdownContent = normalizeHistoryContentToMarkdown(content);
-      const html = markdownToEditorHtml(markdownContent);
-      await htmlEditorControlApi.replaceSelectionRich(markdownContent, html);
-      toast.success("Resposta inserida no cursor/selecao do editor.");
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Falha ao inserir resposta no editor.");
-    }
-  }, [htmlEditorControlApi, insertRefBookResultWithPages]);
-
   const handleActionApps = useCallback((type: AppActionId) => {
     setParameterPanelTarget({ section: "apps", id: type });
     if (type === "app1") {
-      setInsertRefBookResult("");
       setRefBookPages("");
     }
-    if (type === "app2") {
-      setInsertRefVerbeteListResult("");
-      setInsertRefVerbeteBiblioResult("");
-    }
     if (type === "app3") {
-      setBiblioGeralResult("");
       if (!biblioGeralTitle.trim() && actionText.trim()) setBiblioGeralTitle(actionText.trim());
     }
   }, [actionText, biblioGeralTitle]);
@@ -567,7 +569,7 @@ const Index = () => {
       try {
         const chunks = await searchVectorStore(OPENAI_VECTOR_STORE_LO, text);
         if (chunks.length === 0) {
-          toast.info("Nenhuma correspondÃƒÂªncia encontrada na Vector Store LO.");
+          toast.info("Nenhuma correspondÃƒÆ’Ã‚Âªncia encontrada na Vector Store LO.");
         } else {
           const allParagraphs = chunks.flatMap((c) => c.split(/\n/)).map((p) => p.trim()).filter(Boolean).slice(0, 10);
           const content = allParagraphs.map((p, i) => `**${i + 1}.** ${p}`).join("\n\n");
@@ -664,6 +666,10 @@ const Index = () => {
     };
   }, []);
 
+  const isHistoryProcessing = isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral;
+  const hasEditorPanel = Boolean(currentFileId) || isOpeningDocument;
+  const hasCenterPanel = hasEditorPanel || Boolean(parameterPanelTarget);
+
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
       <ResizablePanelGroup direction="horizontal">
@@ -695,17 +701,19 @@ const Index = () => {
           />
         </ResizablePanel>
 
-        <ResizableHandle withHandle />
+        {hasCenterPanel && (
+          <>
+            <ResizableHandle withHandle />
 
-        <ResizablePanel
-          id="center-panel"
-          order={2}
-          defaultSize={PANEL_SIZES.center.default}
-          minSize={PANEL_SIZES.center.min}
-        >
-          <ResizablePanelGroup direction="horizontal">
+            <ResizablePanel
+              id="center-panel"
+              order={2}
+              defaultSize={hasEditorPanel ? PANEL_SIZES.center.default : PANEL_SIZES.parameter.default}
+              minSize={hasEditorPanel ? PANEL_SIZES.center.min : PANEL_SIZES.parameter.min}
+              maxSize={hasEditorPanel ? undefined : PANEL_SIZES.parameter.max}
+            >
+              <ResizablePanelGroup direction="horizontal">
             {parameterPanelTarget && (
-              <>
                 <ResizablePanel
                   id="parameter-panel"
                   order={1}
@@ -763,8 +771,6 @@ const Index = () => {
                       onSelectRefBook={handleSelectRefBook}
                       onRefBookPagesChange={setRefBookPages}
                       onRunInsertRefBook={() => void handleRunInsertRefBook()}
-                      onInsertResponseIntoEditor={() => void handleInsertRefBookResponseIntoEditor()}
-                      insertRefBookResult={insertRefBookResultWithPages}
                       isRunningInsertRefBook={isRunningInsertRefBook}
                       onClose={() => setParameterPanelTarget(null)}
                     />
@@ -775,8 +781,6 @@ const Index = () => {
                       verbeteInput={verbeteInput}
                       onVerbeteInputChange={setVerbeteInput}
                       onRun={() => void handleRunInsertRefVerbete()}
-                      refListResult={insertRefVerbeteListResult}
-                      refBiblioResult={insertRefVerbeteBiblioResult}
                       isRunning={isRunningInsertRefVerbete}
                       onClose={() => setParameterPanelTarget(null)}
                     />
@@ -793,7 +797,6 @@ const Index = () => {
                       onYearChange={setBiblioGeralYear}
                       onExtraChange={setBiblioGeralExtra}
                       onRun={() => void handleRunBiblioGeral()}
-                      resultMarkdown={biblioGeralResult}
                       isRunning={isRunningBiblioGeral}
                       onClose={() => setParameterPanelTarget(null)}
                     />
@@ -813,15 +816,16 @@ const Index = () => {
                       <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
                         {parameterPanelTarget.section === "macros"
                           ? `${parameterMacroMeta[parameterPanelTarget.id].title}: ${parameterMacroMeta[parameterPanelTarget.id].description}`
-                          : `${parameterAppsGenericMeta[parameterPanelTarget.id as "app2" | "app3"]?.title || "App"}: ${parameterAppsGenericMeta[parameterPanelTarget.id as "app2" | "app3"]?.description || "Sem configuraÃƒÂ§ÃƒÂ£o disponÃƒÂ­vel."}`}
+                          : `${parameterAppsGenericMeta[parameterPanelTarget.id as "app2" | "app3"]?.title || "App"}: ${parameterAppsGenericMeta[parameterPanelTarget.id as "app2" | "app3"]?.description || "Sem configuraÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o disponÃƒÆ’Ã‚Â­vel."}`}
                       </div>
                     </div>
                   )}
                 </ResizablePanel>
-                <ResizableHandle withHandle />
-              </>
             )}
 
+            {parameterPanelTarget && hasEditorPanel && <ResizableHandle withHandle />}
+
+            {hasEditorPanel && (
             <ResizablePanel
               id="editor-panel"
               order={parameterPanelTarget ? 2 : 1}
@@ -831,53 +835,64 @@ const Index = () => {
               <main className="relative h-full min-w-0 bg-white">
                 <HtmlEditor
                   contentHtml={editorContentHtml}
-                  onControlApiReady={setHtmlEditorControlApi}
+                  onControlApiReady={handleEditorControlApiReady}
                   onContentChange={handleEditorContentChange}
+                  onCloseEditor={() => setCurrentFileId("")}
                 />
                 {isOpeningDocument && (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-green-50">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground shadow-sm">
-                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                      <span>Processing</span>
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-white">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground shadow-sm bg-green-50">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary bg-green-50" />
+                      <span>Abrindo documento...</span>
                     </div>
                   </div>
                 )}
               </main>
             </ResizablePanel>
-          </ResizablePanelGroup>
-        </ResizablePanel>
+            )}
+              </ResizablePanelGroup>
+            </ResizablePanel>
 
-        <ResizableHandle withHandle />
+            <ResizableHandle withHandle />
+          </>
+        )}
 
         <ResizablePanel
           id="right-panel"
-          order={3}
-          defaultSize={PANEL_SIZES.right.default}
+          order={hasCenterPanel ? 3 : 2}
+          defaultSize={
+            hasEditorPanel
+              ? PANEL_SIZES.right.default
+              : hasCenterPanel
+                ? 100 - PANEL_SIZES.left.default - PANEL_SIZES.parameter.default
+                : 100 - PANEL_SIZES.left.default
+          }
           minSize={PANEL_SIZES.right.min}
-          maxSize={PANEL_SIZES.right.max}
+          maxSize={
+            hasEditorPanel
+              ? PANEL_SIZES.right.max
+              : hasCenterPanel
+                ? 100 - PANEL_SIZES.left.min - PANEL_SIZES.parameter.min
+                : 100 - PANEL_SIZES.left.min
+          }
           className={`border-l border-border ${sidePanelClass}`}
         >
           <RightPanel
             responses={responses}
             onClear={() => setResponses([])}
             onSendMessage={(message) => void handleChat(message)}
-            isSending={isLoading}
+            isSending={isHistoryProcessing}
             chatDisabled={!openAiReady}
           />
         </ResizablePanel>
       </ResizablePanelGroup>
 
-      {isLoading && (
-        <div className="pointer-events-none absolute right-4 top-3 inline-flex h-7 items-center gap-1.5 rounded-full border border-green-200 bg-green-50/95 px-3 text-[11px] font-semibold leading-none text-green-800 shadow-sm ring-1 ring-green-100">
-          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-green-700" />
-          <span className="leading-none">Processando</span>
-        </div>
-      )}
     </div>
   );
 };
 
 export default Index;
+
 
 
 
