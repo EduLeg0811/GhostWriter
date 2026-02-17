@@ -3,6 +3,9 @@ export interface ChatMessage {
   content: string;
 }
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const apiUrl = (path: string): string => `${API_BASE_URL}${path}`;
+
 // LLM CONFIG
 // Ajuste centralizado dos parametros de inferencia usados em TODAS as consultas.
 export const LLM_MODEL = "gpt-4.1-mini";
@@ -13,7 +16,7 @@ export const LLM_PRESENCE_PENALTY = 0;
 export const LLM_FREQUENCY_PENALTY = 0;
 
 export async function callOpenAI(messages: ChatMessage[]): Promise<string> {
-  const res = await fetch("/api/ai/chat", {
+  const res = await fetch(apiUrl("/api/ai/chat"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -37,7 +40,7 @@ export async function callOpenAI(messages: ChatMessage[]): Promise<string> {
 }
 
 export async function searchVectorStore(vectorStoreId: string, query: string): Promise<string[]> {
-  const res = await fetch("/api/ai/vector-search", {
+  const res = await fetch(apiUrl("/api/ai/vector-search"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ vectorStoreId, query, maxNumResults: 5 }),
