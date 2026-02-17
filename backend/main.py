@@ -35,6 +35,8 @@ PORT = int(os.getenv("PORT") or os.getenv("SERVER_PORT", "8787"))
 openai_api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
 pdf2docx_python_cmd = (os.getenv("PDF2DOCX_PYTHON_CMD") or "python").strip()
 backend_python_cmd = (os.getenv("BACKEND_PYTHON_CMD") or pdf2docx_python_cmd or "python").strip()
+file_retention_hours = int(os.getenv("FILE_RETENTION_HOURS") or "24")
+file_retention_seconds = max(1, file_retention_hours) * 3600
 LETTER_CLASS = "A-Za-zÀ-ÖØ-öø-ÿ"
 KEEP_WORD_HYPHEN_PREFIXES = {
     "além",
@@ -139,6 +141,11 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+def startup_gc() -> None:
+    run_storage_gc()
+
+
 def meta_path_for(file_id: str) -> Path:
     return META_DIR / f"{file_id}.json"
 
@@ -152,6 +159,52 @@ def read_meta(file_id: str) -> dict[str, Any]:
 
 def write_meta(file_id: str, meta: dict[str, Any]) -> None:
     meta_path_for(file_id).write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def safe_unlink(path: Path) -> None:
+    try:
+        if path.exists():
+            path.unlink()
+    except OSError:
+        pass
+
+
+def run_storage_gc(retention_seconds: int = file_retention_seconds) -> None:
+    now = time.time()
+    referenced_uploads: set[str] = set()
+
+    for meta_file in META_DIR.glob("*.json"):
+        expired = False
+        try:
+            meta = json.loads(meta_file.read_text(encoding="utf-8"))
+        except Exception:
+            meta = {}
+            expired = True
+
+        if not expired and (now - meta_file.stat().st_mtime) > retention_seconds:
+            expired = True
+
+        stored_name = str(meta.get("storedName") or "").strip()
+        source_stored_name = str(meta.get("sourceStoredName") or "").strip()
+
+        if expired:
+            if stored_name:
+                safe_unlink(UPLOADS_DIR / stored_name)
+            if source_stored_name:
+                safe_unlink(UPLOADS_DIR / source_stored_name)
+            safe_unlink(meta_file)
+            continue
+
+        if stored_name:
+            referenced_uploads.add(stored_name)
+        if source_stored_name:
+            referenced_uploads.add(source_stored_name)
+
+    for upload_file in UPLOADS_DIR.glob("*"):
+        if upload_file.name in referenced_uploads:
+            continue
+        if (now - upload_file.stat().st_mtime) > retention_seconds:
+            safe_unlink(upload_file)
 
 
 def require_openai_key() -> None:
@@ -667,6 +720,8 @@ def api_biblio_geral(payload: BiblioGeralRequest) -> dict[str, Any]:
 
 @app.post("/api/files/upload")
 async def api_files_upload(file: UploadFile = File(...)) -> dict[str, Any]:
+    run_storage_gc()
+
     file_id = str(uuid.uuid4())
     ext = Path(file.filename or "").suffix.lower().replace(".", "")
     stored_name = f"{file_id}.{ext}" if ext else file_id
@@ -681,7 +736,8 @@ async def api_files_upload(file: UploadFile = File(...)) -> dict[str, Any]:
         converted_path = UPLOADS_DIR / converted_name
         try:
             run_pdf_to_docx(full_path, converted_path)
-            metadata.update({"originalName": f"{Path(file.filename or 'document').stem}.docx", "storedName": converted_name, "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "size": converted_path.stat().st_size, "ext": "docx", "convertedFromPdf": True, "sourceExt": "pdf", "sourceStoredName": stored_name})
+            safe_unlink(full_path)
+            metadata.update({"originalName": f"{Path(file.filename or 'document').stem}.docx", "storedName": converted_name, "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "size": converted_path.stat().st_size, "ext": "docx", "convertedFromPdf": True, "sourceExt": "pdf"})
         except Exception as exc:
             metadata.update({"convertedFromPdf": False, "sourceExt": "pdf", "conversionError": str(exc)})
 
@@ -691,6 +747,8 @@ async def api_files_upload(file: UploadFile = File(...)) -> dict[str, Any]:
 
 @app.post("/api/files/create-blank")
 def api_files_create_blank(payload: CreateBlankFileRequest) -> dict[str, Any]:
+    run_storage_gc()
+
     file_id = str(uuid.uuid4())
     stored_name = f"{file_id}.docx"
     full_path = UPLOADS_DIR / stored_name
