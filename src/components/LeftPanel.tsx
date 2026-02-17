@@ -40,7 +40,7 @@ interface LeftPanelProps {
   isLoading: boolean;
   hasVectorStoreLO: boolean;
   hasDocumentOpen: boolean;
-  onlyOfficeReady: boolean;
+  editorReady: boolean;
   onRefreshStats?: () => void;
 }
 
@@ -153,7 +153,6 @@ const LeftPanel = ({
   isLoading,
   hasVectorStoreLO,
   hasDocumentOpen,
-  onlyOfficeReady,
   onRefreshStats,
 }: LeftPanelProps) => {
   const [importing, setImporting] = useState(false);
@@ -172,8 +171,8 @@ const LeftPanel = ({
     setFileName(file.name);
     try {
       const ext = file.name.split(".").pop()?.toLowerCase() || "";
-      if (!["docx", "doc", "rtf", "odt", "pdf"].includes(ext)) {
-        throw new Error("Formato nao suportado. Use DOCX, DOC, RTF, ODT ou PDF.");
+      if (!["docx", "pdf"].includes(ext)) {
+        throw new Error("Formato nao suportado. Use DOCX ou PDF.");
       }
       await onWordFileUpload(file);
       toast.success(ext === "pdf" ? "PDF convertido para DOCX e aberto no editor." : "Documento aberto no editor.");
@@ -227,7 +226,7 @@ const LeftPanel = ({
             <input
               ref={fileRef}
               type="file"
-              accept=".docx,.doc,.rtf,.odt,.pdf"
+              accept=".docx,.pdf"
               className="hidden"
               onChange={(e) => void handleFile(e.target.files?.[0])}
             />
@@ -245,7 +244,7 @@ const LeftPanel = ({
                   <Upload className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
                 )}
                 <span className="text-sm text-foreground">Arraste ou selecione</span>
-                <span className="mt-1 text-xs text-muted-foreground"> DOCX, PDF</span>
+                <span className="mt-1 text-xs text-muted-foreground"> DOCX ou PDF</span>
               </div>
             ) : (
               <div className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2">

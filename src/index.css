@@ -111,5 +111,24 @@
   }
 }
 
+.ProseMirror p {
+  margin: 0 0 0.65rem;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+  margin: 0.4rem 0 0.8rem 1.25rem;
+  list-style: revert;
+}
+
+.ProseMirror li {
+  margin: 0.2rem 0;
+}
+
+.ProseMirror mark {
+  border-radius: 0.2rem;
+  padding: 0 0.1rem;
+}
+
 
 

@@ -22,7 +22,7 @@ function renderInlineMarkdown(text: string): string {
     .replace(/\*(.*?)\*/g, "<em>$1</em>");
 }
 
-export function markdownToOnlyOfficeHtml(text: string): string {
+export function markdownToEditorHtml(text: string): string {
   const raw = (text || "").replace(/\r\n/g, "\n").trim();
   if (!raw) return "";
 
@@ -37,6 +37,15 @@ export function markdownToOnlyOfficeHtml(text: string): string {
   });
 
   return htmlLines.join("");
+}
+
+export function plainTextToEditorHtml(text: string): string {
+  const raw = (text || "").replace(/\r\n/g, "\n");
+  if (!raw.trim()) return "<p></p>";
+  return raw
+    .split("\n")
+    .map((line) => `<p>${renderInlineMarkdown(line.trim()) || "<br/>"}</p>`)
+    .join("");
 }
 
 export function normalizeHistoryContentToMarkdown(text: string): string {

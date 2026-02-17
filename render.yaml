@@ -11,16 +11,6 @@ services:
         value: 3.11.11
       - key: SERVER_PORT
         value: 8787
-      - key: BACKEND_ONLYOFFICE_URL
-        sync: false
-      - key: BACKEND_BROWSER_URL
-        sync: false
-      - key: ONLYOFFICE_PLUGIN_PUBLIC_URL
-        sync: false
-      - key: ONLYOFFICE_DOCUMENT_SERVER_URL
-        sync: false
-      - key: ONLYOFFICE_JWT_SECRET
-        sync: false
       - key: OPENAI_API_KEY
         sync: false
       - key: PDF2DOCX_PYTHON_CMD

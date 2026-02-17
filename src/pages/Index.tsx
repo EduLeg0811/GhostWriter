@@ -1,9 +1,9 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import LeftPanel from "@/components/LeftPanel";
 import RightPanel, { AIResponse } from "@/components/RightPanel";
-import OnlyOfficeEditor, { OnlyOfficeDocumentConfig } from "@/components/OnlyOfficeEditor";
+import HtmlEditor from "@/components/HtmlEditor";
 import InsertRefBookPanel from "@/components/InsertRefBookPanel";
 import InsertRefVerbetePanel from "@/components/InsertRefVerbetePanel";
 import BiblioGeralPanel from "@/components/BiblioGeralPanel";
@@ -16,18 +16,18 @@ import { useTextStats } from "@/hooks/useTextStats";
 import {
   createBlankDocOnServer,
   biblioGeralApp,
+  fetchFileContentBuffer,
   fetchFileText,
-  fetchOnlyOfficeConfig,
-  forceSaveOnlyOffice,
   healthCheck,
-  highlightFileTerm,
   insertRefBookMacro,
   insertRefVerbeteApp,
+  saveFileText,
   UploadedFileMeta,
   uploadFileToServer,
 } from "@/lib/backend-api";
-import { OnlyOfficeControlApi } from "@/lib/onlyoffice-control";
-import { markdownToOnlyOfficeHtml, normalizeHistoryContentToMarkdown } from "@/lib/markdown";
+import { HtmlEditorControlApi } from "@/lib/html-editor-control";
+import { parseDocxArrayBuffer } from "@/lib/file-parser";
+import { markdownToEditorHtml, normalizeHistoryContentToMarkdown, plainTextToEditorHtml } from "@/lib/markdown";
 import {
   callOpenAI,
   ChatMessage,
@@ -59,20 +59,20 @@ const parameterAppMeta: Record<"app1", { title: string; description: string }> =
 };
 const parameterMacroMeta: Record<MacroActionId, { title: string; description: string }> = {
   macro1: { title: "Highlight", description: "Destaca termos no documento (highlight em cores)." },
-  macro2: { title: "Macro2", description: "Converte lista numerada automatica da selecao para numeracao manual." },
+  macro2: { title: "Macro2", description: "Converte lista numerada automática para numeração manual." },
 };
 const parameterAppsGenericMeta: Record<"app2" | "app3", { title: string; description: string }> = {
-  app2: { title: "Bibliografia de Verbetes", description: "Cria Listagem ou Bibliografia de verbetes da EnciclopÃ©dia." },
-  app3: { title: "Bibliografia Geral", description: "Busca 10 correspondencias bibliograficas a partir da caixa de entrada." },
+  app2: { title: "Bibliografia de Verbetes", description: "Cria Listagem ou Bibliografia de verbetes da Enciclopédia." },
+  app3: { title: "Bibliografia Geral", description: "Busca correspondências bibliográficas." },
 };
 const parameterActionMeta: Record<AiActionId, { title: string; description: string }> = {
-  define: { title: "Definir", description: "Definologia conscienciologica." },
-  synonyms: { title: "Sinonimia", description: "Sinonimologia (10 itens)." },
-  epigraph: { title: "Epigrafe", description: "Sugerir epigrafe." },
+  define: { title: "Definir", description: "Definologia conscienciológica." },
+  synonyms: { title: "Sinonimia", description: "Sinonimologia." },
+  epigraph: { title: "Epigrafe", description: "Sugere epígrafe." },
   rewrite: { title: "Reescrever", description: "Melhora clareza e fluidez." },
-  summarize: { title: "Resumir", description: "Sintese concisa." },
-  pensatas: { title: "Pensatas LO", description: "Pensatas afins (10 itens)." },
-  translate: { title: "Traduzir", description: "Traduzir para o idioma selecionado." },
+  summarize: { title: "Resumir", description: "Síntese concisa." },
+  pensatas: { title: "Pensatas LO", description: "Pensatas afins." },
+  translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
 };
 const sidePanelClass = "bg-card";
 const PANEL_SIZES = {
@@ -116,10 +116,10 @@ const Index = () => {
   const [documentSymbolWithSpacesCount, setDocumentSymbolWithSpacesCount] = useState<number | null>(null);
   const [currentFileId, setCurrentFileId] = useState("");
   const [statsKey, setStatsKey] = useState(0);
-  const [officeDoc, setOfficeDoc] = useState<OnlyOfficeDocumentConfig | null>(null);
+  const [editorContentHtml, setEditorContentHtml] = useState("<p></p>");
   const [isOpeningDocument, setIsOpeningDocument] = useState(false);
   const [openAiReady, setOpenAiReady] = useState(false);
-  const [onlyOfficeControlApi, setOnlyOfficeControlApi] = useState<OnlyOfficeControlApi | null>(null);
+  const [htmlEditorControlApi, setHtmlEditorControlApi] = useState<HtmlEditorControlApi | null>(null);
   const [parameterPanelTarget, setParameterPanelTarget] = useState<ParameterPanelTarget>(null);
   const [selectedRefBook, setSelectedRefBook] = useState("LO");
   const [refBookPages, setRefBookPages] = useState("");
@@ -139,6 +139,7 @@ const Index = () => {
   const [macro1Term, setMacro1Term] = useState("");
   const [macro1ColorId, setMacro1ColorId] = useState<(typeof MACRO1_HIGHLIGHT_COLORS)[number]["id"]>("yellow");
   const [macro2SpacingMode, setMacro2SpacingMode] = useState<Macro2SpacingMode>("nbsp_double");
+  const saveTimerRef = useRef<number | null>(null);
 
   const stats = useTextStats(
     documentText || actionText,
@@ -167,6 +168,7 @@ const Index = () => {
   const refreshDocumentText = useCallback(async (fileId: string) => {
     if (!fileId) {
       setDocumentText("");
+      setEditorContentHtml("<p></p>");
       setDocumentPageCount(null);
       setDocumentParagraphCount(null);
       setDocumentWordCount(null);
@@ -176,13 +178,37 @@ const Index = () => {
     }
     try {
       const data = await fetchFileText(fileId);
-      setDocumentText(data.text || "");
+      const baseText = data.text || "";
+      const savedHtml = (data.html || "").trim();
+      setDocumentText(baseText);
+
+      if (savedHtml) {
+        setEditorContentHtml(savedHtml);
+        return;
+      }
+
+      if ((data.ext || "").toLowerCase() === "docx") {
+        try {
+          const buffer = await fetchFileContentBuffer(fileId);
+          const convertedHtml = (await parseDocxArrayBuffer(buffer)).trim();
+          if (convertedHtml) {
+            setEditorContentHtml(convertedHtml);
+            void saveFileText(fileId, { text: baseText, html: convertedHtml });
+            return;
+          }
+        } catch (_err) {
+          // fallback abaixo
+        }
+      }
+
+      setEditorContentHtml(plainTextToEditorHtml(baseText));
     } catch (_err) {
       setDocumentText("");
+      setEditorContentHtml("<p></p>");
     }
   }, []);
   const refreshDocumentPageCount = useCallback(async () => {
-    if (!onlyOfficeControlApi || !currentFileId) {
+    if (!htmlEditorControlApi || !currentFileId) {
       setDocumentPageCount(null);
       setDocumentParagraphCount(null);
       setDocumentWordCount(null);
@@ -191,7 +217,7 @@ const Index = () => {
       return;
     }
     try {
-      const statsData = await onlyOfficeControlApi.getDocumentStats();
+      const statsData = await htmlEditorControlApi.getDocumentStats();
       setDocumentPageCount(statsData.pages);
       setDocumentParagraphCount(statsData.paragraphs);
       setDocumentWordCount(statsData.words);
@@ -204,7 +230,7 @@ const Index = () => {
       setDocumentSymbolCount(null);
       setDocumentSymbolWithSpacesCount(null);
     }
-  }, [currentFileId, onlyOfficeControlApi]);
+  }, [currentFileId, htmlEditorControlApi]);
   useEffect(() => {
     void refreshDocumentText(currentFileId);
   }, [currentFileId, refreshDocumentText]);
@@ -217,16 +243,14 @@ const Index = () => {
     setIsOpeningDocument(true);
     try {
       const uploaded = await uploadFileToServer(file);
-      if (!["docx", "doc", "rtf", "odt"].includes(uploaded.ext)) {
+      if (uploaded.ext !== "docx") {
         const reason = uploaded.conversionError ? ` ${uploaded.conversionError}` : "";
-        throw new Error(`NÃ£o foi possÃ­vel abrir no ONLYOFFICE. O PDF nÃ£o converteu para DOCX.${reason}`);
+        throw new Error(`Nao foi possivel abrir no editor. Use DOCX ou PDF convertido para DOCX.${reason}`);
       }
 
-      const payload = await fetchOnlyOfficeConfig(uploaded.id);
       setActionText("");
       setCurrentFileId(uploaded.id);
       void refreshDocumentText(uploaded.id);
-      setOfficeDoc({ documentServerUrl: payload.documentServerUrl, config: payload.config, token: payload.token });
       return uploaded;
     } finally {
       setIsOpeningDocument(false);
@@ -237,11 +261,9 @@ const Index = () => {
     setIsOpeningDocument(true);
     try {
       const created = await createBlankDocOnServer("novo-documento.docx");
-      const payload = await fetchOnlyOfficeConfig(created.id);
       setActionText("");
       setCurrentFileId(created.id);
       void refreshDocumentText(created.id);
-      setOfficeDoc({ documentServerUrl: payload.documentServerUrl, config: payload.config, token: payload.token });
     } finally {
       setIsOpeningDocument(false);
     }
@@ -249,119 +271,68 @@ const Index = () => {
 
   const handleRefreshStats = useCallback(async () => {
     if (!currentFileId) {
-      toast.error("Nenhum documento aberto no ONLYOFFICE.");
+      toast.error("Nenhum documento aberto no editor.");
       return;
-    }
-
-    const previousText = documentText;
-    try {
-      await forceSaveOnlyOffice(currentFileId);
-      await new Promise((resolve) => window.setTimeout(resolve, 500));
-    } catch (_err) {
-      // continue
-    }
-
-    let lastFetchedText = previousText;
-    for (let attempt = 0; attempt < 6; attempt += 1) {
-      try {
-        const data = await fetchFileText(currentFileId);
-        const fetched = data.text || "";
-        lastFetchedText = fetched;
-        setDocumentText(fetched);
-        if (fetched !== previousText) break;
-      } catch (_err) {
-        // continue
-      }
-      await new Promise((resolve) => window.setTimeout(resolve, 500));
-    }
-
-    if (lastFetchedText === previousText) {
-      await refreshDocumentText(currentFileId);
     }
     await refreshDocumentPageCount();
     setStatsKey((k) => k + 1);
-  }, [currentFileId, documentText, refreshDocumentPageCount, refreshDocumentText]);
-
-  const waitForceSavePropagation = useCallback(async (fileId: string, baselineText: string) => {
-    try {
-      await forceSaveOnlyOffice(fileId);
-      await new Promise((resolve) => window.setTimeout(resolve, 500));
-    } catch (_err) {
-      // continue
-    }
-
-    let lastFetchedText = baselineText;
-    for (let attempt = 0; attempt < 6; attempt += 1) {
-      try {
-        const data = await fetchFileText(fileId);
-        const fetched = data.text || "";
-        lastFetchedText = fetched;
-        setDocumentText(fetched);
-        if (fetched !== baselineText) break;
-      } catch (_err) {
-        // continue
-      }
-      await new Promise((resolve) => window.setTimeout(resolve, 500));
-    }
-
-    return lastFetchedText;
-  }, []);
+  }, [currentFileId, refreshDocumentPageCount]);
 
   const handleRetrieveSelectedText = useCallback(async () => {
-    if (!onlyOfficeControlApi) {
-      toast.error("API do ONLYOFFICE indisponÃ­vel no momento.");
+    if (!htmlEditorControlApi) {
+      toast.error("API do editor indisponivel no momento.");
       return;
     }
 
     try {
-      const selected = (await onlyOfficeControlApi.getSelectedText()).trim();
-      if (!selected) throw new Error("Nenhum texto selecionado no ONLYOFFICE.");
+      const selected = (await htmlEditorControlApi.getSelectedText()).trim();
+      if (!selected) throw new Error("Nenhum texto selecionado no editor.");
       setActionText(selected);
       toast.success("Trecho selecionado aplicado na caixa de texto.");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Falha ao obter seleÃ§Ã£o.");
+      toast.error(err instanceof Error ? err.message : "Falha ao obter selecao.");
     }
-  }, [onlyOfficeControlApi]);
+  }, [htmlEditorControlApi]);
 
   const handleSelectAllContent = useCallback(async () => {
-    if (!onlyOfficeControlApi) {
-      toast.error("Controle do ONLYOFFICE indisponÃ­vel.");
+    if (!htmlEditorControlApi) {
+      toast.error("Controle do editor indisponivel.");
       return;
     }
 
     try {
-      await onlyOfficeControlApi.selectAllContent();
+      await htmlEditorControlApi.selectAllContent();
       toast.success("Documento inteiro selecionado.");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Falha ao selecionar todo o documento.");
     }
-  }, [onlyOfficeControlApi]);
+  }, [htmlEditorControlApi]);
 
   const handleTriggerSave = useCallback(async () => {
-    if (!onlyOfficeControlApi) {
-      toast.error("API do ONLYOFFICE indisponÃ­vel no momento.");
+    if (!htmlEditorControlApi) {
+      toast.error("API do editor indisponivel no momento.");
       return;
     }
     if (responses.length === 0) {
-      toast.error("Ainda nÃ£o hÃ¡ resposta no histÃ³rico para aplicar.");
+      toast.error("Ainda nao ha resposta no historico para aplicar.");
       return;
     }
 
     const latestResponse = responses[0]?.content?.trim() || "";
     if (!latestResponse) {
-      toast.error("A Ãºltima resposta do histÃ³rico estÃ¡ vazia.");
+      toast.error("A ultima resposta do historico esta vazia.");
       return;
     }
 
     try {
       const markdownContent = normalizeHistoryContentToMarkdown(latestResponse);
-      const html = markdownToOnlyOfficeHtml(markdownContent);
-      await onlyOfficeControlApi.replaceSelectionRich(markdownContent, html);
-      toast.success("Ãšltima resposta aplicada no cursor/seleÃ§Ã£o do ONLYOFFICE.");
+      const html = markdownToEditorHtml(markdownContent);
+      await htmlEditorControlApi.replaceSelectionRich(markdownContent, html);
+      toast.success("Ultima resposta aplicada no cursor/selecao do editor.");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Falha ao aplicar resposta no ONLYOFFICE.");
+      toast.error(err instanceof Error ? err.message : "Falha ao aplicar resposta no editor.");
     }
-  }, [onlyOfficeControlApi, responses]);
+  }, [htmlEditorControlApi, responses]);
 
   const addResponse = (type: AIResponse["type"], query: string, content: string) => {
     setResponses((prev) => [{ id: crypto.randomUUID(), type, query, content, timestamp: new Date() }, ...prev]);
@@ -381,25 +352,25 @@ const Index = () => {
   }, [actionText, macro1Term]);
 
   const handleRunMacro2ManualNumbering = useCallback(async () => {
-    if (!onlyOfficeControlApi || !currentFileId) {
-      toast.error("Abra um documento no ONLYOFFICE antes de executar Macro2.");
+    if (!htmlEditorControlApi || !currentFileId) {
+      toast.error("Abra um documento no editor antes de executar Macro2.");
       return;
     }
 
     setIsLoading(true);
     try {
-      const result = await onlyOfficeControlApi.runMacro2ManualNumberingSelection(macro2SpacingMode);
+      const result = await htmlEditorControlApi.runMacro2ManualNumberingSelection(macro2SpacingMode);
       toast.success(`Macro2 aplicada: ${result.converted} item(ns) convertidos para numeracao manual.`);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Falha ao executar Macro2.");
     } finally {
       setIsLoading(false);
     }
-  }, [currentFileId, macro2SpacingMode, onlyOfficeControlApi]);
+  }, [currentFileId, htmlEditorControlApi, macro2SpacingMode]);
 
   const handleRunMacro1Highlight = useCallback(async () => {
-    if (!onlyOfficeControlApi || !currentFileId) {
-      toast.error("Abra um documento no ONLYOFFICE antes de executar Highlight.");
+    if (!htmlEditorControlApi || !currentFileId) {
+      toast.error("Abra um documento no editor antes de executar Highlight.");
       return;
     }
 
@@ -411,7 +382,7 @@ const Index = () => {
 
     setIsLoading(true);
     try {
-      const result = await onlyOfficeControlApi.runMacro1HighlightDocument(input, macro1ColorId);
+      const result = await htmlEditorControlApi.runMacro1HighlightDocument(input, macro1ColorId);
       if (result.matches <= 0) {
         toast.info("Highlight executado. Nenhuma ocorrÃªncia encontrada.");
         return;
@@ -424,11 +395,11 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentFileId, macro1ColorId, macro1Term, onlyOfficeControlApi]);
+  }, [currentFileId, htmlEditorControlApi, macro1ColorId, macro1Term]);
 
   const handleClearMacro1Highlight = useCallback(async () => {
-    if (!onlyOfficeControlApi || !currentFileId) {
-      toast.error("Abra um documento no ONLYOFFICE antes de limpar marcaÃ§Ã£o.");
+    if (!htmlEditorControlApi || !currentFileId) {
+      toast.error("Abra um documento no editor antes de limpar marcacao.");
       return;
     }
 
@@ -440,18 +411,18 @@ const Index = () => {
 
     setIsLoading(true);
     try {
-      const result = await onlyOfficeControlApi.clearMacro1HighlightDocument(input);
+      const result = await htmlEditorControlApi.clearMacro1HighlightDocument(input);
       if (result.matches <= 0 || result.cleared <= 0) {
-        toast.info("Nenhuma marcaÃ§Ã£o encontrada para limpar.");
+        toast.info("Nenhuma marcacao encontrada para limpar.");
         return;
       }
-      toast.success(`MarcaÃ§Ã£o limpa em ${result.cleared} ocorrÃªncia(s).`);
+      toast.success(`Marcacao limpa em ${result.cleared} ocorrencia(s).`);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Falha ao limpar marcaÃ§Ã£o.");
+      toast.error(err instanceof Error ? err.message : "Falha ao limpar marcacao.");
     } finally {
       setIsLoading(false);
     }
-  }, [currentFileId, macro1Term, onlyOfficeControlApi]);
+  }, [currentFileId, htmlEditorControlApi, macro1Term]);
 
   const handleSelectRefBook = useCallback((book: string) => {
     setSelectedRefBook(book);
@@ -536,26 +507,26 @@ const Index = () => {
   }, [biblioGeralAuthor, biblioGeralExtra, biblioGeralTitle, biblioGeralYear]);
 
   const handleInsertRefBookResponseIntoEditor = useCallback(async () => {
-    if (!onlyOfficeControlApi) {
-      toast.error("API do ONLYOFFICE indisponÃƒÂ­vel no momento.");
+    if (!htmlEditorControlApi) {
+      toast.error("API do editor indisponivel no momento.");
       return;
     }
 
     const content = (insertRefBookResultWithPages || "").trim();
     if (!content) {
-      toast.error("A resposta da referÃƒÂªncia estÃƒÂ¡ vazia.");
+      toast.error("A resposta da referencia esta vazia.");
       return;
     }
 
     try {
       const markdownContent = normalizeHistoryContentToMarkdown(content);
-      const html = markdownToOnlyOfficeHtml(markdownContent);
-      await onlyOfficeControlApi.replaceSelectionRich(markdownContent, html);
-      toast.success("Resposta inserida no cursor/seleÃƒÂ§ÃƒÂ£o do ONLYOFFICE.");
+      const html = markdownToEditorHtml(markdownContent);
+      await htmlEditorControlApi.replaceSelectionRich(markdownContent, html);
+      toast.success("Resposta inserida no cursor/selecao do editor.");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Falha ao inserir resposta no ONLYOFFICE.");
+      toast.error(err instanceof Error ? err.message : "Falha ao inserir resposta no editor.");
     }
-  }, [insertRefBookResultWithPages, onlyOfficeControlApi]);
+  }, [htmlEditorControlApi, insertRefBookResultWithPages]);
 
   const handleActionApps = useCallback((type: AppActionId) => {
     setParameterPanelTarget({ section: "apps", id: type });
@@ -573,39 +544,11 @@ const Index = () => {
     }
   }, [actionText, biblioGeralTitle]);
 
-  const handleAction = useCallback(async (type: "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate" | "highlight") => {
+  const handleAction = useCallback(async (type: AiActionId) => {
     const text = actionText.trim();
 
     if (!text) {
       toast.error("Selecione um trecho no documento ou escreva na caixa de texto.");
-      return;
-    }
-
-    if (type === "highlight") {
-      if (!currentFileId || !officeDoc) {
-        toast.error("Abra um documento no ONLYOFFICE antes de usar Highlight.");
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        const baselineText = documentText;
-        const propagatedText = await waitForceSavePropagation(currentFileId, baselineText);
-        if (propagatedText === baselineText) {
-          await refreshDocumentText(currentFileId);
-        }
-
-        const result = await highlightFileTerm(currentFileId, text);
-        const payload = await fetchOnlyOfficeConfig(currentFileId);
-        setOfficeDoc({ documentServerUrl: payload.documentServerUrl, config: payload.config, token: payload.token });
-        await refreshDocumentText(currentFileId);
-        setStatsKey((k) => k + 1);
-        toast.success(`Highlight aplicado em ${result.matches} ocorrÃƒÂªncia(s).`);
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : "Erro ao aplicar highlight.");
-      } finally {
-        setIsLoading(false);
-      }
       return;
     }
 
@@ -677,7 +620,7 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [actionText, currentFileId, documentText, officeDoc, openAiReady, refreshDocumentText, translateLanguage, waitForceSavePropagation]);
+  }, [actionText, openAiReady, translateLanguage]);
 
   const handleOpenAiActionParameters = useCallback((type: "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate" | "highlight") => {
     if (type === "highlight") return;
@@ -698,6 +641,28 @@ const Index = () => {
       setIsLoading(false);
     }
   }, [openAiReady, actionText, chatHistory]);
+
+  const handleEditorContentChange = useCallback(({ html, text }: { html: string; text: string }) => {
+    setEditorContentHtml(html);
+    setDocumentText(text);
+    if (!currentFileId) return;
+
+    if (saveTimerRef.current !== null) {
+      window.clearTimeout(saveTimerRef.current);
+    }
+
+    saveTimerRef.current = window.setTimeout(() => {
+      void saveFileText(currentFileId, { text, html }).catch(() => {
+        // silencioso para evitar toasts em cada tecla
+      });
+    }, 600);
+  }, [currentFileId]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
+    };
+  }, []);
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
@@ -725,7 +690,7 @@ const Index = () => {
             isLoading={isLoading}
             hasVectorStoreLO={Boolean(OPENAI_VECTOR_STORE_LO)}
             hasDocumentOpen={Boolean(currentFileId)}
-            onlyOfficeReady={Boolean(onlyOfficeControlApi)}
+            editorReady={Boolean(htmlEditorControlApi)}
             onRefreshStats={() => void handleRefreshStats()}
           />
         </ResizablePanel>
@@ -863,8 +828,12 @@ const Index = () => {
               defaultSize={parameterPanelTarget ? PANEL_SIZES.editorWithParameter.default : PANEL_SIZES.editorWithoutParameter.default}
               minSize={parameterPanelTarget ? PANEL_SIZES.editorWithParameter.min : PANEL_SIZES.editorWithoutParameter.min}
             >
-              <main className="relative h-full min-w-0 bg-[hsl(var(--panel-bg))]">
-                <OnlyOfficeEditor documentConfig={officeDoc} onControlApiReady={setOnlyOfficeControlApi} />
+              <main className="relative h-full min-w-0 bg-white">
+                <HtmlEditor
+                  contentHtml={editorContentHtml}
+                  onControlApiReady={setHtmlEditorControlApi}
+                  onContentChange={handleEditorContentChange}
+                />
                 {isOpeningDocument && (
                   <div className="absolute inset-0 z-10 flex items-center justify-center bg-green-50">
                     <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground shadow-sm">

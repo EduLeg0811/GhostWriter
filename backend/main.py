@@ -13,12 +13,11 @@ from typing import Any
 from urllib.parse import quote
 import zipfile
 
-import jwt
 import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from pydantic import BaseModel
 
 load_dotenv()
@@ -33,15 +32,9 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 META_DIR.mkdir(parents=True, exist_ok=True)
 
 PORT = int(os.getenv("PORT") or os.getenv("SERVER_PORT", "8787"))
-backend_onlyoffice_url = (os.getenv("BACKEND_ONLYOFFICE_URL") or os.getenv("BACKEND_PUBLIC_URL") or f"http://host.docker.internal:{PORT}").rstrip("/")
-backend_browser_url = (os.getenv("BACKEND_BROWSER_URL") or f"http://localhost:{PORT}").rstrip("/")
-plugin_public_url = (os.getenv("ONLYOFFICE_PLUGIN_PUBLIC_URL") or backend_browser_url).rstrip("/")
-onlyoffice_server_url = (os.getenv("ONLYOFFICE_DOCUMENT_SERVER_URL") or "").rstrip("/")
-onlyoffice_jwt_secret = (os.getenv("ONLYOFFICE_JWT_SECRET") or "").strip()
 openai_api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
 pdf2docx_python_cmd = (os.getenv("PDF2DOCX_PYTHON_CMD") or "python").strip()
 backend_python_cmd = (os.getenv("BACKEND_PYTHON_CMD") or pdf2docx_python_cmd or "python").strip()
-PLUGIN_GUID = "asc.{D9F53D71-CA6A-4A77-8BE0-0DA9675B5C16}"
 LETTER_CLASS = "A-Za-zÀ-ÖØ-öø-ÿ"
 KEEP_WORD_HYPHEN_PREFIXES = {
     "além",
@@ -129,6 +122,11 @@ class HighlightRequest(BaseModel):
 
 class CreateBlankFileRequest(BaseModel):
     title: str = "novo-documento.docx"
+
+
+class SaveFileTextRequest(BaseModel):
+    text: str = ""
+    html: str = ""
 
 
 app = FastAPI()
@@ -602,42 +600,9 @@ def highlight_term_in_docx(docx_path: Path, term: str, color: str = "yellow") ->
     return True, matches
 
 
-@app.get("/onlyoffice-plugin/config.json")
-def onlyoffice_plugin_config() -> dict[str, Any]:
-    base_url = f"{plugin_public_url}/onlyoffice-plugin/"
-    return {"name": "Parapreceptor Bridge", "guid": PLUGIN_GUID, "baseUrl": base_url, "variations": [{"description": "Bridge", "url": "plugin.html", "icons": [], "isViewer": False, "EditorsSupport": ["word"], "isVisual": False, "isModal": False, "isInsideMode": False, "initDataType": "none", "initData": ""}]}
-
-
-@app.get("/onlyoffice-plugin/plugin.html")
-def onlyoffice_plugin_html() -> HTMLResponse:
-    html = f"""<!doctype html><html><head><meta charset=\"utf-8\" /><title>Parapreceptor Bridge</title><script src=\"{onlyoffice_server_url}/sdkjs-plugins/v1/plugins.js\"></script></head><body><script src=\"{plugin_public_url}/onlyoffice-plugin/plugin.js\"></script></body></html>"""
-    return HTMLResponse(content=html)
-
-
-@app.get("/onlyoffice-plugin/plugin.js")
-def onlyoffice_plugin_js() -> Response:
-    js = (ROOT_DIR / "server" / "plugin.template.js").read_text(encoding="utf-8") if (ROOT_DIR / "server" / "plugin.template.js").exists() else "(function(){})();"
-    return Response(content=js, media_type="application/javascript; charset=utf-8")
-
-
-@app.get("/onlyoffice-plugin/translations/langs.json")
-def onlyoffice_langs() -> list[str]:
-    return ["pt-BR", "en"]
-
-
-@app.get("/onlyoffice-plugin/translations/pt-BR.json")
-def onlyoffice_pt() -> dict[str, Any]:
-    return {}
-
-
-@app.get("/onlyoffice-plugin/translations/en.json")
-def onlyoffice_en() -> dict[str, Any]:
-    return {}
-
-
 @app.get("/api/health")
 def api_health() -> dict[str, Any]:
-    return {"ok": True, "onlyofficeConfigured": bool(onlyoffice_server_url), "openaiConfigured": bool(openai_api_key)}
+    return {"ok": True, "openaiConfigured": bool(openai_api_key)}
 
 
 @app.post("/api/macros/insert-ref-book")
@@ -768,8 +733,28 @@ def api_file_text(file_id: str) -> JSONResponse:
     if not full_path.exists():
         raise HTTPException(status_code=404, detail="Arquivo nao encontrado.")
     ext = (meta.get("ext") or "").lower()
-    text = full_path.read_text(encoding="utf-8", errors="ignore") if ext in {"txt", "md"} else (extract_text_from_docx(full_path) if ext == "docx" else "")
-    return JSONResponse(content={"id": meta["id"], "ext": meta.get("ext", ""), "text": text, "updatedAt": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime())}, headers={"Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate", "Pragma": "no-cache", "Expires": "0"})
+
+    saved_text = str(meta.get("editorText") or "")
+    saved_html = str(meta.get("editorHtml") or "")
+    if saved_text or saved_html:
+        text = saved_text
+        html = saved_html
+    else:
+        text = full_path.read_text(encoding="utf-8", errors="ignore") if ext in {"txt", "md"} else (extract_text_from_docx(full_path) if ext == "docx" else "")
+        html = ""
+    return JSONResponse(content={"id": meta["id"], "ext": meta.get("ext", ""), "text": text, "html": html, "updatedAt": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime())}, headers={"Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate", "Pragma": "no-cache", "Expires": "0"})
+
+
+@app.put("/api/files/{file_id}/text")
+def api_file_save_text(file_id: str, payload: SaveFileTextRequest) -> dict[str, Any]:
+    meta = read_meta(file_id)
+    text = (payload.text or "").replace("\r\n", "\n")
+    html = (payload.html or "").strip()
+    meta["editorText"] = text
+    meta["editorHtml"] = html
+    meta["editorUpdatedAt"] = time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime())
+    write_meta(file_id, meta)
+    return {"ok": True, "id": file_id, "updatedAt": meta["editorUpdatedAt"]}
 
 
 @app.post("/api/files/{file_id}/highlight")
@@ -785,61 +770,6 @@ def api_file_highlight(file_id: str, payload: HighlightRequest) -> dict[str, Any
         raise HTTPException(status_code=404, detail="Arquivo nao encontrado.")
     updated, matches = highlight_term_in_docx(full_path, term, "yellow")
     return {"ok": True, "updated": updated, "matches": matches, "term": term, "color": "yellow"}
-
-
-@app.get("/api/onlyoffice/config/{file_id}")
-def api_onlyoffice_config(file_id: str) -> dict[str, Any]:
-    if not onlyoffice_server_url:
-        raise HTTPException(status_code=500, detail="ONLYOFFICE_DOCUMENT_SERVER_URL nao configurada.")
-    meta = read_meta(file_id)
-    document_url = f"{backend_onlyoffice_url}/api/files/{meta['id']}/content"
-    callback_url = f"{backend_onlyoffice_url}/api/onlyoffice/callback/{meta['id']}"
-    config = {"documentType": "word", "document": {"title": meta.get("originalName"), "url": document_url, "fileType": meta.get("ext") or "docx", "key": f"{meta['id']}-{int(time.time() * 1000)}"}, "editorConfig": {"mode": "edit", "lang": "pt-BR", "callbackUrl": callback_url, "customization": {"autosave": True, "forcesave": True}, "plugins": {"autostart": [PLUGIN_GUID], "pluginsData": [f"{plugin_public_url}/onlyoffice-plugin/config.json"]}}}
-    meta["lastDocumentKey"] = config["document"]["key"]
-    write_meta(meta["id"], meta)
-    token = jwt.encode(config, onlyoffice_jwt_secret, algorithm="HS256") if onlyoffice_jwt_secret else ""
-    return {"documentServerUrl": onlyoffice_server_url, "config": config, "token": token, "file": meta}
-
-
-@app.post("/api/onlyoffice/forcesave/{file_id}")
-def api_onlyoffice_forcesave(file_id: str) -> dict[str, Any]:
-    if not onlyoffice_server_url:
-        raise HTTPException(status_code=500, detail="ONLYOFFICE_DOCUMENT_SERVER_URL nao configurada.")
-    meta = read_meta(file_id)
-    key = str(meta.get("lastDocumentKey") or "").strip()
-    if not key:
-        raise HTTPException(status_code=400, detail="Documento sem key ativa para force-save.")
-    command: dict[str, Any] = {"c": "forcesave", "key": key}
-    headers = {"Content-Type": "application/json"}
-    payload: dict[str, Any] = dict(command)
-    if onlyoffice_jwt_secret:
-        command_token = jwt.encode(command, onlyoffice_jwt_secret, algorithm="HS256")
-        headers["Authorization"] = f"Bearer {command_token}"
-        payload = {**command, "token": command_token}
-    upstream = requests.post(f"{onlyoffice_server_url}/coauthoring/CommandService.ashx", headers=headers, json=payload, timeout=30)
-    if not upstream.ok:
-        raise HTTPException(status_code=upstream.status_code, detail=f"Force-save HTTP {upstream.status_code}: {upstream.text}")
-    try:
-        data = upstream.json()
-    except Exception:
-        data = {"raw": upstream.text}
-    return {"ok": True, "response": data}
-
-
-@app.post("/api/onlyoffice/callback/{file_id}")
-def api_onlyoffice_callback(file_id: str, body: dict[str, Any]) -> dict[str, Any]:
-    status = int(body.get("status") or 0)
-    if status not in {2, 3, 6, 7} or not body.get("url"):
-        return {"error": 0}
-    meta = read_meta(file_id)
-    full_path = UPLOADS_DIR / meta["storedName"]
-    response = requests.get(body["url"], timeout=60)
-    if not response.ok:
-        return {"error": 1, "message": "Falha ao baixar arquivo atualizado."}
-    full_path.write_bytes(response.content)
-    meta["lastSavedAt"] = time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime())
-    write_meta(meta["id"], meta)
-    return {"error": 0}
 
 
 @app.post("/api/ai/chat")

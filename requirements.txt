@@ -3,7 +3,6 @@ uvicorn[standard]
 python-multipart
 python-dotenv
 requests
-PyJWT
 pdf2docx
 pandas
 numpy

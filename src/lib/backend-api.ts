@@ -12,13 +12,6 @@ export interface UploadedFileMeta {
   conversionError?: string;
 }
 
-export interface OnlyOfficeServerConfig {
-  documentServerUrl: string;
-  config: Record<string, unknown>;
-  token?: string;
-  file: UploadedFileMeta;
-}
-
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const apiUrl = (path: string): string => `${API_BASE_URL}${path}`;
 
@@ -40,20 +33,24 @@ export async function createBlankDocOnServer(title = "novo-documento.docx"): Pro
   return res.json();
 }
 
-export async function fetchOnlyOfficeConfig(fileId: string): Promise<OnlyOfficeServerConfig> {
-  const res = await fetch(apiUrl(`/api/onlyoffice/config/${encodeURIComponent(fileId)}`));
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-export async function forceSaveOnlyOffice(fileId: string): Promise<{ ok: boolean; response?: unknown; error?: string }> {
-  const res = await fetch(apiUrl(`/api/onlyoffice/forcesave/${encodeURIComponent(fileId)}`), { method: "POST" });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-export async function fetchFileText(fileId: string): Promise<{ id: string; ext: string; text: string; updatedAt: string }> {
+export async function fetchFileText(fileId: string): Promise<{ id: string; ext: string; text: string; html?: string; updatedAt: string }> {
   const res = await fetch(apiUrl(`/api/files/${encodeURIComponent(fileId)}/text?t=${Date.now()}`), { cache: "no-store" });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function fetchFileContentBuffer(fileId: string): Promise<ArrayBuffer> {
+  const res = await fetch(apiUrl(`/api/files/${encodeURIComponent(fileId)}/content?t=${Date.now()}`), { cache: "no-store" });
+  if (!res.ok) throw new Error(await res.text());
+  return res.arrayBuffer();
+}
+
+export async function saveFileText(fileId: string, payload: { text: string; html?: string }): Promise<{ ok: boolean; id: string; updatedAt: string }> {
+  const res = await fetch(apiUrl(`/api/files/${encodeURIComponent(fileId)}/text`), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
@@ -68,7 +65,7 @@ export async function highlightFileTerm(fileId: string, term: string): Promise<{
   return res.json();
 }
 
-export async function healthCheck(): Promise<{ ok: boolean; onlyofficeConfigured: boolean; openaiConfigured: boolean }> {
+export async function healthCheck(): Promise<{ ok: boolean; openaiConfigured: boolean }> {
   const res = await fetch(apiUrl("/api/health"));
   if (!res.ok) throw new Error("Backend indisponivel.");
   return res.json();
