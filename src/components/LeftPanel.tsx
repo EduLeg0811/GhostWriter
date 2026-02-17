@@ -61,8 +61,8 @@ const actionItems = [
   {
     id: "epigraph" as const,
     icon: Search,
-    title: "Epigrafe",
-    description: "Sugerir epigrafe",
+    title: "Epígrafe",
+    description: "Sugerir epígrafe",
   },
 
   {
