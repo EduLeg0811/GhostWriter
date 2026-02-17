@@ -26,12 +26,30 @@ Copie `.env.example` para `.env` e ajuste:
 
 ```bash
 npm install
-pip install -r backend/requirements.txt
+pip install -r requirements.txt
 npm run dev:all
 ```
 
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:8787`
+
+## Deploy no Render
+
+Este projeto esta pronto para deploy via Blueprint (`render.yaml`) com 2 servicos:
+- `ghost-writer-backend` (FastAPI)
+- `ghost-writer-frontend` (Static Site)
+
+Passos:
+1. No Render, escolha **New +** -> **Blueprint** e conecte este repositorio.
+2. Crie os servicos sugeridos pelo `render.yaml`.
+3. Configure as variaveis obrigatorias:
+- Backend: `BACKEND_ONLYOFFICE_URL`, `BACKEND_BROWSER_URL`, `ONLYOFFICE_PLUGIN_PUBLIC_URL`, `ONLYOFFICE_DOCUMENT_SERVER_URL`, `ONLYOFFICE_JWT_SECRET`, `OPENAI_API_KEY`
+- Frontend: `VITE_API_BASE_URL`, `VITE_OPENAI_VECTOR_STORES`, `VITE_OPENAI_VECTOR_STORE_LO`, `VITE_OPENAI_VECTOR_STORE_TRANSLATE_RAG`
+4. Use a URL publica do backend para:
+- `BACKEND_ONLYOFFICE_URL`
+- `BACKEND_BROWSER_URL`
+- `ONLYOFFICE_PLUGIN_PUBLIC_URL`
+- `VITE_API_BASE_URL` (no frontend)
 
 ## Fluxo funcional
 
