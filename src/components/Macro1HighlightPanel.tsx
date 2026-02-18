@@ -22,7 +22,8 @@ interface Macro1HighlightPanelProps {
   onRunHighlight: () => void;
   onRunClear: () => void;
   isRunning: boolean;
-  onClose: () => void;
+  onClose?: () => void;
+  showPanelChrome?: boolean;
 }
 
 const Macro1HighlightPanel = ({
@@ -37,10 +38,91 @@ const Macro1HighlightPanel = ({
   onRunClear,
   isRunning,
   onClose,
+  showPanelChrome = true,
 }: Macro1HighlightPanelProps) => {
   const canRun = term.trim().length > 0 && !isRunning;
   const selectedHighlightColor =
     colorOptions.find((option) => option.id === selectedColorId)?.swatch || "#fef08a";
+
+  const content = (
+    <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
+      <div className="space-y-5">
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-foreground">{title}</p>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Termo</Label>
+          <Input
+            value={term}
+            onChange={(e) => onTermChange(e.target.value)}
+            placeholder="Digite o termo para destacar"
+            className="h-9 bg-white text-xs placeholder:text-xs md:text-xs"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cor do Highlight</Label>
+          <div className="flex flex-wrap gap-2">
+            {colorOptions.map((option) => {
+              const selected = selectedColorId === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  title={option.label}
+                  aria-label={option.label}
+                  aria-pressed={selected}
+                  onClick={() => onSelectColor(option.id)}
+                  className={`h-7 w-7 rounded-md border transition-colors ${selected ? "border-foreground ring-2 ring-offset-1 ring-ring" : "border-border hover:border-foreground/60"}`}
+                  style={{ backgroundColor: option.swatch }}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="h-9 w-full rounded-lg border px-3 text-sm font-medium text-black shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ backgroundColor: selectedHighlightColor, borderColor: selectedHighlightColor }}
+            onClick={onRunHighlight}
+            disabled={!canRun}
+          >
+            {isRunning ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin text-black relative z-10" />
+                <span className="relative z-10 text-blue-500">Aplicando</span>
+              </>
+            ) : (
+              <>
+                <Highlighter className="mr-2 h-4 w-4 text-black relative z-10" />
+                <span className="relative z-10 text-blue-500">Highlight</span>
+              </>
+            )}
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onRunClear}
+            disabled={!canRun}
+            className={`${primaryActionButtonClass} bg-gray-100`}
+          >
+            <Eraser className="mr-2 h-4 w-4 text-black relative z-10" />
+            <span className="relative z-10 text-blue-500">Limpar Marcação</span>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!showPanelChrome) return content;
 
   return (
     <div className="flex h-full flex-col">
@@ -50,82 +132,7 @@ const Macro1HighlightPanel = ({
           <X className="h-3.5 w-3.5" />
         </Button>
       </div>
-
-      <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
-        <div className="space-y-5">
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-foreground">{title}</p>
-            <p className="text-xs text-muted-foreground">{description}</p>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Termo</Label>
-            <Input
-              value={term}
-              onChange={(e) => onTermChange(e.target.value)}
-              placeholder="Digite o termo para destacar"
-              className="h-9 bg-white text-xs placeholder:text-xs md:text-xs"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cor do Highlight</Label>
-            <div className="flex flex-wrap gap-2">
-              {colorOptions.map((option) => {
-                const selected = selectedColorId === option.id;
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    title={option.label}
-                    aria-label={option.label}
-                    aria-pressed={selected}
-                    onClick={() => onSelectColor(option.id)}
-                    className={`h-7 w-7 rounded-md border transition-colors ${selected ? "border-foreground ring-2 ring-offset-1 ring-ring" : "border-border hover:border-foreground/60"}`}
-                    style={{ backgroundColor: option.swatch }}
-                  />
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="h-9 w-full rounded-lg border px-3 text-sm font-medium text-black shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ backgroundColor: selectedHighlightColor, borderColor: selectedHighlightColor }}
-              onClick={onRunHighlight}
-              disabled={!canRun}
-            >
-              {isRunning ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin text-black relative z-10" />
-                  <span className="relative z-10 text-blue-500">Aplicando</span>
-                </>
-              ) : (
-                <>
-                  <Highlighter className="mr-2 h-4 w-4 text-black relative z-10" />
-                  <span className="relative z-10 text-blue-500">Highlight</span>
-                </>
-              )}
-            </Button>
-
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={onRunClear}
-              disabled={!canRun}
-              className={`${primaryActionButtonClass} bg-gray-100`}
-            >
-              <Eraser className="mr-2 h-4 w-4 text-black relative z-10" />
-              <span className="relative z-10 text-blue-500">Limpar Marcação</span>
-            </Button>
-          </div>
-        </div>
-      </div>
+      {content}
     </div>
   );
 };

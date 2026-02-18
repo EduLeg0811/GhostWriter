@@ -10,12 +10,13 @@ import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 
 interface HtmlEditorProps {
   contentHtml: string;
+  documentVersion?: number;
   onControlApiReady?: (api: HtmlEditorControlApi | null) => void;
   onContentChange?: (payload: { html: string; text: string }) => void;
   onCloseEditor?: () => void;
 }
 
-const HtmlEditor = ({ contentHtml, onControlApiReady, onContentChange, onCloseEditor }: HtmlEditorProps) => {
+const HtmlEditor = ({ contentHtml, documentVersion = 0, onControlApiReady, onContentChange, onCloseEditor }: HtmlEditorProps) => {
   const controlApiRef = useRef<HtmlEditorControlApi | null>(null);
   const [documentFontSizePx, setDocumentFontSizePx] = useState(15);
   const [documentLineHeightRatio, setDocumentLineHeightRatio] = useState(1.6);
@@ -104,6 +105,12 @@ const HtmlEditor = ({ contentHtml, onControlApiReady, onContentChange, onCloseEd
     setDocumentFontSizePx(DEFAULT_DOCUMENT_FONT_SIZE_PX);
     setDocumentLineHeightRatio(DEFAULT_DOCUMENT_LINE_HEIGHT_RATIO);
   }, []);
+
+  useEffect(() => {
+    // Applies the same typography baseline used by the Reset button whenever a document is opened/reloaded.
+    setDocumentFontSizePx(DEFAULT_DOCUMENT_FONT_SIZE_PX);
+    setDocumentLineHeightRatio(DEFAULT_DOCUMENT_LINE_HEIGHT_RATIO);
+  }, [documentVersion]);
 
   if (!editor) {
     return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Abrindo editor...</div>;

@@ -37,7 +37,8 @@ interface InsertRefBookPanelProps {
   onRefBookPagesChange: (value: string) => void;
   onRunInsertRefBook: () => void;
   isRunningInsertRefBook: boolean;
-  onClose: () => void;
+  onClose?: () => void;
+  showPanelChrome?: boolean;
 }
 
 const InsertRefBookPanel = ({
@@ -50,7 +51,75 @@ const InsertRefBookPanel = ({
   onRunInsertRefBook,
   isRunningInsertRefBook,
   onClose,
+  showPanelChrome = true,
 }: InsertRefBookPanelProps) => {
+  const content = (
+    <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
+      <div className="space-y-5">
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-foreground">{title}</p>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Livro</Label>
+          <div className="space-y-2">
+            {REF_BOOK_OPTIONS.map((option) => (
+              <label key={option} className="flex cursor-pointer items-center gap-2 text-xs text-foreground">
+                <input
+                  type="radio"
+                  name="insert-ref-book"
+                  value={option}
+                  checked={selectedRefBook === option}
+                  onChange={() => onSelectRefBook(option)}
+                />
+                <span>{option}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Páginas (Opcional)</Label>
+          <p className="text-xs text-muted-foreground">Separe por vírgula ou ponto-e-vírgula.</p>
+          <Textarea
+            className="min-h-10 rounded-md border border-input bg-white px-3 py-1 text-xs leading-relaxed text-foreground"
+            rows={2}
+            value={refBookPages}
+            onChange={(e) => onRefBookPagesChange(e.target.value)}
+            placeholder="Ex.: 10, 12-14; 20"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            className={primaryActionButtonClass}
+            onClick={onRunInsertRefBook}
+            disabled={isRunningInsertRefBook}
+          >
+            {isRunningInsertRefBook ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin text-black relative z-10" />
+                <span className="relative z-10 text-blue-500">Executando</span>
+              </>
+            ) : (
+              <>
+                <Play className="mr-2 h-4 w-4 text-black relative z-10" />
+                <span className="relative z-10 text-blue-500">Bibliografia</span>
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!showPanelChrome) return content;
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border bg-[hsl(var(--panel-header))] px-4 py-3">
@@ -59,69 +128,7 @@ const InsertRefBookPanel = ({
           <X className="h-3.5 w-3.5" />
         </Button>
       </div>
-
-      <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
-        <div className="space-y-5">
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-foreground">{title}</p>
-            <p className="text-xs text-muted-foreground">{description}</p>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Livro</Label>
-            <div className="space-y-2">
-              {REF_BOOK_OPTIONS.map((option) => (
-                <label key={option} className="flex cursor-pointer items-center gap-2 text-xs text-foreground">
-                  <input
-                    type="radio"
-                    name="insert-ref-book"
-                    value={option}
-                    checked={selectedRefBook === option}
-                    onChange={() => onSelectRefBook(option)}
-                  />
-                  <span>{option}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Páginas (Opcional)</Label>
-            <p className="text-xs text-muted-foreground">Separe por vírgula ou ponto-e-vírgula.</p>
-            <Textarea
-              className="min-h-10 rounded-md border border-input bg-white px-3 py-1 text-xs leading-relaxed text-foreground"
-              rows={2}
-              value={refBookPages}
-              onChange={(e) => onRefBookPagesChange(e.target.value)}
-              placeholder="Ex.: 10, 12-14; 20"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              className={primaryActionButtonClass}
-              onClick={onRunInsertRefBook}
-              disabled={isRunningInsertRefBook}
-            >
-              {isRunningInsertRefBook ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin text-black relative z-10" />
-                  <span className="relative z-10 text-blue-500">Executando</span>
-                </>
-              ) : (
-                <>
-                  <Play className="mr-2 h-4 w-4 text-black relative z-10" />
-                  <span className="relative z-10 text-blue-500">Bibliografia</span>
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
+      {content}
     </div>
   );
 };

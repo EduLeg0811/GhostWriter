@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { BookOpen, FileText, Languages, ListOrdered, Loader2, PenLine, Repeat2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import LeftPanel from "@/components/LeftPanel";
 import RightPanel, { AIResponse } from "@/components/RightPanel";
@@ -12,6 +12,7 @@ import Macro2ManualNumberingPanel from "@/components/Macro2ManualNumberingPanel"
 import type { Macro2SpacingMode } from "@/components/Macro2ManualNumberingPanel";
 import AiActionParametersPanel from "@/components/AiActionParametersPanel";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { Button } from "@/components/ui/button";
 import { useTextStats } from "@/hooks/useTextStats";
 import {
   createBlankDocOnServer,
@@ -40,6 +41,7 @@ import {
   buildTranslatePrompt,
   buildChatPrompt,
 } from "@/lib/openai";
+import { sectionActionButtonClass } from "@/styles/buttonStyles";
 
 const OPENAI_VECTOR_STORES = (import.meta.env.VITE_OPENAI_VECTOR_STORES as string | undefined)?.trim() || "";
 const OPENAI_VECTOR_STORE_LO = (import.meta.env.VITE_OPENAI_VECTOR_STORE_LO as string | undefined)?.trim() || "";
@@ -48,18 +50,41 @@ const OPENAI_VECTOR_STORE_TRANSLATE_RAG = (import.meta.env.VITE_OPENAI_VECTOR_ST
 type MacroActionId = "macro1" | "macro2";
 type AppActionId = "app1" | "app2" | "app3";
 type AiActionId = "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate";
+type ParameterPanelSection = "actions" | "macros" | "apps";
 type ParameterPanelTarget =
-  | { section: "actions"; id: AiActionId }
-  | { section: "macros"; id: MacroActionId }
-  | { section: "apps"; id: AppActionId }
+  | { section: "actions"; id: AiActionId | null }
+  | { section: "macros"; id: MacroActionId | null }
+  | { section: "apps"; id: AppActionId | null }
   | null;
+
+const ACTION_PANEL_BUTTONS: AiActionId[] = ["define", "synonyms", "epigraph", "pensatas", "rewrite", "summarize", "translate"];
+const APP_PANEL_BUTTONS: AppActionId[] = ["app1", "app2", "app3"];
+const MACRO_PANEL_BUTTONS: MacroActionId[] = ["macro1", "macro2"];
+const ACTION_PANEL_ICONS: Record<AiActionId, typeof BookOpen> = {
+  define: BookOpen,
+  synonyms: Repeat2,
+  epigraph: Search,
+  pensatas: Search,
+  rewrite: PenLine,
+  summarize: FileText,
+  translate: Languages,
+};
+const APP_PANEL_ICONS: Record<AppActionId, typeof BookOpen> = {
+  app1: BookOpen,
+  app2: Repeat2,
+  app3: Search,
+};
+const MACRO_PANEL_ICONS: Record<MacroActionId, typeof BookOpen> = {
+  macro1: BookOpen,
+  macro2: ListOrdered,
+};
 
 const parameterAppMeta: Record<"app1", { title: string; description: string }> = {
   app1: { title: "Bibliografia de Livros", description: "Monta Bibliografia de livros de Waldo Vieira." },
 };
 const parameterMacroMeta: Record<MacroActionId, { title: string; description: string }> = {
   macro1: { title: "Highlight", description: "Destaca termos no documento (highlight em cores)." },
-  macro2: { title: "Numera lista", description: "Aplica numeração manual a lista de itens." },
+  macro2: { title: "Numerar lista", description: "Aplica numeração manual a lista de itens." },
 };
 const parameterAppsGenericMeta: Record<"app2" | "app3", { title: string; description: string }> = {
   app2: { title: "Bibliografia de Verbetes", description: "Monta Listagem ou Bibliografia de verbetes da Enciclopédia." },
@@ -77,10 +102,8 @@ const parameterActionMeta: Record<AiActionId, { title: string; description: stri
 const sidePanelClass = "bg-card";
 const PANEL_SIZES = {
   left: { default: 10, min: 7, max: 15 },
-  center: { default: 70, min: 35 },
-  parameter: { default: 9, min: 5, max: 25 },
-  editorWithParameter: { default: 55, min: 35 },
-  editorWithoutParameter: { default: 70, min: 35 },
+  parameter: { default: 10, min: 10, max: 25 },
+  editor: { min: 20 },
   right: { default: 20, min: 10, max: 40 },
 } as const;
 const MACRO1_HIGHLIGHT_COLORS = [
@@ -354,6 +377,10 @@ const Index = () => {
     return data.result;
   }, []);
 
+  const handleOpenParameterSection = useCallback((section: ParameterPanelSection) => {
+    setParameterPanelTarget({ section, id: null });
+  }, []);
+
   const handleActionMacros = useCallback(async (type: MacroActionId) => {
     setParameterPanelTarget({ section: "macros", id: type });
     if (type === "macro1") {
@@ -624,8 +651,7 @@ const Index = () => {
     }
   }, [actionText, openAiReady, translateLanguage]);
 
-  const handleOpenAiActionParameters = useCallback((type: "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate" | "highlight") => {
-    if (type === "highlight") return;
+  const handleOpenAiActionParameters = useCallback((type: AiActionId) => {
     setParameterPanelTarget({ section: "actions", id: type });
   }, []);
 
@@ -669,10 +695,23 @@ const Index = () => {
   const isHistoryProcessing = isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral;
   const hasEditorPanel = Boolean(currentFileId) || isOpeningDocument;
   const hasCenterPanel = hasEditorPanel || Boolean(parameterPanelTarget);
+  const centerDefaultWithEditor = 100 - PANEL_SIZES.left.default - PANEL_SIZES.right.default;
+  const centerMinWithEditor = PANEL_SIZES.parameter.min + PANEL_SIZES.editor.min;
+  const centerMaxWithEditor = 100 - PANEL_SIZES.left.min - PANEL_SIZES.right.min;
+  const parameterDefaultInCenter = hasEditorPanel
+    ? (PANEL_SIZES.parameter.default / centerDefaultWithEditor) * 100
+    : PANEL_SIZES.parameter.default;
+  const parameterMinInCenter = hasEditorPanel
+    ? (PANEL_SIZES.parameter.min / centerDefaultWithEditor) * 100
+    : PANEL_SIZES.parameter.min;
+  const parameterMaxInCenter = hasEditorPanel
+    ? (PANEL_SIZES.parameter.max / centerDefaultWithEditor) * 100
+    : PANEL_SIZES.parameter.max;
+  const layoutResetKey = hasEditorPanel ? "layout-with-editor" : "layout-without-editor";
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
-      <ResizablePanelGroup direction="horizontal">
+      <ResizablePanelGroup key={layoutResetKey} direction="horizontal">
         <ResizablePanel
           id="left-panel"
           order={1}
@@ -685,18 +724,9 @@ const Index = () => {
             stats={stats}
             onWordFileUpload={handleWordFileUpload}
             onCreateBlankDocument={handleCreateBlankDocument}
-            onAction={handleOpenAiActionParameters}
-            onActionMacros={handleActionMacros}
-            onActionApps={handleActionApps}
-            actionText={actionText}
-            onActionTextChange={setActionText}
-            onRetrieveSelectedText={handleRetrieveSelectedText}
-            onSelectAllContent={handleSelectAllContent}
-            onTriggerSave={handleTriggerSave}
+            onOpenParameterSection={handleOpenParameterSection}
             isLoading={isLoading}
-            hasVectorStoreLO={Boolean(OPENAI_VECTOR_STORE_LO)}
             hasDocumentOpen={Boolean(currentFileId)}
-            editorReady={Boolean(htmlEditorControlApi)}
             onRefreshStats={() => void handleRefreshStats()}
           />
         </ResizablePanel>
@@ -708,118 +738,192 @@ const Index = () => {
             <ResizablePanel
               id="center-panel"
               order={2}
-              defaultSize={hasEditorPanel ? PANEL_SIZES.center.default : PANEL_SIZES.parameter.default}
-              minSize={hasEditorPanel ? PANEL_SIZES.center.min : PANEL_SIZES.parameter.min}
-              maxSize={hasEditorPanel ? undefined : PANEL_SIZES.parameter.max}
+              defaultSize={
+                hasEditorPanel
+                  ? centerDefaultWithEditor
+                  : PANEL_SIZES.parameter.default
+              }
+              minSize={
+                hasEditorPanel
+                  ? centerMinWithEditor
+                  : PANEL_SIZES.parameter.min
+              }
+              maxSize={
+                hasEditorPanel
+                  ? centerMaxWithEditor
+                  : PANEL_SIZES.parameter.max
+              }
             >
               <ResizablePanelGroup direction="horizontal">
             {parameterPanelTarget && (
                 <ResizablePanel
                   id="parameter-panel"
                   order={1}
-                  defaultSize={PANEL_SIZES.parameter.default}
-                  minSize={PANEL_SIZES.parameter.min}
-                  maxSize={PANEL_SIZES.parameter.max}
+                  defaultSize={parameterDefaultInCenter}
+                  minSize={parameterMinInCenter}
+                  maxSize={parameterMaxInCenter}
                   className={`border-r border-border ${sidePanelClass}`}
                 >
-                  {parameterPanelTarget.section === "actions" ? (
-                    <AiActionParametersPanel
-                      title={parameterActionMeta[parameterPanelTarget.id].title}
-                      description={parameterActionMeta[parameterPanelTarget.id].description}
-                      actionText={actionText}
-                      onActionTextChange={setActionText}
-                      onRetrieveSelectedText={() => void handleRetrieveSelectedText()}
-                      onApply={() => void handleAction(parameterPanelTarget.id)}
-                      isLoading={isLoading}
-                      hasDocumentOpen={Boolean(currentFileId)}
-                      showLanguageSelect={parameterPanelTarget.id === "translate"}
-                      languageOptions={TRANSLATE_LANGUAGE_OPTIONS.map((option) => ({ ...option }))}
-                      selectedLanguage={translateLanguage}
-                      onSelectedLanguageChange={(value) => setTranslateLanguage(value as (typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"])}
-                      onClose={() => setParameterPanelTarget(null)}
-                    />
-                  ) : parameterPanelTarget.section === "macros" && parameterPanelTarget.id === "macro1" ? (
-                    <Macro1HighlightPanel
-                      title={parameterMacroMeta.macro1.title}
-                      description={parameterMacroMeta.macro1.description}
-                      term={macro1Term}
-                      onTermChange={setMacro1Term}
-                      colorOptions={MACRO1_HIGHLIGHT_COLORS.map((item) => ({ ...item }))}
-                      selectedColorId={macro1ColorId}
-                      onSelectColor={(value) => setMacro1ColorId(value as (typeof MACRO1_HIGHLIGHT_COLORS)[number]["id"])}
-                      onRunHighlight={() => void handleRunMacro1Highlight()}
-                      onRunClear={() => void handleClearMacro1Highlight()}
-                      isRunning={isLoading}
-                      onClose={() => setParameterPanelTarget(null)}
-                    />
-                  ) : parameterPanelTarget.section === "macros" && parameterPanelTarget.id === "macro2" ? (
-                    <Macro2ManualNumberingPanel
-                      title={parameterMacroMeta.macro2.title}
-                      description={parameterMacroMeta.macro2.description}
-                      spacingMode={macro2SpacingMode}
-                      onSpacingModeChange={setMacro2SpacingMode}
-                      isRunning={isLoading}
-                      onRun={() => void handleRunMacro2ManualNumbering()}
-                      onClose={() => setParameterPanelTarget(null)}
-                    />
-                  ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app1" ? (
-                    <InsertRefBookPanel
-                      title={parameterAppMeta.app1.title}
-                      description={parameterAppMeta.app1.description}
-                      selectedRefBook={selectedRefBook}
-                      refBookPages={refBookPages}
-                      onSelectRefBook={handleSelectRefBook}
-                      onRefBookPagesChange={setRefBookPages}
-                      onRunInsertRefBook={() => void handleRunInsertRefBook()}
-                      isRunningInsertRefBook={isRunningInsertRefBook}
-                      onClose={() => setParameterPanelTarget(null)}
-                    />
-                  ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app2" ? (
-                    <InsertRefVerbetePanel
-                      title={parameterAppsGenericMeta.app2.title}
-                      description={parameterAppsGenericMeta.app2.description}
-                      verbeteInput={verbeteInput}
-                      onVerbeteInputChange={setVerbeteInput}
-                      onRun={() => void handleRunInsertRefVerbete()}
-                      isRunning={isRunningInsertRefVerbete}
-                      onClose={() => setParameterPanelTarget(null)}
-                    />
-                  ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app3" ? (
-                    <BiblioGeralPanel
-                      title={parameterAppsGenericMeta.app3.title}
-                      description={parameterAppsGenericMeta.app3.description}
-                      author={biblioGeralAuthor}
-                      titleField={biblioGeralTitle}
-                      year={biblioGeralYear}
-                      extra={biblioGeralExtra}
-                      onAuthorChange={setBiblioGeralAuthor}
-                      onTitleFieldChange={setBiblioGeralTitle}
-                      onYearChange={setBiblioGeralYear}
-                      onExtraChange={setBiblioGeralExtra}
-                      onRun={() => void handleRunBiblioGeral()}
-                      isRunning={isRunningBiblioGeral}
-                      onClose={() => setParameterPanelTarget(null)}
-                    />
-                  ) : (
-                    <div className="flex h-full flex-col">
-                      <div className="flex items-center justify-between border-b border-border bg-[hsl(var(--panel-header))] px-4 py-3">
-                        <h2 className="text-sm font-semibold text-foreground">Parameters</h2>
-                        <button
-                          type="button"
-                          className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                          onClick={() => setParameterPanelTarget(null)}
-                          title="Fechar Parameters"
-                        >
-                          x
-                        </button>
-                      </div>
-                      <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
-                        {parameterPanelTarget.section === "macros"
-                          ? `${parameterMacroMeta[parameterPanelTarget.id].title}: ${parameterMacroMeta[parameterPanelTarget.id].description}`
-                          : `${parameterAppsGenericMeta[parameterPanelTarget.id as "app2" | "app3"]?.title || "App"}: ${parameterAppsGenericMeta[parameterPanelTarget.id as "app2" | "app3"]?.description || "Sem configuração disponível."}`}
+                  <div className="flex h-full flex-col">
+                    <div className="flex items-center justify-between border-b border-border bg-[hsl(var(--panel-header))] px-4 py-3">
+                      <h2 className="text-sm font-semibold text-foreground">Parameters</h2>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setParameterPanelTarget(null)}
+                        title="Fechar Parameters"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+
+                    <div className="border-b border-border p-3">
+                      <div className="grid grid-cols-1 gap-2">
+                        {parameterPanelTarget.section === "actions" && ACTION_PANEL_BUTTONS.map((id) => (
+                          (() => {
+                            const Icon = ACTION_PANEL_ICONS[id];
+                            return (
+                          <Button
+                            key={id}
+                            variant="ghost"
+                            className={sectionActionButtonClass}
+                            onClick={() => handleOpenAiActionParameters(id)}
+                            disabled={isLoading || (id === "pensatas" && !OPENAI_VECTOR_STORE_LO)}
+                          >
+                            <Icon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
+                            <span className="text-sm font-medium text-foreground">{parameterActionMeta[id].title}</span>
+                          </Button>
+                            );
+                          })()
+                        ))}
+
+                        {parameterPanelTarget.section === "apps" && APP_PANEL_BUTTONS.map((id) => (
+                          (() => {
+                            const Icon = APP_PANEL_ICONS[id];
+                            return (
+                          <Button
+                            key={id}
+                            variant="ghost"
+                            className={sectionActionButtonClass}
+                            onClick={() => handleActionApps(id)}
+                            disabled={isLoading}
+                          >
+                            <Icon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
+                            <span className="text-sm font-medium text-foreground">
+                              {id === "app1" ? parameterAppMeta.app1.title : parameterAppsGenericMeta[id].title}
+                            </span>
+                          </Button>
+                            );
+                          })()
+                        ))}
+
+                        {parameterPanelTarget.section === "macros" && MACRO_PANEL_BUTTONS.map((id) => (
+                          (() => {
+                            const Icon = MACRO_PANEL_ICONS[id];
+                            return (
+                          <Button
+                            key={id}
+                            variant="ghost"
+                            className={sectionActionButtonClass}
+                            onClick={() => void handleActionMacros(id)}
+                            disabled={isLoading || !currentFileId}
+                          >
+                            <Icon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
+                            <span className="text-sm font-medium text-foreground">{parameterMacroMeta[id].title}</span>
+                          </Button>
+                            );
+                          })()
+                        ))}
                       </div>
                     </div>
-                  )}
+
+                    <div className="min-h-0 flex-1">
+                      {parameterPanelTarget.section === "actions" && parameterPanelTarget.id ? (
+                        <AiActionParametersPanel
+                          title={parameterActionMeta[parameterPanelTarget.id].title}
+                          description={parameterActionMeta[parameterPanelTarget.id].description}
+                          actionText={actionText}
+                          onActionTextChange={setActionText}
+                          onRetrieveSelectedText={() => void handleRetrieveSelectedText()}
+                          onApply={() => void handleAction(parameterPanelTarget.id as AiActionId)}
+                          isLoading={isLoading}
+                          hasDocumentOpen={Boolean(currentFileId)}
+                          showLanguageSelect={parameterPanelTarget.id === "translate"}
+                          languageOptions={TRANSLATE_LANGUAGE_OPTIONS.map((option) => ({ ...option }))}
+                          selectedLanguage={translateLanguage}
+                          onSelectedLanguageChange={(value) => setTranslateLanguage(value as (typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"])}
+                          showPanelChrome={false}
+                        />
+                      ) : parameterPanelTarget.section === "macros" && parameterPanelTarget.id === "macro1" ? (
+                        <Macro1HighlightPanel
+                          title={parameterMacroMeta.macro1.title}
+                          description={parameterMacroMeta.macro1.description}
+                          term={macro1Term}
+                          onTermChange={setMacro1Term}
+                          colorOptions={MACRO1_HIGHLIGHT_COLORS.map((item) => ({ ...item }))}
+                          selectedColorId={macro1ColorId}
+                          onSelectColor={(value) => setMacro1ColorId(value as (typeof MACRO1_HIGHLIGHT_COLORS)[number]["id"])}
+                          onRunHighlight={() => void handleRunMacro1Highlight()}
+                          onRunClear={() => void handleClearMacro1Highlight()}
+                          isRunning={isLoading}
+                          showPanelChrome={false}
+                        />
+                      ) : parameterPanelTarget.section === "macros" && parameterPanelTarget.id === "macro2" ? (
+                        <Macro2ManualNumberingPanel
+                          title={parameterMacroMeta.macro2.title}
+                          description={parameterMacroMeta.macro2.description}
+                          spacingMode={macro2SpacingMode}
+                          onSpacingModeChange={setMacro2SpacingMode}
+                          isRunning={isLoading}
+                          onRun={() => void handleRunMacro2ManualNumbering()}
+                          showPanelChrome={false}
+                        />
+                      ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app1" ? (
+                        <InsertRefBookPanel
+                          title={parameterAppMeta.app1.title}
+                          description={parameterAppMeta.app1.description}
+                          selectedRefBook={selectedRefBook}
+                          refBookPages={refBookPages}
+                          onSelectRefBook={handleSelectRefBook}
+                          onRefBookPagesChange={setRefBookPages}
+                          onRunInsertRefBook={() => void handleRunInsertRefBook()}
+                          isRunningInsertRefBook={isRunningInsertRefBook}
+                          showPanelChrome={false}
+                        />
+                      ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app2" ? (
+                        <InsertRefVerbetePanel
+                          title={parameterAppsGenericMeta.app2.title}
+                          description={parameterAppsGenericMeta.app2.description}
+                          verbeteInput={verbeteInput}
+                          onVerbeteInputChange={setVerbeteInput}
+                          onRun={() => void handleRunInsertRefVerbete()}
+                          isRunning={isRunningInsertRefVerbete}
+                          showPanelChrome={false}
+                        />
+                      ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app3" ? (
+                        <BiblioGeralPanel
+                          title={parameterAppsGenericMeta.app3.title}
+                          description={parameterAppsGenericMeta.app3.description}
+                          author={biblioGeralAuthor}
+                          titleField={biblioGeralTitle}
+                          year={biblioGeralYear}
+                          extra={biblioGeralExtra}
+                          onAuthorChange={setBiblioGeralAuthor}
+                          onTitleFieldChange={setBiblioGeralTitle}
+                          onYearChange={setBiblioGeralYear}
+                          onExtraChange={setBiblioGeralExtra}
+                          onRun={() => void handleRunBiblioGeral()}
+                          isRunning={isRunningBiblioGeral}
+                          showPanelChrome={false}
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
+                          Selecione um botão acima para abrir os parâmetros.
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </ResizablePanel>
             )}
 
@@ -829,12 +933,12 @@ const Index = () => {
             <ResizablePanel
               id="editor-panel"
               order={parameterPanelTarget ? 2 : 1}
-              defaultSize={parameterPanelTarget ? PANEL_SIZES.editorWithParameter.default : PANEL_SIZES.editorWithoutParameter.default}
-              minSize={parameterPanelTarget ? PANEL_SIZES.editorWithParameter.min : PANEL_SIZES.editorWithoutParameter.min}
+              minSize={PANEL_SIZES.editor.min}
             >
               <main className="relative h-full min-w-0 bg-white">
                 <HtmlEditor
                   contentHtml={editorContentHtml}
+                  documentVersion={openedDocumentVersion}
                   onControlApiReady={handleEditorControlApiReady}
                   onContentChange={handleEditorContentChange}
                   onCloseEditor={() => setCurrentFileId("")}

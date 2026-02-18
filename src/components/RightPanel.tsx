@@ -90,7 +90,7 @@ const RightPanel = ({ responses, onClear, onSendMessage, isSending = false, chat
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border bg-[hsl(var(--panel-header))] px-4 py-3">
-        <h2 className="text-sm font-semibold text-foreground">Histórico IA ({responses.length})</h2>
+        <h2 className="text-sm font-semibold text-foreground">Histórico({responses.length})</h2>
         <div className="flex items-center gap-2">
           {isSending && (
             <div className="inline-flex h-6 items-center gap-1.5 rounded-full border border-green-200 bg-green-50/95 px-2.5 text-[11px] font-semibold leading-none text-green-800 ring-1 ring-green-100">

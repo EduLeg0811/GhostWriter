@@ -9,13 +9,8 @@ import {
   BookOpen,
   FileText,
   Hash,
-  Languages,
   Loader2,
-  PenLine,
   RefreshCw,
-  Repeat2,
-  Search,
-  Server,
   Sparkles,
   Type,
   Upload,
@@ -24,136 +19,46 @@ import {
 import { toast } from "sonner";
 import { primaryActionButtonClass, sectionActionButtonClass } from "@/styles/buttonStyles";
 
-
 interface LeftPanelProps {
   stats: TextStats;
   onWordFileUpload: (file: File) => Promise<UploadedFileMeta>;
   onCreateBlankDocument: () => Promise<void>;
-  onAction: (type: "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate" | "highlight") => void;
-  onActionMacros: (type: "macro1" | "macro2") => void;
-  onActionApps: (type: "app1" | "app2" | "app3") => void;
-  actionText: string;
-  onActionTextChange: (text: string) => void;
-  onRetrieveSelectedText: () => Promise<void>;
-  onSelectAllContent: () => Promise<void>;
-  onTriggerSave: () => Promise<void>;
+  onOpenParameterSection: (section: "actions" | "apps" | "macros") => void;
   isLoading: boolean;
-  hasVectorStoreLO: boolean;
   hasDocumentOpen: boolean;
-  editorReady: boolean;
   onRefreshStats?: () => void;
 }
 
-const actionItems = [
+const parameterSectionItems = [
   {
-    id: "define" as const,
+    id: "actions" as const,
     icon: BookOpen,
-    title: "Definir",
-    description: "Definologia conscienciológica",
+    title: "Ações IA",
+    description: "Definir, Sinonímia, Epígrafe e mais",
   },
   {
-    id: "synonyms" as const,
-    icon: Repeat2,
-    title: "Sinonímia",
-    description: "Sinonimologia (10 itens)",
-  },
-
-  {
-    id: "epigraph" as const,
-    icon: Search,
-    title: "Epígrafe",
-    description: "Sugerir epígrafe",
-  },
-
-  {
-    id: "pensatas" as const,
-    icon: Search,
-    title: "Pensatas LO",
-    description: "Pensatas afins (10 itens)",
-  },
-  {
-    id: "rewrite" as const,
-    icon: PenLine,
-    title: "Reescrever",
-    description: "Melhora clareza e fluidez",
-  },
-  {
-    id: "summarize" as const,
+    id: "apps" as const,
     icon: FileText,
-    title: "Resumir",
-    description: "Síntese concisa",
+    title: "Apps",
+    description: "Ferramentas de bibliografia",
   },
   {
-    id: "translate" as const,
-    icon: Languages,
-    title: "Traduzir",
-    description: "Traduzir para outro idioma",
+    id: "macros" as const,
+    icon: Hash,
+    title: "Macros Word",
+    description: "Ações de edição no documento",
   },
 ];
 
-
-
-const actionItemsMacros = [
-  {
-    id: "macro1" as const,
-    icon: BookOpen,
-    title: "Highlight",
-    description: "Destaca termos no documento",
-  },
-  {
-    id: "macro2" as const,
-    icon: Repeat2,
-    title: "Numera Lista",
-    description: "Aplica numeração manual a listas.",
-  },
-];
-
-
-const actionItemsApps = [
-  {
-    id: "app1" as const,
-    icon: BookOpen,
-    title: "Bibliografia Livros WV",
-    description: "MontaBibliografia de livros",
-  },
-  {
-    id: "app2" as const,
-    icon: Repeat2,
-    title: "Bibliografia Verbetes",
-    description: "Monta Bibliografia de verbetes",
-  },
-  {
-    id: "app3" as const,
-    icon: Search,
-    title: "Bibliografia Geral",
-    description: "Monta Bibliografia geral de autores",
-  },
-]; 
-
-
-
-
-type LeftPanelActionId =
-  | (typeof actionItems)[number]["id"]
-  | (typeof actionItemsMacros)[number]["id"]
-  | (typeof actionItemsApps)[number]["id"];
+type LeftPanelActionId = (typeof parameterSectionItems)[number]["id"];
 
 const LeftPanel = ({
   stats,
   onWordFileUpload,
   onCreateBlankDocument,
-  onAction,
-  onActionMacros,
-  onActionApps,
-  actionText,
-  onActionTextChange,
-  onRetrieveSelectedText,
-  onSelectAllContent,
-  onTriggerSave,
+  onOpenParameterSection,
   isLoading,
-  hasVectorStoreLO,
   hasDocumentOpen,
-  editorReady,
   onRefreshStats,
 }: LeftPanelProps) => {
   const [importing, setImporting] = useState(false);
@@ -203,12 +108,11 @@ const LeftPanel = ({
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-border bg-[hsl(var(--panel-header))] px-4 py-4">
-        <h1 className="text-sm font-semibold text-foreground">Parapreceptor ● Ghost Writer Editor</h1>
+        <h1 className="text-sm font-semibold text-foreground">Parapreceptor • Ghost Writer Editor</h1>
       </div>
 
       <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
         <div className="space-y-5">
-          
           <div className="space-y-2">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Documento</Label>
             <Button
@@ -290,11 +194,11 @@ const LeftPanel = ({
           <Separator />
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ações IA</Label>
-            {actionItems.map((item) => {
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Parameters</Label>
+            {parameterSectionItems.map((item) => {
               const Icon = item.icon;
               const busy = isLoading && activeActionId === item.id;
-              const disabled = actionDisabled || (item.id === "pensatas" && !hasVectorStoreLO);
+              const disabled = actionDisabled || (item.id === "macros" && !hasDocumentOpen);
               return (
                 <Button
                   key={item.id}
@@ -302,7 +206,7 @@ const LeftPanel = ({
                   className={sectionActionButtonClass}
                   onClick={() => {
                     setActiveActionId(item.id);
-                    onAction(item.id);
+                    onOpenParameterSection(item.id);
                   }}
                   disabled={disabled}
                 >
@@ -319,83 +223,6 @@ const LeftPanel = ({
               );
             })}
           </div>
-
-
-          
-          <Separator />
-
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Apps</Label>
-            {actionItemsApps.map((item) => {
-              const Icon = item.icon;
-              const busy = isLoading && activeActionId === item.id;
-              const disabled = isLoading;
-              return (
-                <Button
-                  key={item.id}
-                  variant="ghost"
-                  className={sectionActionButtonClass}
-                  onClick={() => {
-                    setActiveActionId(item.id);
-                    onActionApps(item.id);
-                  }}
-                  disabled={disabled}
-                >
-                  {busy ? (
-                    <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
-                  ) : (
-                    <Icon className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                  )}
-                  <span className="text-left">
-                    <span className="block text-sm font-medium text-foreground">{item.title}</span>
-                    <span className="block text-xs text-muted-foreground">{item.description}</span>
-                  </span>
-                </Button>
-              );
-            })}
-          </div>
-
-
-          <Separator />
-
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Macros Word</Label>
-            {actionItemsMacros.map((item) => {
-              const Icon = item.icon;
-              const busy = isLoading && activeActionId === item.id;
-              const disabled = isLoading || !hasDocumentOpen;
-              return (
-                <Button
-                  key={item.id}
-                  variant="ghost"
-                  className={sectionActionButtonClass}
-                  onClick={() => {
-                    setActiveActionId(item.id);
-                    onActionMacros(item.id);
-                  }}
-                  disabled={disabled}
-                >
-                  {busy ? (
-                    <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
-                  ) : (
-                    <Icon className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                  )}
-                  <span className="text-left">
-                    <span className="block text-sm font-medium text-foreground">{item.title}</span>
-                    <span className="block text-xs text-muted-foreground">{item.description}</span>
-                  </span>
-                </Button>
-              );
-            })}
-          </div>
-
-
-
-
-
-
-
-
         </div>
       </div>
     </div>
@@ -403,5 +230,3 @@ const LeftPanel = ({
 };
 
 export default LeftPanel;
-
-
