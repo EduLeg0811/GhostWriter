@@ -4,7 +4,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import { Color, FontFamily, FontSize, LineHeight, TextStyle } from "@tiptap/extension-text-style";
 import StarterKit from "@tiptap/starter-kit";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { Bold, Highlighter, Italic, List, ListOrdered, Undo2, X } from "lucide-react";
+import { Bold, Download, Highlighter, Italic, List, ListOrdered, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 
@@ -14,9 +14,19 @@ interface HtmlEditorProps {
   onControlApiReady?: (api: HtmlEditorControlApi | null) => void;
   onContentChange?: (payload: { html: string; text: string }) => void;
   onCloseEditor?: () => void;
+  onExportDocx?: () => void;
+  isExportingDocx?: boolean;
 }
 
-const HtmlEditor = ({ contentHtml, documentVersion = 0, onControlApiReady, onContentChange, onCloseEditor }: HtmlEditorProps) => {
+const HtmlEditor = ({
+  contentHtml,
+  documentVersion = 0,
+  onControlApiReady,
+  onContentChange,
+  onCloseEditor,
+  onExportDocx,
+  isExportingDocx = false,
+}: HtmlEditorProps) => {
   const controlApiRef = useRef<HtmlEditorControlApi | null>(null);
   const [documentFontSizePx, setDocumentFontSizePx] = useState(15);
   const [documentLineHeightRatio, setDocumentLineHeightRatio] = useState(1.6);
@@ -165,6 +175,17 @@ const HtmlEditor = ({ contentHtml, documentVersion = 0, onControlApiReady, onCon
         </Button>
         <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => editor.chain().focus().undo().run()}>
           <Undo2 className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8"
+          onClick={onExportDocx}
+          disabled={isExportingDocx}
+          title="Exportar DOCX"
+        >
+          <Download className="h-4 w-4" />
         </Button>
         <Button
           type="button"

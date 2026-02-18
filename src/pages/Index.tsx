@@ -132,6 +132,7 @@ const Index = () => {
   const [actionText, setActionText] = useState("");
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [documentText, setDocumentText] = useState("");
+  const [currentFileName, setCurrentFileName] = useState("");
   const [documentPageCount, setDocumentPageCount] = useState<number | null>(null);
   const [documentParagraphCount, setDocumentParagraphCount] = useState<number | null>(null);
   const [documentWordCount, setDocumentWordCount] = useState<number | null>(null);
@@ -155,6 +156,7 @@ const Index = () => {
   const [biblioGeralYear, setBiblioGeralYear] = useState("");
   const [biblioGeralExtra, setBiblioGeralExtra] = useState("");
   const [isRunningBiblioGeral, setIsRunningBiblioGeral] = useState(false);
+  const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [translateLanguage, setTranslateLanguage] = useState<(typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"]>("Ingles");
   const [macro1Term, setMacro1Term] = useState("");
   const [macro1ColorId, setMacro1ColorId] = useState<(typeof MACRO1_HIGHLIGHT_COLORS)[number]["id"]>("yellow");
@@ -286,6 +288,7 @@ const Index = () => {
 
       setActionText("");
       setCurrentFileId(uploaded.id);
+      setCurrentFileName(uploaded.originalName || uploaded.storedName || "documento.docx");
       return uploaded;
     } finally {
       setIsOpeningDocument(false);
@@ -298,6 +301,7 @@ const Index = () => {
       const created = await createBlankDocOnServer("novo-documento.docx");
       setActionText("");
       setCurrentFileId(created.id);
+      setCurrentFileName(created.originalName || created.storedName || "novo-documento.docx");
     } finally {
       setIsOpeningDocument(false);
     }
@@ -692,6 +696,53 @@ const Index = () => {
     };
   }, []);
 
+  const handleExportDocx = useCallback(async () => {
+    if (!currentFileId) {
+      toast.error("Nenhum documento aberto para exportar.");
+      return;
+    }
+
+    setIsExportingDocx(true);
+    try {
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      let latestText = documentText;
+      let latestHtml = editorContentHtml;
+      const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
+      if (editorApi) {
+        latestText = await editorApi.getDocumentText();
+        latestHtml = await editorApi.getDocumentHtml();
+      }
+      await saveFileText(currentFileId, { text: latestText, html: latestHtml });
+      const { Document, Packer, Paragraph, TextRun } = await import("docx");
+      const paragraphs = (latestText || "").replace(/\r\n/g, "\n").split("\n");
+      const children = (paragraphs.length > 0 ? paragraphs : [""]).map((line) =>
+        new Paragraph({ children: [new TextRun(line)] }),
+      );
+      const doc = new Document({
+        sections: [{ children }],
+      });
+      const blob = await Packer.toBlob(doc);
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const baseName = (currentFileName || "documento").trim();
+      const fileName = baseName.toLowerCase().endsWith(".docx") ? baseName : `${baseName}.docx`;
+      link.href = downloadUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(downloadUrl);
+      toast.success("Documento DOCX exportado.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Falha ao exportar DOCX.");
+    } finally {
+      setIsExportingDocx(false);
+    }
+  }, [currentFileId, currentFileName, documentText, editorContentHtml, htmlEditorControlApi]);
+
   const isHistoryProcessing = isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral;
   const hasEditorPanel = Boolean(currentFileId) || isOpeningDocument;
   const hasCenterPanel = hasEditorPanel || Boolean(parameterPanelTarget);
@@ -919,7 +970,7 @@ const Index = () => {
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
-                          Selecione um botão acima para abrir os parâmetros.
+                        
                         </div>
                       )}
                     </div>
@@ -941,7 +992,12 @@ const Index = () => {
                   documentVersion={openedDocumentVersion}
                   onControlApiReady={handleEditorControlApiReady}
                   onContentChange={handleEditorContentChange}
-                  onCloseEditor={() => setCurrentFileId("")}
+                  onExportDocx={() => void handleExportDocx()}
+                  isExportingDocx={isExportingDocx}
+                  onCloseEditor={() => {
+                    setCurrentFileId("");
+                    setCurrentFileName("");
+                  }}
                 />
                 {isOpeningDocument && (
                   <div className="absolute inset-0 z-10 flex items-center justify-center bg-white">

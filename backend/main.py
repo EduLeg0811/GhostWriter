@@ -217,6 +217,11 @@ def decode_xml_text(text: str) -> str:
         .replace("&quot;", '"').replace("&apos;", "'")
 
 
+def encode_xml_text(text: str) -> str:
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")\
+        .replace('"', "&quot;").replace("'", "&apos;")
+
+
 def ensure_run_highlight(run_xml: str, color: str = "yellow") -> str:
     highlight_tag = f'<w:highlight w:val="{color}"/>'
     if re.search(r"<w:highlight\b[^>]*/>", run_xml):
@@ -606,6 +611,44 @@ def create_blank_docx_bytes() -> bytes:
     return buffer.getvalue()
 
 
+def create_docx_bytes_from_text(raw_text: str) -> bytes:
+    text = (raw_text or "").replace("\r\n", "\n")
+    lines = text.split("\n") if text else [""]
+    paragraph_xml_parts: list[str] = []
+    for line in lines:
+        if line == "":
+            paragraph_xml_parts.append("<w:p/>")
+            continue
+        encoded_line = encode_xml_text(line)
+        paragraph_xml_parts.append(f"<w:p><w:r><w:t xml:space=\"preserve\">{encoded_line}</w:t></w:r></w:p>")
+
+    paragraphs_xml = "\n    ".join(paragraph_xml_parts)
+    document = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    {paragraphs_xml}
+    <w:sectPr>
+      <w:pgSz w:w="11906" w:h="16838"/>
+      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>
+      <w:cols w:space="708"/>
+      <w:docGrid w:linePitch="360"/>
+    </w:sectPr>
+  </w:body>
+</w:document>"""
+
+    docx_bytes = create_blank_docx_bytes()
+    files: dict[str, bytes] = {}
+    with zipfile.ZipFile(BytesIO(docx_bytes), "r") as zin:
+        files = {name: zin.read(name) for name in zin.namelist()}
+    files["word/document.xml"] = document.encode("utf-8")
+
+    output = BytesIO()
+    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+        for name, content in files.items():
+            zout.writestr(name, content)
+    return output.getvalue()
+
+
 def extract_text_from_docx(path: Path) -> str:
     import zipfile
 
@@ -781,6 +824,11 @@ def api_file_content(file_id: str) -> Response:
     if not full_path.exists():
         raise HTTPException(status_code=404, detail="Arquivo nao encontrado.")
     headers = {"Content-Disposition": f"inline; filename=\"{quote(meta.get('originalName') or '')}\""}
+    ext = (meta.get("ext") or "").lower()
+    saved_text = str(meta.get("editorText") or "")
+    if ext == "docx" and saved_text:
+        generated_docx = create_docx_bytes_from_text(saved_text)
+        return Response(content=generated_docx, media_type=meta.get("mimeType") or "application/octet-stream", headers=headers)
     return Response(content=full_path.read_bytes(), media_type=meta.get("mimeType") or "application/octet-stream", headers=headers)
 
 

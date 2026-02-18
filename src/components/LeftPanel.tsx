@@ -9,6 +9,7 @@ import {
   BookOpen,
   FileText,
   Hash,
+  ExternalLink,
   Loader2,
   RefreshCw,
   Sparkles,
@@ -34,18 +35,18 @@ const parameterSectionItems = [
     id: "actions" as const,
     icon: BookOpen,
     title: "Ações IA",
-    description: "Definir, Sinonímia, Epígrafe e mais",
+    description: "Definir, Resumir, Traduzir e mais",
   },
   {
     id: "apps" as const,
     icon: FileText,
-    title: "Apps",
+    title: "Bibliografia",
     description: "Ferramentas de bibliografia",
   },
   {
     id: "macros" as const,
     icon: Hash,
-    title: "Macros Word",
+    title: "Edição do texto",
     description: "Ações de edição no documento",
   },
 ];
@@ -194,7 +195,7 @@ const LeftPanel = ({
           <Separator />
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Parameters</Label>
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Aplicativos</Label>
             {parameterSectionItems.map((item) => {
               const Icon = item.icon;
               const busy = isLoading && activeActionId === item.id;
@@ -224,6 +225,27 @@ const LeftPanel = ({
             })}
           </div>
         </div>
+      </div>
+
+      <div className="border-t border-border bg-[hsl(var(--panel-header))] p-3">
+        <a
+          href="https://cons-ia.org/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group block rounded-xl border border-white bg-gradient-to-r from-white via-cyan-400 to-blue-400 px-4 py-1 text-white shadow-sm transition hover:brightness-110"
+          title="Abrir Cons-IA em nova aba"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <img src="/cons-ia.png" alt="Cons-IA" className="h-16 w-16 rounded-md" />
+              <div className="flex flex-col">
+                <span className="text-normal font-semibold text-yellow-200 shadow-lg tracking-wide">Cons-IA</span>
+                <p className="text-[11px] leading-tight shadow-lg text-sky-50">Toolbox de IA da Conscienciologia</p>
+              </div>
+            </div>
+            <ExternalLink className="h-4 w-4 shrink-0 opacity-90 transition group-hover:translate-x-0.5" />
+          </div>
+        </a>
       </div>
     </div>
   );

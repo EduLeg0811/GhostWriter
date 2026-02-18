@@ -162,6 +162,14 @@ export class HtmlEditorControlApi {
     return documentStatsFromText(this.editor.getText({ blockSeparator: "\n" }));
   }
 
+  async getDocumentText(): Promise<string> {
+    return this.editor.getText({ blockSeparator: "\n" });
+  }
+
+  async getDocumentHtml(): Promise<string> {
+    return this.editor.getHTML();
+  }
+
   async replaceSelectionRich(text: string, html: string): Promise<void> {
     const htmlContent = (html || "").trim();
     const textContent = (text || "").trim();
