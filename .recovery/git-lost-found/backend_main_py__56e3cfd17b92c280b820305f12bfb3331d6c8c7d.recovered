@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import os
@@ -27,13 +27,6 @@ DATA_DIR = ROOT_DIR / "server-data"
 UPLOADS_DIR = DATA_DIR / "uploads"
 META_DIR = DATA_DIR / "meta"
 PYTHON_DIR = Path(__file__).resolve().parent / "python"
-
-
-def resolve_biblio_file(filename: str) -> Path:
-    preferred = ROOT_DIR / "backend" / "Files" / "Biblio" / filename
-    if preferred.exists():
-        return preferred
-    return ROOT_DIR / "backend" / "Files" / filename
 
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 META_DIR.mkdir(parents=True, exist_ok=True)
@@ -123,12 +116,6 @@ class BiblioGeralRequest(BaseModel):
     year: str = ""
     extra: str = ""
     topK: int = 10
-
-
-class LexicalSearchRequest(BaseModel):
-    book: str
-    term: str
-    limit: int = 50
 
 
 class HighlightRequest(BaseModel):
@@ -748,7 +735,7 @@ def api_biblio_geral(payload: BiblioGeralRequest) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail="Informe ao menos um campo: author, title, year ou extra.")
 
     top_k = max(1, min(int(payload.topK or 10), 20))
-    excel_path = resolve_biblio_file("Refs.xlsx")
+    excel_path = ROOT_DIR / "backend" / "Files" / "Refs.xlsx"
     if not excel_path.exists():
         raise HTTPException(status_code=500, detail="Base bibliografica Refs.xlsx nao encontrada.")
 
@@ -781,50 +768,6 @@ def api_random_pensata() -> dict[str, Any]:
     if not result.get("ok"):
         raise HTTPException(status_code=500, detail=result.get("error") or "Falha ao executar Pensata do Dia.")
     return result
-
-
-@app.get("/api/apps/lexical/books")
-def api_lexical_books() -> dict[str, Any]:
-    try:
-        from backend.functions.lexical_search_service import list_lexical_books
-    except Exception:
-        from functions.lexical_search_service import list_lexical_books
-    return {"ok": True, "result": {"books": list_lexical_books()}}
-
-
-@app.post("/api/apps/lexical/search")
-def api_lexical_search(payload: LexicalSearchRequest) -> dict[str, Any]:
-    book = (payload.book or "").strip()
-    term = (payload.term or "").strip()
-    if not book:
-        raise HTTPException(status_code=400, detail="Parametro 'book' e obrigatorio.")
-    if not term:
-        raise HTTPException(status_code=400, detail="Parametro 'term' e obrigatorio.")
-    limit = max(1, min(int(payload.limit or 50), 200))
-
-    try:
-        from backend.functions.lexical_search_service import search_lexical_book
-    except Exception:
-        from functions.lexical_search_service import search_lexical_book
-
-    try:
-        matches = search_lexical_book(book=book, term=term, limit=limit)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Falha ao executar busca lexical: {exc}")
-
-    return {
-        "ok": True,
-        "result": {
-            "book": book,
-            "term": term,
-            "total": len(matches),
-            "matches": matches,
-        },
-    }
 
 
 @app.post("/api/files/upload")

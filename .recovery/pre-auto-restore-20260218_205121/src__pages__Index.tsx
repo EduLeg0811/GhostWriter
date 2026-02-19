@@ -7,7 +7,6 @@ import HtmlEditor from "@/components/HtmlEditor";
 import InsertRefBookPanel from "@/components/InsertRefBookPanel";
 import InsertRefVerbetePanel from "@/components/InsertRefVerbetePanel";
 import BiblioGeralPanel from "@/components/BiblioGeralPanel";
-import BookSearchPanel from "@/components/BookSearchPanel";
 import Macro1HighlightPanel from "@/components/Macro1HighlightPanel";
 import Macro2ManualNumberingPanel from "@/components/Macro2ManualNumberingPanel";
 import type { Macro2SpacingMode } from "@/components/Macro2ManualNumberingPanel";
@@ -23,10 +22,7 @@ import {
   healthCheck,
   insertRefBookMacro,
   insertRefVerbeteApp,
-  listLexicalBooksApp,
-  randomPensataApp,
   saveFileText,
-  searchLexicalBookApp,
   UploadedFileMeta,
   uploadFileToServer,
 } from "@/lib/backend-api";
@@ -52,7 +48,7 @@ const OPENAI_VECTOR_STORE_LO = (import.meta.env.VITE_OPENAI_VECTOR_STORE_LO as s
 const OPENAI_VECTOR_STORE_TRANSLATE_RAG = (import.meta.env.VITE_OPENAI_VECTOR_STORE_TRANSLATE_RAG as string | undefined)?.trim() || "";
 
 type MacroActionId = "macro1" | "macro2";
-type AppActionId = "app1" | "app2" | "app3" | "app4";
+type AppActionId = "app1" | "app2" | "app3";
 type AiActionId = "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate";
 type ParameterPanelSection = "actions" | "macros" | "apps";
 type ParameterPanelTarget =
@@ -77,37 +73,36 @@ const APP_PANEL_ICONS: Record<AppActionId, typeof BookOpen> = {
   app1: BookOpen,
   app2: Repeat2,
   app3: Search,
-  app4: Search,
 };
 const MACRO_PANEL_ICONS: Record<MacroActionId, typeof BookOpen> = {
   macro1: BookOpen,
   macro2: ListOrdered,
 };
 
-const parameterAppMeta: Record<AppActionId, { title: string; description: string }> = {
+const parameterAppMeta: Record<"app1", { title: string; description: string }> = {
   app1: { title: "Bibliografia de Livros", description: "Monta Bibliografia de livros de Waldo Vieira." },
-  app2: { title: "Bibliografia de Verbetes", description: "Monta Listagem ou Bibliografia de verbetes." },
-  app3: { title: "Bibliografia Geral", description: "Busca correspond\u00eancias bibliogr\u00e1ficas." },
-  app4: { title: "Pesquisa em Livros", description: "Busca palavras em livros." },
 };
 const parameterMacroMeta: Record<MacroActionId, { title: string; description: string }> = {
   macro1: { title: "Highlight", description: "Destaca termos no documento (highlight em cores)." },
-  macro2: { title: "Numerar lista", description: "Aplica numera\u00e7\u00e3o manual \u00e0 lista de itens." },
+  macro2: { title: "Numerar lista", description: "Aplica numeração manual a lista de itens." },
 };
-const LEXICAL_BOOK_FALLBACK = ["200TEAT", "700EXP", "CCG", "DAC", "DUPLA", "HSP", "HSR", "LO", "PROEXIS", "PROJ", "QUEST", "TEMAS", "TNP"] as const;
+const parameterAppsGenericMeta: Record<"app2" | "app3", { title: string; description: string }> = {
+  app2: { title: "Bibliografia de Verbetes", description: "Monta Listagem ou Bibliografia de verbetes da Enciclopédia." },
+  app3: { title: "Bibliografia Geral", description: "Busca correspondências bibliográficas." },
+};
 const parameterActionMeta: Record<AiActionId, { title: string; description: string }> = {
-  define: { title: "Definir", description: "Definologia conscienciol\u00f3gica." },
-  synonyms: { title: "Sinon\u00edmia", description: "Sinonimologia." },
-  epigraph: { title: "Ep\u00edgrafe", description: "Sugere ep\u00edgrafe." },
+  define: { title: "Definir", description: "Definologia conscienciológica." },
+  synonyms: { title: "Sinonímia", description: "Sinonimologia." },
+  epigraph: { title: "Epígrafe", description: "Sugere epígrafe." },
   rewrite: { title: "Reescrever", description: "Melhora clareza e fluidez." },
-  summarize: { title: "Resumir", description: "S\u00edntese concisa." },
+  summarize: { title: "Resumir", description: "Síntese concisa." },
   pensatas: { title: "Pensatas LO", description: "Pensatas afins." },
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
 };
 const sidePanelClass = "bg-card";
 const PANEL_SIZES = {
-  left: { default: 10, min: 8, max: 15 },
-  parameter: { default: 15, min: 10, max: 25 },
+  left: { default: 10, min: 7, max: 15 },
+  parameter: { default: 10, min: 10, max: 25 },
   editor: { min: 20 },
   right: { default: 20, min: 10, max: 40 },
 } as const;
@@ -131,11 +126,6 @@ const TRANSLATE_LANGUAGE_OPTIONS = [
   { value: "Arabe", label: "Arabe" },
   { value: "Russo", label: "Russo" },
 ] as const;
-
-// Valor padrao para o campo "Maximo de resultados" da Pesquisa em Livros.
-// Ajuste aqui para alterar facilmente o default no frontend.
-const DEFAULT_BOOK_SEARCH_MAX_RESULTS = 10;
-
 const Index = () => {
   const [responses, setResponses] = useState<AIResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -166,12 +156,6 @@ const Index = () => {
   const [biblioGeralYear, setBiblioGeralYear] = useState("");
   const [biblioGeralExtra, setBiblioGeralExtra] = useState("");
   const [isRunningBiblioGeral, setIsRunningBiblioGeral] = useState(false);
-  const [lexicalBooks, setLexicalBooks] = useState<string[]>([]);
-  const [selectedLexicalBook, setSelectedLexicalBook] = useState<string>(LEXICAL_BOOK_FALLBACK[0]);
-  const [lexicalTerm, setLexicalTerm] = useState("");
-  const [lexicalMaxResults, setLexicalMaxResults] = useState(DEFAULT_BOOK_SEARCH_MAX_RESULTS);
-  const [isRunningLexicalSearch, setIsRunningLexicalSearch] = useState(false);
-  const [isBookSearchEntryMode, setIsBookSearchEntryMode] = useState(false);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [translateLanguage, setTranslateLanguage] = useState<(typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"]>("Ingles");
   const [macro1Term, setMacro1Term] = useState("");
@@ -398,7 +382,6 @@ const Index = () => {
   }, []);
 
   const handleOpenParameterSection = useCallback((section: ParameterPanelSection) => {
-    setIsBookSearchEntryMode(false);
     setParameterPanelTarget({ section, id: null });
   }, []);
 
@@ -457,11 +440,11 @@ const Index = () => {
     try {
       const result = await editorApi.runMacro1HighlightDocument(input, macro1ColorId);
       if (result.matches <= 0) {
-        toast.info("Highlight executado. Nenhuma ocorr\u00eancia encontrada.");
+        toast.info("Highlight executado. Nenhuma ocorrência encontrada.");
         return;
       }
       toast.success(
-        `Highlight executado: ${result.matches} ocorr\u00eancia(s) encontradas e ${result.highlighted} destacada(s).`,
+        `Highlight executado: ${result.matches} ocorrência(s) encontradas e ${result.highlighted} destacada(s).`,
       );
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Falha ao executar Highlight.");
@@ -473,7 +456,7 @@ const Index = () => {
   const handleClearMacro1Highlight = useCallback(async () => {
     const editorApi = await getEditorApi();
     if (!editorApi) {
-      toast.error("Abra o editor antes de limpar marca\u00e7\u00e3o.");
+      toast.error("Abra o editor antes de limpar marcação.");
       return;
     }
 
@@ -487,12 +470,12 @@ const Index = () => {
     try {
       const result = await editorApi.clearMacro1HighlightDocument(input);
       if (result.matches <= 0 || result.cleared <= 0) {
-        toast.info("Nenhuma marca\u00e7\u00e3o encontrada para limpar.");
+        toast.info("Nenhuma marcação encontrada para limpar.");
         return;
       }
-      toast.success(`Marca\u00e7\u00e3o limpa em ${result.cleared} ocorr\u00eancia(s).`);
+      toast.success(`Marcação limpa em ${result.cleared} ocorrência(s).`);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Falha ao limpar marca\u00e7\u00e3o.");
+      toast.error(err instanceof Error ? err.message : "Falha ao limpar marcação.");
     } finally {
       setIsLoading(false);
     }
@@ -584,22 +567,7 @@ const Index = () => {
     }
   }, [biblioGeralAuthor, biblioGeralExtra, biblioGeralTitle, biblioGeralYear]);
 
-  const ensureLexicalBooksLoaded = useCallback(async () => {
-    if (lexicalBooks.length > 0) return lexicalBooks;
-    try {
-      const data = await listLexicalBooksApp();
-      const books = data.result.books?.length ? data.result.books : [...LEXICAL_BOOK_FALLBACK];
-      setLexicalBooks(books);
-      if (!books.includes(selectedLexicalBook)) setSelectedLexicalBook(books[0] || LEXICAL_BOOK_FALLBACK[0]);
-      return books;
-    } catch (_err) {
-      setLexicalBooks([...LEXICAL_BOOK_FALLBACK]);
-      return [...LEXICAL_BOOK_FALLBACK];
-    }
-  }, [lexicalBooks, selectedLexicalBook]);
-
   const handleActionApps = useCallback((type: AppActionId) => {
-    setIsBookSearchEntryMode(false);
     setParameterPanelTarget({ section: "apps", id: type });
     if (type === "app1") {
       setRefBookPages("");
@@ -607,81 +575,7 @@ const Index = () => {
     if (type === "app3") {
       if (!biblioGeralTitle.trim() && actionText.trim()) setBiblioGeralTitle(actionText.trim());
     }
-    if (type === "app4") {
-      void ensureLexicalBooksLoaded();
-    }
-  }, [actionText, biblioGeralTitle, ensureLexicalBooksLoaded]);
-
-  const handleOpenBookSearchFromLeft = useCallback(() => {
-    setIsBookSearchEntryMode(true);
-    setParameterPanelTarget({ section: "apps", id: null });
-    void ensureLexicalBooksLoaded();
-  }, [ensureLexicalBooksLoaded]);
-
-  const handleRunLexicalSearch = useCallback(async () => {
-    const book = selectedLexicalBook.trim();
-    const term = lexicalTerm.trim();
-    const maxResults = Math.max(1, Math.min(200, lexicalMaxResults || 1));
-    if (!book) {
-      toast.error("Selecione um livro para a busca.");
-      return;
-    }
-    if (!term) {
-      toast.error("Informe um termo para busca.");
-      return;
-    }
-
-    setIsRunningLexicalSearch(true);
-    try {
-      const data = await searchLexicalBookApp({ book, term, limit: maxResults });
-      const totalFound = Number(data.result.total || 0);
-      const matches = (data.result.matches || []).slice(0, maxResults);
-      if (matches.length <= 0) {
-        toast.info("Nenhuma ocorrencia encontrada.");
-        return;
-      }
-      const markdown = matches
-        .map((item, idx) => {
-          const title = (item.title || "").trim();
-          const text = (item.text || "").trim();
-          const body = text || Object.values(item.data || {}).filter(Boolean).join(" | ");
-          const titlePrefix = title ? `**${title}.** ` : "";
-          const numberTag = item.number ? `n. ${item.number}` : `linha ${item.row}`;
-          return `**${idx + 1}.** (${numberTag}) ${titlePrefix}${body}`;
-        })
-        .join("\n\n");
-      addResponse(
-        "app_book_search",
-        `Livro: ${book} | Termo: ${term} | Total: ${totalFound} | Max: ${maxResults}`,
-        markdown,
-      );
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Falha ao executar Book Search.";
-      toast.error(msg);
-    } finally {
-      setIsRunningLexicalSearch(false);
-    }
-  }, [lexicalMaxResults, lexicalTerm, selectedLexicalBook]);
-
-  const handleRunRandomPensata = useCallback(async () => {
-    if (isLoading) return;
-    setIsLoading(true);
-    try {
-      const data = await randomPensataApp();
-      const result = data.result;
-      const source = (result.source || "LO").trim();
-      const number = Number(result.paragraph_number || 0);
-      const total = Number(result.total_paragraphs || 0);
-      const paragraph = (result.paragraph || "").trim();
-      const header = `Livro: ${source} | Paragrafo: ${number}${total > 0 ? `/${total}` : ""}`;
-      addResponse("app_random_pensata", header, paragraph || "Paragrafo nao encontrado.");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Falha ao executar Pensata do Dia.";
-      toast.error(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isLoading]);
+  }, [actionText, biblioGeralTitle]);
 
   const handleAction = useCallback(async (type: AiActionId) => {
     const text = actionText.trim();
@@ -706,7 +600,7 @@ const Index = () => {
       try {
         const chunks = await searchVectorStore(OPENAI_VECTOR_STORE_LO, text);
         if (chunks.length === 0) {
-          toast.info("Nenhuma correspond\u00eancia encontrada na Vector Store LO.");
+          toast.info("Nenhuma correspondência encontrada na Vector Store LO.");
         } else {
           const allParagraphs = chunks.flatMap((c) => c.split(/\n/)).map((p) => p.trim()).filter(Boolean).slice(0, 10);
           const content = allParagraphs.map((p, i) => `**${i + 1}.** ${p}`).join("\n\n");
@@ -849,7 +743,7 @@ const Index = () => {
     }
   }, [currentFileId, currentFileName, documentText, editorContentHtml, htmlEditorControlApi]);
 
-  const isHistoryProcessing = isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningLexicalSearch;
+  const isHistoryProcessing = isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral;
   const hasEditorPanel = Boolean(currentFileId) || isOpeningDocument;
   const hasCenterPanel = hasEditorPanel || Boolean(parameterPanelTarget);
   const centerDefaultWithEditor = 100 - PANEL_SIZES.left.default - PANEL_SIZES.right.default;
@@ -882,8 +776,6 @@ const Index = () => {
             onWordFileUpload={handleWordFileUpload}
             onCreateBlankDocument={handleCreateBlankDocument}
             onOpenParameterSection={handleOpenParameterSection}
-            onRunRandomPensata={handleRunRandomPensata}
-            onOpenBookSearch={handleOpenBookSearchFromLeft}
             isLoading={isLoading}
             hasDocumentOpen={Boolean(currentFileId)}
             onRefreshStats={() => void handleRefreshStats()}
@@ -939,8 +831,7 @@ const Index = () => {
 
                     <div className="border-b border-border p-3">
                       <div className="grid grid-cols-1 gap-2">
-                        {parameterPanelTarget.section === "actions" &&
-                          ACTION_PANEL_BUTTONS.map((id) => (
+                        {parameterPanelTarget.section === "actions" && ACTION_PANEL_BUTTONS.map((id) => (
                           (() => {
                             const Icon = ACTION_PANEL_ICONS[id];
                             return (
@@ -952,17 +843,13 @@ const Index = () => {
                             disabled={isLoading || (id === "pensatas" && !OPENAI_VECTOR_STORE_LO)}
                           >
                             <Icon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
-                            <span className="min-w-0 flex-1 text-left">
-                              <span className="block break-words text-sm font-medium text-foreground">{parameterActionMeta[id].title}</span>
-                              <span className="block break-words text-xs text-muted-foreground">{parameterActionMeta[id].description}</span>
-                            </span>
+                            <span className="text-sm font-medium text-foreground">{parameterActionMeta[id].title}</span>
                           </Button>
                             );
                           })()
                         ))}
 
-                        {parameterPanelTarget.section === "apps" &&
-                          ((isBookSearchEntryMode || parameterPanelTarget.id === "app4") ? (["app4"] as AppActionId[]) : APP_PANEL_BUTTONS).map((id) => (
+                        {parameterPanelTarget.section === "apps" && APP_PANEL_BUTTONS.map((id) => (
                           (() => {
                             const Icon = APP_PANEL_ICONS[id];
                             return (
@@ -974,9 +861,8 @@ const Index = () => {
                             disabled={isLoading}
                           >
                             <Icon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
-                            <span className="min-w-0 flex-1 text-left">
-                              <span className="block break-words text-sm font-medium text-foreground">{parameterAppMeta[id].title}</span>
-                              <span className="block break-words text-xs text-muted-foreground">{parameterAppMeta[id].description}</span>
+                            <span className="text-sm font-medium text-foreground">
+                              {id === "app1" ? parameterAppMeta.app1.title : parameterAppsGenericMeta[id].title}
                             </span>
                           </Button>
                             );
@@ -995,10 +881,7 @@ const Index = () => {
                             disabled={isLoading || !currentFileId}
                           >
                             <Icon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
-                            <span className="min-w-0 flex-1 text-left">
-                              <span className="block break-words text-sm font-medium text-foreground">{parameterMacroMeta[id].title}</span>
-                              <span className="block break-words text-xs text-muted-foreground">{parameterMacroMeta[id].description}</span>
-                            </span>
+                            <span className="text-sm font-medium text-foreground">{parameterMacroMeta[id].title}</span>
                           </Button>
                             );
                           })()
@@ -1061,8 +944,8 @@ const Index = () => {
                         />
                       ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app2" ? (
                         <InsertRefVerbetePanel
-                          title={parameterAppMeta.app2.title}
-                          description={parameterAppMeta.app2.description}
+                          title={parameterAppsGenericMeta.app2.title}
+                          description={parameterAppsGenericMeta.app2.description}
                           verbeteInput={verbeteInput}
                           onVerbeteInputChange={setVerbeteInput}
                           onRun={() => void handleRunInsertRefVerbete()}
@@ -1071,8 +954,8 @@ const Index = () => {
                         />
                       ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app3" ? (
                         <BiblioGeralPanel
-                          title={parameterAppMeta.app3.title}
-                          description={parameterAppMeta.app3.description}
+                          title={parameterAppsGenericMeta.app3.title}
+                          description={parameterAppsGenericMeta.app3.description}
                           author={biblioGeralAuthor}
                           titleField={biblioGeralTitle}
                           year={biblioGeralYear}
@@ -1083,21 +966,6 @@ const Index = () => {
                           onExtraChange={setBiblioGeralExtra}
                           onRun={() => void handleRunBiblioGeral()}
                           isRunning={isRunningBiblioGeral}
-                          showPanelChrome={false}
-                        />
-                      ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app4" ? (
-                        <BookSearchPanel
-                          title={parameterAppMeta.app4.title}
-                          description={parameterAppMeta.app4.description}
-                          bookOptions={lexicalBooks.length ? lexicalBooks : [...LEXICAL_BOOK_FALLBACK]}
-                          selectedBook={selectedLexicalBook}
-                          term={lexicalTerm}
-                          maxResults={lexicalMaxResults}
-                          onSelectBook={setSelectedLexicalBook}
-                          onTermChange={setLexicalTerm}
-                          onMaxResultsChange={setLexicalMaxResults}
-                          onRunSearch={() => void handleRunLexicalSearch()}
-                          isRunning={isRunningLexicalSearch}
                           showPanelChrome={false}
                         />
                       ) : (
@@ -1184,7 +1052,6 @@ const Index = () => {
 };
 
 export default Index;
-
 
 
 

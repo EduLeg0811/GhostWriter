@@ -1,0 +1,249 @@
+﻿(function () {
+  const SOURCE = "parapreceptor-onlyoffice-plugin";
+  const APP_SOURCE = "parapreceptor-app";
+  let pollTimer = null;
+  let lastText = "";
+  let lastSelectionType = "";
+
+  function send(type, payload) {
+    window.top.postMessage({ source: SOURCE, type: type, payload: payload || {} }, "*");
+  }
+
+  function callCommand(fn) {
+    return new Promise(function (resolve, reject) {
+      try {
+        Asc.plugin.callCommand(fn, false, true, function (result) {
+          resolve(result);
+        });
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  async function getCurrentCursorTextStyle() {
+    const result = await callCommand(function () {
+      try {
+        const doc = Api.GetDocument();
+        let fontFamily = "";
+        let fontSize = 0;
+
+        const run = doc.GetCurrentRun ? doc.GetCurrentRun() : null;
+        if (run && run.GetTextPr) {
+          const textPr = run.GetTextPr();
+          if (textPr && textPr.GetFontFamily) fontFamily = String(textPr.GetFontFamily() || "");
+          if (textPr && textPr.GetFontSize) fontSize = Number(textPr.GetFontSize() || 0);
+        }
+
+        if (!fontFamily && doc.GetDefaultTextPr) {
+          const defaultTextPr = doc.GetDefaultTextPr();
+          if (defaultTextPr && defaultTextPr.GetFontFamily) {
+            fontFamily = String(defaultTextPr.GetFontFamily() || "");
+          }
+          if (!fontSize && defaultTextPr && defaultTextPr.GetFontSize) {
+            fontSize = Number(defaultTextPr.GetFontSize() || 0);
+          }
+        }
+
+        return { fontFamily: fontFamily, fontSize: fontSize };
+      } catch (_err) {
+        return { fontFamily: "", fontSize: 0 };
+      }
+    });
+
+    return {
+      fontFamily: String((result || {}).fontFamily || "").trim(),
+      fontSize: Number((result || {}).fontSize || 0),
+    };
+  }
+
+  async function insertMarkdownUsingDocumentApi(markdownText, style) {
+    Asc.scope.md = String(markdownText || "");
+    Asc.scope.baseFontFamily = (style && style.fontFamily) ? String(style.fontFamily) : "";
+    Asc.scope.baseFontSize = (style && style.fontSize) ? Number(style.fontSize) : 0;
+
+    await callCommand(function () {
+      function parseInline(mdLine) {
+        const src = String(mdLine || "");
+        const out = [];
+        let i = 0;
+        let bold = false;
+        let italic = false;
+        let buf = "";
+        function flush() {
+          if (!buf) return;
+          out.push({ text: buf, bold: bold, italic: italic });
+          buf = "";
+        }
+        while (i < src.length) {
+          if (src.slice(i, i + 2) === "**") {
+            flush();
+            bold = !bold;
+            i += 2;
+            continue;
+          }
+          if (src[i] === "*") {
+            flush();
+            italic = !italic;
+            i += 1;
+            continue;
+          }
+          buf += src[i];
+          i += 1;
+        }
+        flush();
+        return out;
+      }
+
+      const doc = Api.GetDocument();
+      const text = String(Asc.scope.md || "").replace(/\r\n/g, "\n");
+      const lines = text.split("\n");
+      const paragraphs = [];
+      const fontFamily = String(Asc.scope.baseFontFamily || "");
+      const fontSize = Number(Asc.scope.baseFontSize || 0);
+
+      for (let idx = 0; idx < lines.length; idx += 1) {
+        const raw = String(lines[idx] || "");
+        const trimmed = raw.trim();
+        const p = Api.CreateParagraph();
+
+        let headingLevel = 0;
+        let content = raw;
+        if (/^###\s+/.test(trimmed)) {
+          headingLevel = 3;
+          content = trimmed.replace(/^###\s+/, "");
+        } else if (/^##\s+/.test(trimmed)) {
+          headingLevel = 2;
+          content = trimmed.replace(/^##\s+/, "");
+        } else if (/^#\s+/.test(trimmed)) {
+          headingLevel = 1;
+          content = trimmed.replace(/^#\s+/, "");
+        }
+
+        const segments = parseInline(content);
+        if (segments.length === 0) {
+          // preserva linha vazia
+          p.AddText("");
+          paragraphs.push(p);
+          continue;
+        }
+
+        for (let s = 0; s < segments.length; s += 1) {
+          const seg = segments[s];
+          const run = Api.CreateRun();
+          run.AddText(seg.text);
+          if (fontFamily) run.SetFontFamily(fontFamily);
+          if (fontSize > 0) run.SetFontSize(fontSize);
+          if (seg.bold) run.SetBold(true);
+          if (seg.italic) run.SetItalic(true);
+
+          if (headingLevel > 0) {
+            run.SetBold(true);
+            if (headingLevel === 1) run.SetFontSize(Math.max(fontSize || 12, 18));
+            if (headingLevel === 2) run.SetFontSize(Math.max(fontSize || 12, 16));
+            if (headingLevel === 3) run.SetFontSize(Math.max(fontSize || 12, 14));
+          }
+          p.AddElement(run);
+        }
+        paragraphs.push(p);
+      }
+
+      if (paragraphs.length > 0) {
+        doc.InsertContent(paragraphs);
+      }
+    });
+  }
+
+  function exec(name, args) {
+    return new Promise(function (resolve) {
+      Asc.plugin.executeMethod(name, args || [], function (result) {
+        resolve(result);
+      });
+    });
+  }
+
+  async function getSelectionSnapshot() {
+    const selectionType = await exec("GetSelectionType", []);
+    const text = await exec("GetSelectedText", [{ Numbering: false, Math: false, NewLineSeparator: "\n" }]);
+    return {
+      text: typeof text === "string" ? text : "",
+      selectionType: typeof selectionType === "string" ? selectionType : "unknown",
+      changedAt: Date.now(),
+    };
+  }
+
+  async function emitSelectionIfChanged(force) {
+    try {
+      const snapshot = await getSelectionSnapshot();
+      const changed = force || snapshot.text !== lastText || snapshot.selectionType !== lastSelectionType;
+      if (!changed) return;
+      lastText = snapshot.text;
+      lastSelectionType = snapshot.selectionType;
+      send("selectionChanged", snapshot);
+    } catch (_err) {
+      // ignore read errors during editor transitions
+    }
+  }
+
+  async function handleCommand(command, payload) {
+    switch (command) {
+      case "getSelectedText":
+        return await exec("GetSelectedText", [{ Numbering: false, Math: false, NewLineSeparator: "\n" }]);
+      case "selectAllContent":
+        await exec("SelectAll", []);
+        await emitSelectionIfChanged(true);
+        return { ok: true };
+      case "replaceSelection":
+        try {
+          const style = await getCurrentCursorTextStyle();
+          const text = String((payload || {}).text || "");
+          if (text.trim()) {
+            await insertMarkdownUsingDocumentApi(text, style);
+          } else {
+            await exec("PasteText", [text]);
+          }
+        } catch (_err) {
+          // Fallback para texto puro.
+          await exec("PasteText", [String((payload || {}).text || "")]);
+        }
+        await emitSelectionIfChanged(true);
+        return { ok: true };
+      case "refreshSelection":
+        await emitSelectionIfChanged(true);
+        return { ok: true };
+      default:
+        throw new Error("Comando nao suportado: " + command);
+    }
+  }
+
+  window.addEventListener("message", async function (event) {
+    const data = event.data || {};
+    if (data.source !== APP_SOURCE || data.type !== "command") return;
+    const id = data.id;
+    try {
+      const result = await handleCommand(data.command, data.payload || {});
+      send("response", { id: id, result: result });
+    } catch (err) {
+      send("error", { id: id, message: err && err.message ? err.message : "Erro no plugin." });
+    }
+  });
+
+  Asc.plugin.init = function () {
+    send("ready", {});
+    emitSelectionIfChanged(true);
+    pollTimer = window.setInterval(function () {
+      emitSelectionIfChanged(false);
+    }, 300);
+  };
+
+  Asc.plugin.onExternalMouseUp = function () {
+    emitSelectionIfChanged(false);
+  };
+
+  Asc.plugin.button = function () {
+    if (pollTimer) {
+      window.clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  };
+})();

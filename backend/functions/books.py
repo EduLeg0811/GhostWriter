@@ -8,6 +8,13 @@ import xml.etree.ElementTree as ET
 import zipfile
 from typing import Any
 
+
+def _resolve_biblio_workbook(root: Path, filename: str) -> Path:
+    preferred = root / "Files" / "Biblio" / filename
+    if preferred.exists():
+        return preferred
+    return root / "Files" / filename
+
 # CONFIG RAPIDA (ref_biblio)
 # Sufixo anexado ao final da resposta "Bibliografia de Verbetes" (ref_biblio).
 # Facil de localizar: procure por SUFIXO_BIBLIO_VERBETE neste arquivo.
@@ -131,7 +138,7 @@ def find_simple_by_book(book: str, xlsx_path: Path | None = None) -> str:
         raise ValueError(f"Livro nao identificado: {book}")
 
     root = Path(__file__).resolve().parents[1]
-    workbook = xlsx_path or (root / "Files" / "BooksWV.xlsx")
+    workbook = xlsx_path or _resolve_biblio_workbook(root, "BooksWV.xlsx")
     if not workbook.exists():
         raise FileNotFoundError(f"Arquivo nao encontrado: {workbook}")
 
@@ -187,7 +194,7 @@ def find_refs_by_titles(titles: list[str], xlsx_path: Path | None = None) -> dic
         deduped_titles.append(item)
 
     root = Path(__file__).resolve().parents[1]
-    workbook = xlsx_path or (root / "Files" / "EC.xlsx")
+    workbook = xlsx_path or _resolve_biblio_workbook(root, "EC.xlsx")
     if not workbook.exists():
         raise FileNotFoundError(f"Arquivo nao encontrado: {workbook}")
 

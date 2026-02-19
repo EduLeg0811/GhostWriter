@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -13,7 +13,6 @@ import {
   Loader2,
   RefreshCw,
   Sparkles,
-  Search,
   Type,
   Upload,
   X,
@@ -26,8 +25,6 @@ interface LeftPanelProps {
   onWordFileUpload: (file: File) => Promise<UploadedFileMeta>;
   onCreateBlankDocument: () => Promise<void>;
   onOpenParameterSection: (section: "actions" | "apps" | "macros") => void;
-  onRunRandomPensata: () => Promise<void> | void;
-  onOpenBookSearch: () => void;
   isLoading: boolean;
   hasDocumentOpen: boolean;
   onRefreshStats?: () => void;
@@ -37,7 +34,7 @@ const parameterSectionItems = [
   {
     id: "actions" as const,
     icon: BookOpen,
-    title: "Acoes IA",
+    title: "Ações IA",
     description: "Definir, Resumir, Traduzir e mais",
   },
   {
@@ -49,8 +46,8 @@ const parameterSectionItems = [
   {
     id: "macros" as const,
     icon: Hash,
-    title: "Edicao do texto",
-    description: "Acoes de edicao no documento",
+    title: "Edição do texto",
+    description: "Ações de edição no documento",
   },
 ];
 
@@ -61,8 +58,6 @@ const LeftPanel = ({
   onWordFileUpload,
   onCreateBlankDocument,
   onOpenParameterSection,
-  onRunRandomPensata,
-  onOpenBookSearch,
   isLoading,
   hasDocumentOpen,
   onRefreshStats,
@@ -118,8 +113,8 @@ const LeftPanel = ({
       </div>
 
       <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
-        <div className="space-y-6">
-          <div className="space-y-2.5">
+        <div className="space-y-5">
+          <div className="space-y-2">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Documento</Label>
             <Button
               variant="secondary"
@@ -133,7 +128,7 @@ const LeftPanel = ({
             </Button>
           </div>
 
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             <input
               ref={fileRef}
               type="file"
@@ -147,7 +142,7 @@ const LeftPanel = ({
                 onDrop={handleDrop}
                 onDragOver={(e) => e.preventDefault()}
                 onClick={() => fileRef.current?.click()}
-                className="cursor-pointer rounded-lg border-2 border-dashed border-border bg-sky-50 p-2 text-center hover:bg-muted/30"
+                className="cursor-pointer rounded-lg border-2 border-dashed border-border p-2 text-center hover:bg-muted/30 bg-sky-50"
               >
                 {importing ? (
                   <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-muted-foreground" />
@@ -175,9 +170,9 @@ const LeftPanel = ({
 
           <Separator />
 
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Estatisticas</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Estatísticas</Label>
               {onRefreshStats && (
                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onRefreshStats} title="Atualizar">
                   <RefreshCw className="h-3.5 w-3.5" />
@@ -199,77 +194,35 @@ const LeftPanel = ({
 
           <Separator />
 
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ferramentas IA</Label>
-            <div className="space-y-1.5">
-              {parameterSectionItems.map((item) => {
-                const Icon = item.icon;
-                const busy = isLoading && activeActionId === item.id;
-                const disabled = actionDisabled || (item.id === "macros" && !hasDocumentOpen);
-                return (
-                  <Button
-                    key={item.id}
-                    variant="ghost"
-                    className={sectionActionButtonClass}
-                    onClick={() => {
-                      setActiveActionId(item.id);
-                      onOpenParameterSection(item.id);
-                    }}
-                    disabled={disabled}
-                  >
-                    {busy ? (
-                      <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
-                    ) : (
-                      <Icon className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                    )}
-                    <span className="min-w-0 flex-1 text-left">
-                      <span className="block break-words text-sm font-medium text-foreground">{item.title}</span>
-                      <span className="block break-words text-xs text-muted-foreground">{item.description}</span>
-                    </span>
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Aplicativos IA</Label>
-            <div className="space-y-1.5">
-              <Button
-                variant="ghost"
-                className={sectionActionButtonClass}
-                onClick={() => void onRunRandomPensata()}
-                disabled={actionDisabled}
-              >
-                <BookOpen className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Pensata do Dia</span>
-                  <span className="block break-words text-xs text-muted-foreground">Bibliomancia Digital</span>
-                </span>
-              </Button>
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Search</Label>
-            <div className="space-y-1.5">
-              <Button
-                variant="ghost"
-                className={sectionActionButtonClass}
-                onClick={onOpenBookSearch}
-                disabled={actionDisabled}
-              >
-                <Search className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Busca de Termos</span>
-                  <span className="block break-words text-xs text-muted-foreground">Busca termos em livros</span>
-                </span>
-              </Button>
-            </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Aplicativos</Label>
+            {parameterSectionItems.map((item) => {
+              const Icon = item.icon;
+              const busy = isLoading && activeActionId === item.id;
+              const disabled = actionDisabled || (item.id === "macros" && !hasDocumentOpen);
+              return (
+                <Button
+                  key={item.id}
+                  variant="ghost"
+                  className={sectionActionButtonClass}
+                  onClick={() => {
+                    setActiveActionId(item.id);
+                    onOpenParameterSection(item.id);
+                  }}
+                  disabled={disabled}
+                >
+                  {busy ? (
+                    <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+                  ) : (
+                    <Icon className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                  )}
+                  <span className="text-left">
+                    <span className="block text-sm font-medium text-foreground">{item.title}</span>
+                    <span className="block text-xs text-muted-foreground">{item.description}</span>
+                  </span>
+                </Button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -286,8 +239,8 @@ const LeftPanel = ({
             <div className="flex items-center gap-2">
               <img src="/cons-ia.png" alt="Cons-IA" className="h-16 w-16 rounded-md" />
               <div className="flex flex-col">
-                <span className="text-normal font-semibold tracking-wide text-yellow-200 shadow-lg">Cons-IA</span>
-                <p className="text-[11px] leading-tight text-sky-50 shadow-lg">Toolbox de IA da Conscienciologia</p>
+                <span className="text-normal font-semibold text-yellow-200 shadow-lg tracking-wide">Cons-IA</span>
+                <p className="text-[11px] leading-tight shadow-lg text-sky-50">Toolbox de IA da Conscienciologia</p>
               </div>
             </div>
             <ExternalLink className="h-4 w-4 shrink-0 opacity-90 transition group-hover:translate-x-0.5" />

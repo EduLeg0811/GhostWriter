@@ -1,4 +1,4 @@
-export interface UploadedFileMeta {
+﻿export interface UploadedFileMeta {
   id: string;
   originalName: string;
   storedName: string;

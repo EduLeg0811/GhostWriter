@@ -1,4 +1,4 @@
-export interface UploadedFileMeta {
+﻿export interface UploadedFileMeta {
   id: string;
   originalName: string;
   storedName: string;
@@ -106,41 +106,6 @@ export async function randomPensataApp(): Promise<{ ok: boolean; result: { parag
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-export async function listLexicalBooksApp(): Promise<{ ok: boolean; result: { books: string[] } }> {
-  const res = await fetch(apiUrl("/api/apps/lexical/books"));
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-export async function searchLexicalBookApp(payload: {
-  book: string;
-  term: string;
-  limit?: number;
-}): Promise<{
-  ok: boolean;
-  result: {
-    book: string;
-    term: string;
-    total: number;
-    matches: Array<{
-      book: string;
-      row: number;
-      number: number | null;
-      title: string;
-      text: string;
-      data: Record<string, string>;
-    }>;
-  };
-}> {
-  const res = await fetch(apiUrl("/api/apps/lexical/search"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();

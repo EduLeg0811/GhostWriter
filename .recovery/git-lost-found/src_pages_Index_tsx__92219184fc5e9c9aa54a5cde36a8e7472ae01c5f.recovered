@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
 import { BookOpen, FileText, Languages, ListOrdered, Loader2, PenLine, Repeat2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import LeftPanel from "@/components/LeftPanel";
@@ -24,7 +24,6 @@ import {
   insertRefBookMacro,
   insertRefVerbeteApp,
   listLexicalBooksApp,
-  randomPensataApp,
   saveFileText,
   searchLexicalBookApp,
   UploadedFileMeta,
@@ -61,7 +60,8 @@ type ParameterPanelTarget =
   | { section: "apps"; id: AppActionId | null }
   | null;
 
-const ACTION_PANEL_BUTTONS: AiActionId[] = ["define", "synonyms", "epigraph", "pensatas", "rewrite", "summarize", "translate"];
+const ACTION_PANEL_BUTTONS: AiActionId[] = ["define", "synonyms", "epigraph", "rewrite", "summarize", "translate"];
+const ACTION_PANEL_PENSATAS_ONLY: AiActionId[] = ["pensatas"];
 const APP_PANEL_BUTTONS: AppActionId[] = ["app1", "app2", "app3"];
 const MACRO_PANEL_BUTTONS: MacroActionId[] = ["macro1", "macro2"];
 const ACTION_PANEL_ICONS: Record<AiActionId, typeof BookOpen> = {
@@ -87,27 +87,27 @@ const MACRO_PANEL_ICONS: Record<MacroActionId, typeof BookOpen> = {
 const parameterAppMeta: Record<AppActionId, { title: string; description: string }> = {
   app1: { title: "Bibliografia de Livros", description: "Monta Bibliografia de livros de Waldo Vieira." },
   app2: { title: "Bibliografia de Verbetes", description: "Monta Listagem ou Bibliografia de verbetes." },
-  app3: { title: "Bibliografia Geral", description: "Busca correspond\u00eancias bibliogr\u00e1ficas." },
-  app4: { title: "Pesquisa em Livros", description: "Busca palavras em livros." },
+  app3: { title: "Bibliografia Geral", description: "Busca correspondÃªncias bibliogrÃ¡ficas." },
+  app4: { title: "Book Search", description: "Busca termos em livros do acervo lexical." },
 };
 const parameterMacroMeta: Record<MacroActionId, { title: string; description: string }> = {
   macro1: { title: "Highlight", description: "Destaca termos no documento (highlight em cores)." },
-  macro2: { title: "Numerar lista", description: "Aplica numera\u00e7\u00e3o manual \u00e0 lista de itens." },
+  macro2: { title: "Numerar lista", description: "Aplica numeração manual a lista de itens." },
 };
 const LEXICAL_BOOK_FALLBACK = ["200TEAT", "700EXP", "CCG", "DAC", "DUPLA", "HSP", "HSR", "LO", "PROEXIS", "PROJ", "QUEST", "TEMAS", "TNP"] as const;
 const parameterActionMeta: Record<AiActionId, { title: string; description: string }> = {
-  define: { title: "Definir", description: "Definologia conscienciol\u00f3gica." },
-  synonyms: { title: "Sinon\u00edmia", description: "Sinonimologia." },
-  epigraph: { title: "Ep\u00edgrafe", description: "Sugere ep\u00edgrafe." },
+  define: { title: "Definir", description: "Definologia conscienciológica." },
+  synonyms: { title: "Sinonímia", description: "Sinonimologia." },
+  epigraph: { title: "Epígrafe", description: "Sugere epígrafe." },
   rewrite: { title: "Reescrever", description: "Melhora clareza e fluidez." },
-  summarize: { title: "Resumir", description: "S\u00edntese concisa." },
+  summarize: { title: "Resumir", description: "Síntese concisa." },
   pensatas: { title: "Pensatas LO", description: "Pensatas afins." },
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
 };
 const sidePanelClass = "bg-card";
 const PANEL_SIZES = {
   left: { default: 10, min: 8, max: 15 },
-  parameter: { default: 15, min: 10, max: 25 },
+  parameter: { default: 10, min: 8, max: 25 },
   editor: { min: 20 },
   right: { default: 20, min: 10, max: 40 },
 } as const;
@@ -131,11 +131,6 @@ const TRANSLATE_LANGUAGE_OPTIONS = [
   { value: "Arabe", label: "Arabe" },
   { value: "Russo", label: "Russo" },
 ] as const;
-
-// Valor padrao para o campo "Maximo de resultados" da Pesquisa em Livros.
-// Ajuste aqui para alterar facilmente o default no frontend.
-const DEFAULT_BOOK_SEARCH_MAX_RESULTS = 10;
-
 const Index = () => {
   const [responses, setResponses] = useState<AIResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -169,9 +164,7 @@ const Index = () => {
   const [lexicalBooks, setLexicalBooks] = useState<string[]>([]);
   const [selectedLexicalBook, setSelectedLexicalBook] = useState<string>(LEXICAL_BOOK_FALLBACK[0]);
   const [lexicalTerm, setLexicalTerm] = useState("");
-  const [lexicalMaxResults, setLexicalMaxResults] = useState(DEFAULT_BOOK_SEARCH_MAX_RESULTS);
   const [isRunningLexicalSearch, setIsRunningLexicalSearch] = useState(false);
-  const [isBookSearchEntryMode, setIsBookSearchEntryMode] = useState(false);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [translateLanguage, setTranslateLanguage] = useState<(typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"]>("Ingles");
   const [macro1Term, setMacro1Term] = useState("");
@@ -398,7 +391,6 @@ const Index = () => {
   }, []);
 
   const handleOpenParameterSection = useCallback((section: ParameterPanelSection) => {
-    setIsBookSearchEntryMode(false);
     setParameterPanelTarget({ section, id: null });
   }, []);
 
@@ -457,11 +449,11 @@ const Index = () => {
     try {
       const result = await editorApi.runMacro1HighlightDocument(input, macro1ColorId);
       if (result.matches <= 0) {
-        toast.info("Highlight executado. Nenhuma ocorr\u00eancia encontrada.");
+        toast.info("Highlight executado. Nenhuma ocorrência encontrada.");
         return;
       }
       toast.success(
-        `Highlight executado: ${result.matches} ocorr\u00eancia(s) encontradas e ${result.highlighted} destacada(s).`,
+        `Highlight executado: ${result.matches} ocorrência(s) encontradas e ${result.highlighted} destacada(s).`,
       );
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Falha ao executar Highlight.");
@@ -473,7 +465,7 @@ const Index = () => {
   const handleClearMacro1Highlight = useCallback(async () => {
     const editorApi = await getEditorApi();
     if (!editorApi) {
-      toast.error("Abra o editor antes de limpar marca\u00e7\u00e3o.");
+      toast.error("Abra o editor antes de limpar marcação.");
       return;
     }
 
@@ -487,12 +479,12 @@ const Index = () => {
     try {
       const result = await editorApi.clearMacro1HighlightDocument(input);
       if (result.matches <= 0 || result.cleared <= 0) {
-        toast.info("Nenhuma marca\u00e7\u00e3o encontrada para limpar.");
+        toast.info("Nenhuma marcação encontrada para limpar.");
         return;
       }
-      toast.success(`Marca\u00e7\u00e3o limpa em ${result.cleared} ocorr\u00eancia(s).`);
+      toast.success(`Marcação limpa em ${result.cleared} ocorrência(s).`);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Falha ao limpar marca\u00e7\u00e3o.");
+      toast.error(err instanceof Error ? err.message : "Falha ao limpar marcação.");
     } finally {
       setIsLoading(false);
     }
@@ -599,7 +591,6 @@ const Index = () => {
   }, [lexicalBooks, selectedLexicalBook]);
 
   const handleActionApps = useCallback((type: AppActionId) => {
-    setIsBookSearchEntryMode(false);
     setParameterPanelTarget({ section: "apps", id: type });
     if (type === "app1") {
       setRefBookPages("");
@@ -613,15 +604,13 @@ const Index = () => {
   }, [actionText, biblioGeralTitle, ensureLexicalBooksLoaded]);
 
   const handleOpenBookSearchFromLeft = useCallback(() => {
-    setIsBookSearchEntryMode(true);
-    setParameterPanelTarget({ section: "apps", id: null });
+    setParameterPanelTarget({ section: "apps", id: "app4" });
     void ensureLexicalBooksLoaded();
   }, [ensureLexicalBooksLoaded]);
 
   const handleRunLexicalSearch = useCallback(async () => {
     const book = selectedLexicalBook.trim();
     const term = lexicalTerm.trim();
-    const maxResults = Math.max(1, Math.min(200, lexicalMaxResults || 1));
     if (!book) {
       toast.error("Selecione um livro para a busca.");
       return;
@@ -633,9 +622,8 @@ const Index = () => {
 
     setIsRunningLexicalSearch(true);
     try {
-      const data = await searchLexicalBookApp({ book, term, limit: maxResults });
-      const totalFound = Number(data.result.total || 0);
-      const matches = (data.result.matches || []).slice(0, maxResults);
+      const data = await searchLexicalBookApp({ book, term, limit: 50 });
+      const matches = data.result.matches || [];
       if (matches.length <= 0) {
         toast.info("Nenhuma ocorrencia encontrada.");
         return;
@@ -650,38 +638,18 @@ const Index = () => {
           return `**${idx + 1}.** (${numberTag}) ${titlePrefix}${body}`;
         })
         .join("\n\n");
-      addResponse(
-        "app_book_search",
-        `Livro: ${book} | Termo: ${term} | Total: ${totalFound} | Max: ${maxResults}`,
-        markdown,
-      );
+      addResponse("app_book_search", `Livro: ${book} | Termo: ${term}`, markdown);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Book Search.";
       toast.error(msg);
     } finally {
       setIsRunningLexicalSearch(false);
     }
-  }, [lexicalMaxResults, lexicalTerm, selectedLexicalBook]);
+  }, [lexicalTerm, selectedLexicalBook]);
 
-  const handleRunRandomPensata = useCallback(async () => {
-    if (isLoading) return;
-    setIsLoading(true);
-    try {
-      const data = await randomPensataApp();
-      const result = data.result;
-      const source = (result.source || "LO").trim();
-      const number = Number(result.paragraph_number || 0);
-      const total = Number(result.total_paragraphs || 0);
-      const paragraph = (result.paragraph || "").trim();
-      const header = `Livro: ${source} | Paragrafo: ${number}${total > 0 ? `/${total}` : ""}`;
-      addResponse("app_random_pensata", header, paragraph || "Paragrafo nao encontrado.");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Falha ao executar Pensata do Dia.";
-      toast.error(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isLoading]);
+  const handleOpenPensatasFromLeft = useCallback(() => {
+    setParameterPanelTarget({ section: "actions", id: "pensatas" });
+  }, []);
 
   const handleAction = useCallback(async (type: AiActionId) => {
     const text = actionText.trim();
@@ -706,7 +674,7 @@ const Index = () => {
       try {
         const chunks = await searchVectorStore(OPENAI_VECTOR_STORE_LO, text);
         if (chunks.length === 0) {
-          toast.info("Nenhuma correspond\u00eancia encontrada na Vector Store LO.");
+          toast.info("Nenhuma correspondência encontrada na Vector Store LO.");
         } else {
           const allParagraphs = chunks.flatMap((c) => c.split(/\n/)).map((p) => p.trim()).filter(Boolean).slice(0, 10);
           const content = allParagraphs.map((p, i) => `**${i + 1}.** ${p}`).join("\n\n");
@@ -882,7 +850,7 @@ const Index = () => {
             onWordFileUpload={handleWordFileUpload}
             onCreateBlankDocument={handleCreateBlankDocument}
             onOpenParameterSection={handleOpenParameterSection}
-            onRunRandomPensata={handleRunRandomPensata}
+            onOpenPensatas={handleOpenPensatasFromLeft}
             onOpenBookSearch={handleOpenBookSearchFromLeft}
             isLoading={isLoading}
             hasDocumentOpen={Boolean(currentFileId)}
@@ -940,7 +908,7 @@ const Index = () => {
                     <div className="border-b border-border p-3">
                       <div className="grid grid-cols-1 gap-2">
                         {parameterPanelTarget.section === "actions" &&
-                          ACTION_PANEL_BUTTONS.map((id) => (
+                          (parameterPanelTarget.id === "pensatas" ? ACTION_PANEL_PENSATAS_ONLY : ACTION_PANEL_BUTTONS).map((id) => (
                           (() => {
                             const Icon = ACTION_PANEL_ICONS[id];
                             return (
@@ -961,8 +929,7 @@ const Index = () => {
                           })()
                         ))}
 
-                        {parameterPanelTarget.section === "apps" &&
-                          ((isBookSearchEntryMode || parameterPanelTarget.id === "app4") ? (["app4"] as AppActionId[]) : APP_PANEL_BUTTONS).map((id) => (
+                        {parameterPanelTarget.section === "apps" && APP_PANEL_BUTTONS.map((id) => (
                           (() => {
                             const Icon = APP_PANEL_ICONS[id];
                             return (
@@ -1092,10 +1059,8 @@ const Index = () => {
                           bookOptions={lexicalBooks.length ? lexicalBooks : [...LEXICAL_BOOK_FALLBACK]}
                           selectedBook={selectedLexicalBook}
                           term={lexicalTerm}
-                          maxResults={lexicalMaxResults}
                           onSelectBook={setSelectedLexicalBook}
                           onTermChange={setLexicalTerm}
-                          onMaxResultsChange={setLexicalMaxResults}
                           onRunSearch={() => void handleRunLexicalSearch()}
                           isRunning={isRunningLexicalSearch}
                           showPanelChrome={false}

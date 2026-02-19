@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import os
@@ -27,13 +27,6 @@ DATA_DIR = ROOT_DIR / "server-data"
 UPLOADS_DIR = DATA_DIR / "uploads"
 META_DIR = DATA_DIR / "meta"
 PYTHON_DIR = Path(__file__).resolve().parent / "python"
-
-
-def resolve_biblio_file(filename: str) -> Path:
-    preferred = ROOT_DIR / "backend" / "Files" / "Biblio" / filename
-    if preferred.exists():
-        return preferred
-    return ROOT_DIR / "backend" / "Files" / filename
 
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 META_DIR.mkdir(parents=True, exist_ok=True)
@@ -748,7 +741,7 @@ def api_biblio_geral(payload: BiblioGeralRequest) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail="Informe ao menos um campo: author, title, year ou extra.")
 
     top_k = max(1, min(int(payload.topK or 10), 20))
-    excel_path = resolve_biblio_file("Refs.xlsx")
+    excel_path = ROOT_DIR / "backend" / "Files" / "Refs.xlsx"
     if not excel_path.exists():
         raise HTTPException(status_code=500, detail="Base bibliografica Refs.xlsx nao encontrada.")
 
