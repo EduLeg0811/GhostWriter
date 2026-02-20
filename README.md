@@ -1,4 +1,4 @@
-﻿# Parapreceptor (Ghost Writer)
+# Parapreceptor (Ghost Writer)
 
 Uma aplicação web para assistência na escrita acadêmica com interface em três colunas, processamento de documentos e integração com IA.
 

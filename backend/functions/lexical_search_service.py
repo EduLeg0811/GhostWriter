@@ -14,9 +14,10 @@ except Exception as exc:  # pragma: no cover - import guard
 LEXICAL_DIR = Path(__file__).resolve().parents[1] / "Files" / "Lexical"
 _BOOL_OPS: dict[str, int] = {"!": 3, "&": 2, "|": 1}
 
-# Limite maximo de resultados retornados por busca de livro.
-# Ajuste este valor para controlar facilmente o teto no backend.
-MAX_BOOK_RESULTS = 100
+# Limite proprio do backend para buscas lexicais em livro.
+# A varredura e interrompida quando atingir esse teto para evitar
+# processamento excessivo em arquivos muito grandes.
+MAX_BOOK_SEARCH = 200
 
 
 def _normalize(text: str) -> str:
@@ -253,7 +254,7 @@ def list_lexical_books() -> list[str]:
     return sorted(path.stem for path in LEXICAL_DIR.glob("*.xlsx"))
 
 
-def search_lexical_book(book: str, term: str, limit: int = 50) -> list[dict[str, Any]]:
+def _search_lexical_book_internal(book: str, term: str, limit: int = 50) -> tuple[int, list[dict[str, Any]]]:
     book_name = (book or "").strip()
     raw_term = (term or "").strip()
     if not book_name:
@@ -265,7 +266,7 @@ def search_lexical_book(book: str, term: str, limit: int = 50) -> list[dict[str,
     if not source_path.exists():
         raise FileNotFoundError(f"Livro lexical nao encontrado: {book_name}.xlsx")
 
-    max_rows = max(1, min(int(limit or 50), MAX_BOOK_RESULTS))
+    max_rows = max(1, min(int(limit or 50), MAX_BOOK_SEARCH))
     term_norm = _normalize_for_match(raw_term)
     if not term_norm:
         raise ValueError("Parametro 'term' invalido.")
@@ -279,6 +280,7 @@ def search_lexical_book(book: str, term: str, limit: int = 50) -> list[dict[str,
         headers = [str(col).strip().lower() if col is not None else "" for col in header_row]
 
         rows: list[dict[str, Any]] = []
+        total_matches = 0
         for row_index, values in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
             if not values:
                 continue
@@ -310,20 +312,30 @@ def search_lexical_book(book: str, term: str, limit: int = 50) -> list[dict[str,
             if raw_text and not processed_text:
                 continue
 
-            rows.append(
-                {
-                    "book": book_name,
-                    "row": row_index,
-                    "number": row_number,
-                    "title": str(row_map.get("title") or "").strip(),
-                    "text": processed_text,
-                    "data": row_map,
-                }
-            )
-
-            if len(rows) >= max_rows:
+            total_matches += 1
+            if len(rows) < max_rows:
+                rows.append(
+                    {
+                        "book": book_name,
+                        "row": row_index,
+                        "number": row_number,
+                        "title": str(row_map.get("title") or "").strip(),
+                        "text": processed_text,
+                        "data": row_map,
+                    }
+                )
+            if total_matches >= MAX_BOOK_SEARCH:
                 break
 
-        return rows
+        return total_matches, rows
     finally:
         workbook.close()
+
+
+def search_lexical_book(book: str, term: str, limit: int = 50) -> list[dict[str, Any]]:
+    _, rows = _search_lexical_book_internal(book=book, term=term, limit=limit)
+    return rows
+
+
+def search_lexical_book_with_total(book: str, term: str, limit: int = 50) -> tuple[int, list[dict[str, Any]]]:
+    return _search_lexical_book_internal(book=book, term=term, limit=limit)

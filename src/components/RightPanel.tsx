@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Clock, Copy, FileText, Languages, Loader2, MessageSquare, PenLine, Repeat2, Search, SendHorizontal, Trash2 } from "lucide-react";
+import { ArrowLeft, BookOpen, Clock, Copy, FileText, Languages, Loader2, MessageSquare, PenLine, Repeat2, Search, SendHorizontal, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { markdownToEditorHtml, normalizeHistoryContentToMarkdown } from "@/lib/markdown";
 
@@ -40,7 +40,7 @@ const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactN
   app_ref_verbete_list: { label: "Listagem de Verbetes", icon: <FileText className="h-3.5 w-3.5 text-primary" /> },
   app_ref_verbete_biblio: { label: "Bibliografia de Verbetes", icon: <FileText className="h-3.5 w-3.5 text-primary" /> },
   app_biblio_geral: { label: "Bibliografia Geral", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
-  app_random_pensata: { label: "Léxico de Ortopensatas (2a ed., 2019)", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
+  app_random_pensata: { label: "Pensata Sorteada", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
   app_book_search: { label: "Book Search", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
 };
 
@@ -48,12 +48,29 @@ interface RightPanelProps {
   responses: AIResponse[];
   onClear: () => void;
   onSendMessage: (message: string) => Promise<void> | void;
+  onAppendToEditor?: (html: string) => Promise<void> | void;
+  showAppendToEditor?: boolean;
   isSending?: boolean;
   chatDisabled?: boolean;
 }
 
-const RightPanel = ({ responses, onClear, onSendMessage, isSending = false, chatDisabled = false }: RightPanelProps) => {
+const RightPanel = ({
+  responses,
+  onClear,
+  onSendMessage,
+  onAppendToEditor,
+  showAppendToEditor = false,
+  isSending = false,
+  chatDisabled = false,
+}: RightPanelProps) => {
   const [prompt, setPrompt] = useState("");
+  const escapeHtml = (value: string): string =>
+    (value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
 
   const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -133,6 +150,14 @@ const RightPanel = ({ responses, onClear, onSendMessage, isSending = false, chat
     return highlightBookSearchHtml(html, query);
   };
 
+  const responseToAppendBodyHtml = (response: AIResponse): string => {
+    const { content, type, query } = response;
+    const markdown = normalizeHistoryContentToMarkdown(content).replace(/\r\n/g, "\n").replace(/\n{2,}/g, "\n");
+    const html = markdownToEditorHtml(markdown);
+    if (type !== "app_book_search") return html;
+    return highlightBookSearchHtml(html, query);
+  };
+
   const htmlToPlainText = (html: string): string => {
     const temp = document.createElement("div");
     temp.innerHTML = html;
@@ -153,6 +178,38 @@ const RightPanel = ({ responses, onClear, onSendMessage, isSending = false, chat
       await navigator.clipboard.writeText(text);
     }
     toast.success("Conteudo copiado.");
+  };
+
+  const renderQuerySubtitle = (response: AIResponse): React.ReactNode => {
+    if (response.type === "app_random_pensata") return "Léxico de Ortopensatas (2a ed., 2019)";
+    if (response.type !== "app_book_search") return response.query;
+
+    const query = response.query || "";
+    const match = query.match(/^Livro:\s*(.+?)(\s*\|.*)?$/i);
+    if (!match) return query;
+
+    const bookName = (match[1] || "").trim();
+    const rest = match[2] || "";
+    return (
+      <>
+        Livro: <strong>{bookName}</strong>
+        {rest}
+      </>
+    );
+  };
+
+  const getQuerySubtitleText = (response: AIResponse): string => {
+    if (response.type === "app_random_pensata") return "Léxico de Ortopensatas (2a ed., 2019)";
+    return (response.query || "").trim();
+  };
+
+  const responseToAppendHtml = (response: AIResponse): string => {
+    const title = typeLabels[response.type]?.label || "";
+    const subtitle = getQuerySubtitleText(response);
+    const bodyHtml = responseToAppendBodyHtml(response);
+    const titleHtml = title ? `<p><strong>${escapeHtml(title)}</strong></p>` : "";
+    const subtitleHtml = subtitle ? `<p>${escapeHtml(subtitle)}</p>` : "";
+    return `${titleHtml}${subtitleHtml}${bodyHtml}`;
   };
 
   const canSend = !chatDisabled && !isSending && prompt.trim().length > 0;
@@ -186,7 +243,7 @@ const RightPanel = ({ responses, onClear, onSendMessage, isSending = false, chat
           <div className="flex h-full min-h-52 items-center justify-center p-6 text-center text-muted-foreground">
             <div>
               <Clock className="mx-auto mb-3 h-12 w-12 text-muted-foreground/20" />
-              <p className="text-sm">As respostas das ações IA aparecerão aqui.</p>
+              <p className="text-sm">As respostas da IA aparecerão aqui.</p>
             </div>
           </div>
         ) : (
@@ -203,15 +260,26 @@ const RightPanel = ({ responses, onClear, onSendMessage, isSending = false, chat
                     </span>
                   </div>
 
-                  {r.query && (
+                  {(r.query || r.type === "app_random_pensata") && (
                     <p className="line-clamp-2 border-l-2 border-primary/30 pl-2 text-xs text-muted-foreground">
-                      {r.query}
+                      {renderQuerySubtitle(r)}
                     </p>
                   )}
 
                   <div className="prose prose-sm max-w-none text-xs text-foreground" dangerouslySetInnerHTML={{ __html: responseToEditorHtml(r) }} />
 
                   <div className="flex justify-end">
+                    {showAppendToEditor && onAppendToEditor && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => void onAppendToEditor(responseToAppendHtml(r))}
+                        title="Inserir no editor ao final"
+                      >
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => void copyToClipboard(r)} title="Copiar resposta">
                       <Copy className="h-3.5 w-3.5" />
                     </Button>
@@ -223,7 +291,7 @@ const RightPanel = ({ responses, onClear, onSendMessage, isSending = false, chat
         )}
       </ScrollArea>
 
-      <div className="border-t border-border p-3">
+      <div className="border-t border-border px-3 py-4 bg-background">
         <div className="flex items-end gap-2 rounded-xl border border-border bg-white p-2">
           <textarea
             rows={2}
@@ -256,4 +324,6 @@ const RightPanel = ({ responses, onClear, onSendMessage, isSending = false, chat
 };
 
 export default RightPanel;
+
+
 

@@ -1,4 +1,4 @@
-﻿import type { Editor } from "@tiptap/react";
+import type { Editor } from "@tiptap/react";
 
 export interface HtmlEditorSelectionSnapshot {
   text: string;
@@ -117,6 +117,34 @@ function clearHighlightInHtml(html: string, term: string): { html: string; match
   return { html: root.innerHTML, matches, cleared };
 }
 
+function normalizeAppendHtml(html: string): string {
+  const raw = (html || "").trim();
+  if (!raw) return "";
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div>${raw}</div>`, "text/html");
+  const root = doc.body.firstElementChild as HTMLDivElement | null;
+  if (!root) return raw;
+
+  const isEmptyParagraph = (el: Element): boolean => {
+    if (el.tagName.toLowerCase() !== "p") return false;
+    const text = (el.textContent || "").replace(/\u00a0/g, " ").trim();
+    const hasMedia = Boolean(el.querySelector("img,video,audio,iframe,table,ul,ol,blockquote,pre,hr"));
+    return !text && !hasMedia;
+  };
+
+  // Remove paragrafos vazios para evitar quebras extras antes/depois do bloco colado.
+  for (const child of Array.from(root.children)) {
+    if (isEmptyParagraph(child)) child.remove();
+  }
+
+  return root.innerHTML.trim();
+}
+
+function normalizeAppendText(text: string): string {
+  return (text || "").replace(/\r\n/g, "\n").replace(/\n{2,}/g, "\n").trim();
+}
+
 export class HtmlEditorControlApi {
   private editor: Editor;
   private listeners = new Set<SelectionListener>();
@@ -181,6 +209,24 @@ export class HtmlEditorControlApi {
     } else {
       this.editor.commands.insertContent(textContent);
     }
+    this.emitSelectionChange();
+  }
+
+  async appendRichWithBlankLine(html: string, text = ""): Promise<void> {
+    const htmlContent = normalizeAppendHtml(html);
+    const textContent = normalizeAppendText(text);
+    if (!htmlContent && !textContent) throw new Error("Conteudo vazio para inserir.");
+
+    this.editor
+      .chain()
+      .focus("end")
+      // Insere 1 linha em branco antes do bloco colado.
+      .insertContent("<p> </p>")
+      .insertContent("<p>_________________________________________________________</p>")
+      .insertContent("<p> </p>")
+
+      .insertContent(htmlContent || textContent)
+      .run();
     this.emitSelectionChange();
   }
 

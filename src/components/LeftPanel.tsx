@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -33,28 +33,7 @@ interface LeftPanelProps {
   onRefreshStats?: () => void;
 }
 
-const parameterSectionItems = [
-  {
-    id: "actions" as const,
-    icon: BookOpen,
-    title: "Acoes IA",
-    description: "Definir, Resumir, Traduzir e mais",
-  },
-  {
-    id: "apps" as const,
-    icon: FileText,
-    title: "Bibliografia",
-    description: "Ferramentas de bibliografia",
-  },
-  {
-    id: "macros" as const,
-    icon: Hash,
-    title: "Edicao do texto",
-    description: "Acoes de edicao no documento",
-  },
-];
-
-type LeftPanelActionId = (typeof parameterSectionItems)[number]["id"];
+type LeftPanelActionId = "actions" | "apps" | "macros";
 
 const LeftPanel = ({
   stats,
@@ -103,8 +82,8 @@ const LeftPanel = ({
   };
 
   const statCards = [
-    { icon: FileText, label: "Paginas", value: stats.pages },
-    { icon: AlignLeft, label: "Paragrafos", value: stats.paragraphs },
+    { icon: FileText, label: "Páginas", value: stats.pages },
+    { icon: AlignLeft, label: "Parágrafos", value: stats.paragraphs },
     { icon: Type, label: "Palavras", value: stats.words },
     { icon: Hash, label: "Caracteres", value: stats.characters },
     { icon: Sparkles, label: "Logias", value: stats.logiaWords },
@@ -118,7 +97,7 @@ const LeftPanel = ({
       </div>
 
       <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div className="space-y-2.5">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Documento</Label>
             <Button
@@ -173,7 +152,7 @@ const LeftPanel = ({
             )}
           </div>
 
-          <Separator />
+          <Separator className="my-1" />
 
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
@@ -197,66 +176,55 @@ const LeftPanel = ({
             </div>
           </div>
 
-          <Separator />
+          <Separator className="my-1" />
 
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ferramentas IA</Label>
             <div className="space-y-1.5">
-              {parameterSectionItems.map((item) => {
-                const Icon = item.icon;
-                const busy = isLoading && activeActionId === item.id;
-                const disabled = actionDisabled || (item.id === "macros" && !hasDocumentOpen);
-                return (
-                  <Button
-                    key={item.id}
-                    variant="ghost"
-                    className={sectionActionButtonClass}
-                    onClick={() => {
-                      setActiveActionId(item.id);
-                      onOpenParameterSection(item.id);
-                    }}
-                    disabled={disabled}
-                  >
-                    {busy ? (
-                      <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
-                    ) : (
-                      <Icon className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                    )}
-                    <span className="min-w-0 flex-1 text-left">
-                      <span className="block break-words text-sm font-medium text-foreground">{item.title}</span>
-                      <span className="block break-words text-xs text-muted-foreground">{item.description}</span>
-                    </span>
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Aplicativos IA</Label>
-            <div className="space-y-1.5">
+              
+              
               <Button
                 variant="ghost"
                 className={sectionActionButtonClass}
-                onClick={() => void onRunRandomPensata()}
+                onClick={() => {
+                  setActiveActionId("actions");
+                  onOpenParameterSection("actions");
+                }}
                 disabled={actionDisabled}
               >
-                <BookOpen className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                {isLoading && activeActionId === "actions" ? (
+                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <BookOpen className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                )}
                 <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Pensata do Dia</span>
-                  <span className="block break-words text-xs text-muted-foreground">Bibliomancia Digital</span>
+                  <span className="block break-words text-sm font-medium text-foreground">Ações IA</span>
+                  <span className="block break-words text-xs text-muted-foreground">Definir, Resumir, Traduzir e mais</span>
                 </span>
               </Button>
-            </div>
-          </div>
 
-          <Separator />
 
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Search</Label>
-            <div className="space-y-1.5">
+              <Button
+                variant="ghost"
+                className={sectionActionButtonClass}
+                onClick={() => {
+                  setActiveActionId("apps");
+                  onOpenParameterSection("apps");
+                }}
+                disabled={actionDisabled}
+              >
+                {isLoading && activeActionId === "apps" ? (
+                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                )}
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Bibliografia</span>
+                  <span className="block break-words text-xs text-muted-foreground">Ferramentas de bibliografia</span>
+                </span>
+              </Button>
+
+
               <Button
                 variant="ghost"
                 className={sectionActionButtonClass}
@@ -269,30 +237,89 @@ const LeftPanel = ({
                   <span className="block break-words text-xs text-muted-foreground">Busca termos em livros</span>
                 </span>
               </Button>
+
+              
             </div>
           </div>
+
+
+
+               
+
+          {/*<Separator className="my-1" />*/}
+
+          <div className="space-y-2.5">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Edição de Texto</Label>
+            <div className="space-y-1.5">
+              <Button
+                variant="ghost"
+                className={sectionActionButtonClass}
+                onClick={() => {
+                  setActiveActionId("macros");
+                  onOpenParameterSection("macros");
+                }}
+                disabled={actionDisabled || !hasDocumentOpen}
+              >
+                {isLoading && activeActionId === "macros" ? (
+                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <Hash className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                )}
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Edição do texto</span>
+                  <span className="block break-words text-xs text-muted-foreground">Ações de edição no documento</span>
+                </span>
+              </Button>
+            </div>
+          </div>
+
         </div>
       </div>
+      
+      <div className="space-y-3 border-t border-border bg-[hsl(var(--panel-header))] px-4 py-3">
 
-      <div className="border-t border-border bg-[hsl(var(--panel-header))] p-3">
-        <a
-          href="https://cons-ia.org/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group block rounded-xl border border-white bg-gradient-to-r from-white via-cyan-400 to-blue-400 px-4 py-1 text-white shadow-sm transition hover:brightness-110"
-          title="Abrir Cons-IA em nova aba"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <img src="/cons-ia.png" alt="Cons-IA" className="h-16 w-16 rounded-md" />
-              <div className="flex flex-col">
-                <span className="text-normal font-semibold tracking-wide text-yellow-200 shadow-lg">Cons-IA</span>
-                <p className="text-[11px] leading-tight text-sky-50 shadow-lg">Toolbox de IA da Conscienciologia</p>
-              </div>
-            </div>
-            <ExternalLink className="h-4 w-4 shrink-0 opacity-90 transition group-hover:translate-x-0.5" />
+
+        <div className="space-y-2.5">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Aplicativos IA</Label>
+
+
+          <div className="space-y-1.5">
+            <Button
+              variant="ghost"
+              className={`${sectionActionButtonClass} group flex items-center justify-between rounded-xl border border-orange-200 bg-white px-4 py-2 text-blue-600 shadow-sm transition hover:brightness-110`}
+              onClick={() => void onRunRandomPensata()}
+              disabled={actionDisabled}
+            >
+              <img src="/LO.png" alt="LO" className="h-16 w-16 shrink-0 object-contain" />
+              <span className="min-w-0 flex-1 text-left">
+                <span className="text-normal font-semibold tracking-wide text-orange-600 shadow-lg">Pensata do Dia</span>
+                <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Bibliomancia Digital</p>
+              </span>
+            </Button>
           </div>
-        </a>
+      
+
+          <a
+            href="https://cons-ia.org/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group block rounded-xl border border-orange-200 bg-white px-4 py-2 text-blue-600 shadow-sm transition hover:brightness-110"
+            title="Abrir Cons-IA em nova aba"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <img src="/cons-ia.png" alt="Cons-IA" className="h-16 w-16 rounded-md" />
+                <div className="flex flex-col">
+                  <span className="text-normal font-semibold tracking-wide text-orange-600 shadow-lg">Cons-IA</span>
+                  <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Toolbox de IA da Conscienciologia</p>
+                </div>
+              </div>
+              <ExternalLink className="h-4 w-4 shrink-0 opacity-90 transition group-hover:translate-x-0.5" />
+            </div>
+          </a>
+
+        </div>
+        
       </div>
     </div>
   );

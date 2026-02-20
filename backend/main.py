@@ -803,12 +803,12 @@ def api_lexical_search(payload: LexicalSearchRequest) -> dict[str, Any]:
     limit = max(1, min(int(payload.limit or 50), 200))
 
     try:
-        from backend.functions.lexical_search_service import search_lexical_book
+        from backend.functions.lexical_search_service import search_lexical_book_with_total
     except Exception:
-        from functions.lexical_search_service import search_lexical_book
+        from functions.lexical_search_service import search_lexical_book_with_total
 
     try:
-        matches = search_lexical_book(book=book, term=term, limit=limit)
+        total, matches = search_lexical_book_with_total(book=book, term=term, limit=limit)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     except ValueError as exc:
@@ -821,7 +821,7 @@ def api_lexical_search(payload: LexicalSearchRequest) -> dict[str, Any]:
         "result": {
             "book": book,
             "term": term,
-            "total": len(matches),
+            "total": total,
             "matches": matches,
         },
     }

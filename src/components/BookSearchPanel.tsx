@@ -6,6 +6,25 @@ import { Textarea } from "./ui/textarea";
 import { Input } from "./ui/input";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 
+
+
+export const BOOK_OPTION_LABELS: Record<string, string> = {
+  
+  "PROJ": "Projeciologia",
+  "700EXP": "700 Experimentos da Conscienciologia",
+  "CCG": "Conscienciograma",
+  "200TEAT": "200 Teáticas da Conscienciologia",
+  "TEMAS": "Temas da Conscienciologia",
+  "TNP": "Manual da Tenepes",
+  "PROEXIS": "Manual da Proéxis",
+  "DUPLA": "Manual da Dupla Evolutiva",
+  "HSR": "Homo sapiens reurbanisatus (HSR)",
+  "HSP": "Homo sapiens pacificus (HSP)",
+  "DAC": "Dicionário de Argumentos (DAC)",
+  "LO": "Léxico de Ortopensatas (LO)",
+  "QUEST": "Questionamentos das Minitertúlias",
+};
+
 interface BookSearchPanelProps {
   title: string;
   description: string;
@@ -37,6 +56,11 @@ const BookSearchPanel = ({
   onClose,
   showPanelChrome = true,
 }: BookSearchPanelProps) => {
+  const orderedBookOptions = [
+    ...Object.keys(BOOK_OPTION_LABELS).filter((key) => bookOptions.includes(key)),
+    ...bookOptions.filter((option) => !(option in BOOK_OPTION_LABELS)),
+  ];
+
   const content = (
     <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
       <div className="space-y-5">
@@ -50,7 +74,7 @@ const BookSearchPanel = ({
         <div className="space-y-2">
           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Livro</Label>
           <div className="space-y-2">
-            {bookOptions.map((option) => (
+            {orderedBookOptions.map((option) => (
               <label key={option} className="flex cursor-pointer items-center gap-2 text-xs text-foreground">
                 <input
                   type="radio"
@@ -59,7 +83,7 @@ const BookSearchPanel = ({
                   checked={selectedBook === option}
                   onChange={() => onSelectBook(option)}
                 />
-                <span>{option}</span>
+                <span>{BOOK_OPTION_LABELS[option] ?? option}</span>
               </label>
             ))}
           </div>

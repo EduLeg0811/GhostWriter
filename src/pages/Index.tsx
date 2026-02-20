@@ -7,7 +7,7 @@ import HtmlEditor from "@/components/HtmlEditor";
 import InsertRefBookPanel from "@/components/InsertRefBookPanel";
 import InsertRefVerbetePanel from "@/components/InsertRefVerbetePanel";
 import BiblioGeralPanel from "@/components/BiblioGeralPanel";
-import BookSearchPanel from "@/components/BookSearchPanel";
+import BookSearchPanel, { BOOK_OPTION_LABELS } from "@/components/BookSearchPanel";
 import Macro1HighlightPanel from "@/components/Macro1HighlightPanel";
 import Macro2ManualNumberingPanel from "@/components/Macro2ManualNumberingPanel";
 import type { Macro2SpacingMode } from "@/components/Macro2ManualNumberingPanel";
@@ -88,13 +88,12 @@ const parameterAppMeta: Record<AppActionId, { title: string; description: string
   app1: { title: "Bibliografia de Livros", description: "Monta Bibliografia de livros de Waldo Vieira." },
   app2: { title: "Bibliografia de Verbetes", description: "Monta Listagem ou Bibliografia de verbetes." },
   app3: { title: "Bibliografia Geral", description: "Busca correspond\u00eancias bibliogr\u00e1ficas." },
-  app4: { title: "Pesquisa em Livros", description: "Busca palavras em livros." },
+  app4: { title: "Busca em Livros", description: "Busca palavras e termos em livros." },
 };
 const parameterMacroMeta: Record<MacroActionId, { title: string; description: string }> = {
   macro1: { title: "Highlight", description: "Destaca termos no documento (highlight em cores)." },
   macro2: { title: "Numerar lista", description: "Aplica numera\u00e7\u00e3o manual \u00e0 lista de itens." },
 };
-const LEXICAL_BOOK_FALLBACK = ["200TEAT", "700EXP", "CCG", "DAC", "DUPLA", "HSP", "HSR", "LO", "PROEXIS", "PROJ", "QUEST", "TEMAS", "TNP"] as const;
 const parameterActionMeta: Record<AiActionId, { title: string; description: string }> = {
   define: { title: "Definir", description: "Definologia conscienciol\u00f3gica." },
   synonyms: { title: "Sinon\u00edmia", description: "Sinonimologia." },
@@ -106,10 +105,10 @@ const parameterActionMeta: Record<AiActionId, { title: string; description: stri
 };
 const sidePanelClass = "bg-card";
 const PANEL_SIZES = {
-  left: { default: 10, min: 8, max: 15 },
-  parameter: { default: 15, min: 10, max: 25 },
-  editor: { min: 20 },
-  right: { default: 20, min: 10, max: 40 },
+  left: { default: 10, min: 8, max: 20 },
+  parameter: { default: 15, min: 10, max: 30 },
+  editor: { min: 10 },
+  right: { default: 50, min: 20, max: 70 },
 } as const;
 const MACRO1_HIGHLIGHT_COLORS = [
   { id: "yellow", label: "Amarelo", swatch: "#fef08a" },
@@ -167,7 +166,7 @@ const Index = () => {
   const [biblioGeralExtra, setBiblioGeralExtra] = useState("");
   const [isRunningBiblioGeral, setIsRunningBiblioGeral] = useState(false);
   const [lexicalBooks, setLexicalBooks] = useState<string[]>([]);
-  const [selectedLexicalBook, setSelectedLexicalBook] = useState<string>(LEXICAL_BOOK_FALLBACK[0]);
+  const [selectedLexicalBook, setSelectedLexicalBook] = useState<string>("");
   const [lexicalTerm, setLexicalTerm] = useState("");
   const [lexicalMaxResults, setLexicalMaxResults] = useState(DEFAULT_BOOK_SEARCH_MAX_RESULTS);
   const [isRunningLexicalSearch, setIsRunningLexicalSearch] = useState(false);
@@ -417,6 +416,21 @@ const Index = () => {
     return htmlEditorControlApiRef.current ?? htmlEditorControlApi;
   }, [htmlEditorControlApi]);
 
+  const handleAppendHistoryToEditor = useCallback(async (html: string) => {
+    const editorApi = await getEditorApi();
+    if (!editorApi) {
+      toast.error("Abra o editor antes de inserir no documento.");
+      return;
+    }
+
+    try {
+      await editorApi.appendRichWithBlankLine(html);
+      toast.success("Conteudo do historico inserido no final do editor.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Falha ao inserir conteudo no editor.");
+    }
+  }, [getEditorApi]);
+
   const handleRunMacro2ManualNumbering = useCallback(async () => {
     const editorApi = await getEditorApi();
     if (!editorApi) {
@@ -588,13 +602,16 @@ const Index = () => {
     if (lexicalBooks.length > 0) return lexicalBooks;
     try {
       const data = await listLexicalBooksApp();
-      const books = data.result.books?.length ? data.result.books : [...LEXICAL_BOOK_FALLBACK];
+      const books = data.result.books?.length ? data.result.books : [];
       setLexicalBooks(books);
-      if (!books.includes(selectedLexicalBook)) setSelectedLexicalBook(books[0] || LEXICAL_BOOK_FALLBACK[0]);
+      if (!books.includes(selectedLexicalBook)) setSelectedLexicalBook(books[0] || "");
       return books;
-    } catch (_err) {
-      setLexicalBooks([...LEXICAL_BOOK_FALLBACK]);
-      return [...LEXICAL_BOOK_FALLBACK];
+    } catch (err: unknown) {
+      setLexicalBooks([]);
+      setSelectedLexicalBook("");
+      const msg = err instanceof Error ? err.message : "Falha ao carregar livros para Book Search.";
+      toast.error(msg);
+      return [];
     }
   }, [lexicalBooks, selectedLexicalBook]);
 
@@ -646,13 +663,13 @@ const Index = () => {
           const text = (item.text || "").trim();
           const body = text || Object.values(item.data || {}).filter(Boolean).join(" | ");
           const titlePrefix = title ? `**${title}.** ` : "";
-          const numberTag = item.number ? `n. ${item.number}` : `linha ${item.row}`;
-          return `**${idx + 1}.** (${numberTag}) ${titlePrefix}${body}`;
+          return `**${idx + 1}.** ${titlePrefix}${body}`;
         })
         .join("\n\n");
+      const shownInfo = totalFound > maxResults ? ` | Exibidos: ${maxResults}` : "";
       addResponse(
         "app_book_search",
-        `Livro: ${book} | Termo: ${term} | Total: ${totalFound} | Max: ${maxResults}`,
+        `Livro: ${BOOK_OPTION_LABELS[book] ?? book} | Termo: ${term} | Total: ${totalFound}${shownInfo}`,
         markdown,
       );
     } catch (err: unknown) {
@@ -1089,7 +1106,7 @@ const Index = () => {
                         <BookSearchPanel
                           title={parameterAppMeta.app4.title}
                           description={parameterAppMeta.app4.description}
-                          bookOptions={lexicalBooks.length ? lexicalBooks : [...LEXICAL_BOOK_FALLBACK]}
+                          bookOptions={lexicalBooks}
                           selectedBook={selectedLexicalBook}
                           term={lexicalTerm}
                           maxResults={lexicalMaxResults}
@@ -1173,6 +1190,8 @@ const Index = () => {
             responses={responses}
             onClear={() => setResponses([])}
             onSendMessage={(message) => void handleChat(message)}
+            onAppendToEditor={(html) => void handleAppendHistoryToEditor(html)}
+            showAppendToEditor={Boolean(currentFileId)}
             isSending={isHistoryProcessing}
             chatDisabled={!openAiReady}
           />
