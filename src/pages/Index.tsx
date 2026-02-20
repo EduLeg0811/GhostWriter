@@ -31,6 +31,7 @@ import {
   uploadFileToServer,
 } from "@/lib/backend-api";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
+import { buildDocxBlobFromHtml } from "@/lib/docx-export";
 import { parseDocxArrayBuffer, warmupDocxParser } from "@/lib/file-parser";
 import { markdownToEditorHtml, normalizeHistoryContentToMarkdown, plainTextToEditorHtml } from "@/lib/markdown";
 import {
@@ -106,8 +107,8 @@ const parameterActionMeta: Record<AiActionId, { title: string; description: stri
 const sidePanelClass = "bg-card";
 const PANEL_SIZES = {
   left: { default: 10, min: 8, max: 20 },
-  parameter: { default: 15, min: 10, max: 30 },
-  editor: { min: 10 },
+  parameter: { default: 15, min: 10, max: 20 },
+  editor: { min: 20 },
   right: { default: 50, min: 20, max: 70 },
 } as const;
 const MACRO1_HIGHLIGHT_COLORS = [
@@ -663,7 +664,20 @@ const Index = () => {
           const text = (item.text || "").trim();
           const body = text || Object.values(item.data || {}).filter(Boolean).join(" | ");
           const titlePrefix = title ? `**${title}.** ` : "";
-          return `**${idx + 1}.** ${titlePrefix}${body}`;
+          const sourceBook = (item.book || book || "").trim();
+          const sourceBookLabel = BOOK_OPTION_LABELS[sourceBook] ?? sourceBook;
+          const sourceTitle = title || "s/titulo";
+          const sourceNumber = item.number != null && String(item.number).trim() !== "" ? String(item.number).trim() : "?";
+          const folhaRaw = String(item.data?.folha || "").trim();
+          const argumentoRaw = String(item.data?.argumento || "").trim();
+          const folhaPart = folhaRaw || "s/folha";
+          const argumentoPart = argumentoRaw || "s/argumento";
+          const sourceRef = sourceBook === "CCG"
+            ? `(**${sourceBookLabel}**; *${sourceTitle}*; ${folhaPart})`
+            : sourceBook === "DAC"
+              ? `(**${sourceBookLabel}**; *${sourceTitle}*; ${argumentoPart})`
+              : `(**${sourceBookLabel}**; *${sourceTitle}*)`;
+          return `**${idx + 1}.** ${titlePrefix}${body} ${sourceRef}`;
         })
         .join("\n\n");
       const shownInfo = totalFound > maxResults ? ` | Exibidos: ${maxResults}` : "";
@@ -839,15 +853,7 @@ const Index = () => {
         latestHtml = await editorApi.getDocumentHtml();
       }
       await saveFileText(currentFileId, { text: latestText, html: latestHtml });
-      const { Document, Packer, Paragraph, TextRun } = await import("docx");
-      const paragraphs = (latestText || "").replace(/\r\n/g, "\n").split("\n");
-      const children = (paragraphs.length > 0 ? paragraphs : [""]).map((line) =>
-        new Paragraph({ children: [new TextRun(line)] }),
-      );
-      const doc = new Document({
-        sections: [{ children }],
-      });
-      const blob = await Packer.toBlob(doc);
+      const blob = await buildDocxBlobFromHtml(latestHtml || "<p></p>");
       const downloadUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       const baseName = (currentFileName || "documento").trim();

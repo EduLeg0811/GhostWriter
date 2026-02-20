@@ -18,10 +18,10 @@ export const BOOK_OPTION_LABELS: Record<string, string> = {
   "TNP": "Manual da Tenepes",
   "PROEXIS": "Manual da Proéxis",
   "DUPLA": "Manual da Dupla Evolutiva",
-  "HSR": "Homo sapiens reurbanisatus (HSR)",
-  "HSP": "Homo sapiens pacificus (HSP)",
-  "DAC": "Dicionário de Argumentos (DAC)",
-  "LO": "Léxico de Ortopensatas (LO)",
+  "HSR": "Homo sapiens reurbanisatus",
+  "HSP": "Homo sapiens pacificus",
+  "DAC": "Dicionário de Argumentos da Conscienciologia",
+  "LO": "Léxico de Ortopensatas",
   "QUEST": "Questionamentos das Minitertúlias",
 };
 

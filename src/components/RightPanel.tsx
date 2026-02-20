@@ -75,8 +75,13 @@ const RightPanel = ({
   const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   const extractBookSearchQuery = (query: string): string => {
-    const match = (query || "").match(/Termo:\s*(.+?)(?:\s*\|\s*Max:|$)/i);
-    return (match?.[1] || "").trim();
+    const raw = query || "";
+    const withTotal = raw.match(/Termo:\s*([\s\S]*?)\s*\|\s*Total:/i);
+    if (withTotal?.[1]) return withTotal[1].trim();
+    const legacyWithMax = raw.match(/Termo:\s*([\s\S]*?)\s*\|\s*Max:/i);
+    if (legacyWithMax?.[1]) return legacyWithMax[1].trim();
+    const fallback = raw.match(/Termo:\s*([\s\S]*?)$/i);
+    return (fallback?.[1] || "").trim();
   };
 
   const extractHighlightTerms = (query: string): string[] => {
@@ -142,12 +147,33 @@ const RightPanel = ({
     return root.innerHTML;
   };
 
+  const styleBookSearchSourceRefHtml = (html: string): string => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
+    const root = doc.body.firstElementChild as HTMLDivElement | null;
+    if (!root) return html;
+
+    const blocks = Array.from(root.querySelectorAll("p, li"));
+    const sourceRefPattern = /(\(<strong>[^<]+<\/strong>;[\s\S]*\))\s*$/;
+
+    for (const block of blocks) {
+      const current = block.innerHTML || "";
+      const next = current.replace(
+        sourceRefPattern,
+        '<span style="font-size:0.85em;color:#909090;">$1</span>',
+      );
+      if (next !== current) block.innerHTML = next;
+    }
+
+    return root.innerHTML;
+  };
+
   const responseToEditorHtml = (response: AIResponse): string => {
     const { content, type, query } = response;
     const markdown = normalizeHistoryContentToMarkdown(content);
     const html = markdownToEditorHtml(markdown);
     if (type !== "app_book_search") return html;
-    return highlightBookSearchHtml(html, query);
+    return styleBookSearchSourceRefHtml(highlightBookSearchHtml(html, query));
   };
 
   const responseToAppendBodyHtml = (response: AIResponse): string => {
