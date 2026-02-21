@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BookOpen, Clock, Copy, FileText, Languages, Loader2, MessageSquare, PenLine, Repeat2, Search, SendHorizontal, Trash2 } from "lucide-react";
+import { ArrowRight, BookOpen, Clock, Copy, FileText, Languages, Loader2, MessageSquare, PenLine, Repeat2, Search, SendHorizontal, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { markdownToEditorHtml, normalizeHistoryContentToMarkdown } from "@/lib/markdown";
 
@@ -345,8 +345,8 @@ const RightPanel = ({
         <h2 className="text-sm font-semibold text-foreground">Histórico({responses.length})</h2>
         <div className="flex flex-1 items-center justify-center">
           {isSending && (
-            <div className="inline-flex h-9 items-center gap-2 rounded-full border border-green-300 bg-green-100 px-5 text-sm font-bold leading-none text-blue-700 ring-1 ring-green-200 shadow-sm">
-              <Loader2 className="h-5 w-5 shrink-0 animate-spin text-blue-700" />
+            <div className="inline-flex h-7 items-center gap-2 rounded-full border border-green-200 bg-green-100 px-5 text-sm font-simibold leading-none text-blue-700 ring-0 ring-green-200 shadow-sm">
+              <Loader2 className="h-4 w-5 shrink-0 animate-spin text-blue-700" />
               <span className="leading-none">Processando</span>
             </div>
           )}
@@ -389,6 +389,9 @@ const RightPanel = ({
                   <div className="prose prose-sm max-w-none text-xs text-foreground" dangerouslySetInnerHTML={{ __html: responseToEditorHtml(r) }} />
 
                   <div className="flex justify-end">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => void copyToClipboard(r)} title="Copiar resposta">
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
                     {showAppendToEditor && onAppendToEditor && (
                       <Button
                         variant="ghost"
@@ -397,12 +400,9 @@ const RightPanel = ({
                         onClick={() => void onAppendToEditor(responseToAppendHtml(r))}
                         title="Inserir no editor ao final"
                       >
-                        <ArrowLeft className="h-3.5 w-3.5" />
+                        <ArrowRight className="h-3.5 w-3.5" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => void copyToClipboard(r)} title="Copiar resposta">
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
                   </div>
                 </div>
               );

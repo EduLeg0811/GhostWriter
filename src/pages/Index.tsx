@@ -116,8 +116,8 @@ const parameterActionMeta: Record<AiActionId, { title: string; description: stri
 };
 const sidePanelClass = "bg-card";
 const PANEL_SIZES = {
-  left: { default: 10, min: 8, max: 20 },
-  parameter: { default: 15, min: 10, max: 20 },
+  left: { default: 10, min: 10, max: 20 },
+  parameter: { default: 12, min: 12, max: 20 },
   editor: { min: 20 },
   right: { default: 50, min: 20, max: 70 },
 } as const;
@@ -203,6 +203,7 @@ const Index = () => {
   const [macro2SpacingMode, setMacro2SpacingMode] = useState<Macro2SpacingMode>("nbsp_double");
   const saveTimerRef = useRef<number | null>(null);
   const htmlEditorControlApiRef = useRef<HtmlEditorControlApi | null>(null);
+  const currentFileIdRef = useRef("");
 
   const stats = useTextStats(
     documentText || actionText,
@@ -217,6 +218,10 @@ const Index = () => {
   const refreshHealth = useCallback(() => {
     healthCheck().then((h) => setOpenAiReady(h.openaiConfigured)).catch(() => setOpenAiReady(false));
   }, []);
+
+  useEffect(() => {
+    currentFileIdRef.current = currentFileId;
+  }, [currentFileId]);
 
   useEffect(() => {
     refreshHealth();
@@ -277,7 +282,8 @@ const Index = () => {
     }
   }, []);
   const refreshDocumentPageCount = useCallback(async () => {
-    if (!htmlEditorControlApi || !currentFileId) {
+    const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
+    if (!editorApi || !currentFileId) {
       setDocumentPageCount(null);
       setDocumentParagraphCount(null);
       setDocumentWordCount(null);
@@ -286,7 +292,7 @@ const Index = () => {
       return;
     }
     try {
-      const statsData = await htmlEditorControlApi.getDocumentStats();
+      const statsData = await editorApi.getDocumentStats();
       setDocumentPageCount(statsData.pages);
       setDocumentParagraphCount(statsData.paragraphs);
       setDocumentWordCount(statsData.words);
@@ -357,37 +363,40 @@ const Index = () => {
   }, [currentFileId, refreshDocumentPageCount]);
 
   const handleRetrieveSelectedText = useCallback(async () => {
-    if (!htmlEditorControlApi) {
+    const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
+    if (!editorApi) {
       toast.error("API do editor indisponivel no momento.");
       return;
     }
 
     try {
-      const selected = (await htmlEditorControlApi.getSelectedText()).trim();
+      const selected = (await editorApi.getSelectedText()).trim();
       if (!selected) throw new Error("Nenhum texto selecionado no editor.");
       setActionText(selected);
-      toast.success("Trecho selecionado aplicado na caixa de texto.");
+      //toast.success("Trecho selecionado aplicado na caixa de texto.");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Falha ao obter selecao.");
     }
   }, [htmlEditorControlApi]);
 
   const handleSelectAllContent = useCallback(async () => {
-    if (!htmlEditorControlApi) {
+    const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
+    if (!editorApi) {
       toast.error("Controle do editor indisponivel.");
       return;
     }
 
     try {
-      await htmlEditorControlApi.selectAllContent();
-      toast.success("Documento inteiro selecionado.");
+      await editorApi.selectAllContent();
+      //toast.success("Documento inteiro selecionado.");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Falha ao selecionar todo o documento.");
     }
   }, [htmlEditorControlApi]);
 
   const handleTriggerSave = useCallback(async () => {
-    if (!htmlEditorControlApi) {
+    const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
+    if (!editorApi) {
       toast.error("API do editor indisponivel no momento.");
       return;
     }
@@ -405,8 +414,8 @@ const Index = () => {
     try {
       const markdownContent = normalizeHistoryContentToMarkdown(latestResponse);
       const html = markdownToEditorHtml(markdownContent);
-      await htmlEditorControlApi.replaceSelectionRich(markdownContent, html);
-      toast.success("Ultima resposta aplicada no cursor/selecao do editor.");
+      await editorApi.replaceSelectionRich(markdownContent, html);
+      //toast.success("Ultima resposta aplicada no cursor/selecao do editor.");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Falha ao aplicar resposta no editor.");
     }
@@ -457,7 +466,7 @@ const Index = () => {
 
     try {
       await editorApi.appendRichWithBlankLine(html);
-      toast.success("Conteudo do historico inserido no final do editor.");
+      //toast.success("Conteudo do historico inserido no final do editor.");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Falha ao inserir conteudo no editor.");
     }
@@ -473,7 +482,7 @@ const Index = () => {
     setIsLoading(true);
     try {
       const result = await editorApi.runMacro2ManualNumberingSelection(macro2SpacingMode);
-      toast.success(`Macro2 aplicada: ${result.converted} item(ns) convertidos para numeracao manual.`);
+      //toast.success(`Macro2 aplicada: ${result.converted} item(ns) convertidos para numeracao manual.`);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Falha ao executar Macro2.");
     } finally {
@@ -482,8 +491,17 @@ const Index = () => {
   }, [getEditorApi, macro2SpacingMode]);
 
   const handleEditorControlApiReady = useCallback((api: HtmlEditorControlApi | null) => {
-    htmlEditorControlApiRef.current = api;
-    setHtmlEditorControlApi(api);
+    if (api) {
+      htmlEditorControlApiRef.current = api;
+      setHtmlEditorControlApi(api);
+      return;
+    }
+
+    // Evita perder a API por eventos transitórios de foco/re-render quando o editor ainda está aberto.
+    if (currentFileIdRef.current) return;
+
+    htmlEditorControlApiRef.current = null;
+    setHtmlEditorControlApi(null);
   }, []);
 
   const handleRunMacro1Highlight = useCallback(async () => {
@@ -506,9 +524,9 @@ const Index = () => {
         toast.info("Highlight executado. Nenhuma ocorr\u00eancia encontrada.");
         return;
       }
-      toast.success(
-        `Highlight executado: ${result.matches} ocorr\u00eancia(s) encontradas e ${result.highlighted} destacada(s).`,
-      );
+      //toast.success(
+        //`Highlight executado: ${result.matches} ocorr\u00eancia(s) encontradas e ${result.highlighted} destacada(s).`,
+      //);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Falha ao executar Highlight.");
     } finally {
@@ -536,7 +554,7 @@ const Index = () => {
         toast.info("Nenhuma marca\u00e7\u00e3o encontrada para limpar.");
         return;
       }
-      toast.success(`Marca\u00e7\u00e3o limpa em ${result.cleared} ocorr\u00eancia(s).`);
+      //toast.success(`Marca\u00e7\u00e3o limpa em ${result.cleared} ocorr\u00eancia(s).`);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Falha ao limpar marca\u00e7\u00e3o.");
     } finally {
@@ -1029,19 +1047,7 @@ const Index = () => {
   const isHistoryProcessing =
     isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningVerbeteSearch;
   const hasEditorPanel = Boolean(currentFileId) || isOpeningDocument;
-  const hasCenterPanel = hasEditorPanel || Boolean(parameterPanelTarget);
-  const centerDefaultWithEditor = 100 - PANEL_SIZES.left.default - PANEL_SIZES.right.default;
-  const centerMinWithEditor = PANEL_SIZES.parameter.min + PANEL_SIZES.editor.min;
-  const centerMaxWithEditor = 100 - PANEL_SIZES.left.min - PANEL_SIZES.right.min;
-  const parameterDefaultInCenter = hasEditorPanel
-    ? (PANEL_SIZES.parameter.default / centerDefaultWithEditor) * 100
-    : PANEL_SIZES.parameter.default;
-  const parameterMinInCenter = hasEditorPanel
-    ? (PANEL_SIZES.parameter.min / centerDefaultWithEditor) * 100
-    : PANEL_SIZES.parameter.min;
-  const parameterMaxInCenter = hasEditorPanel
-    ? (PANEL_SIZES.parameter.max / centerDefaultWithEditor) * 100
-    : PANEL_SIZES.parameter.max;
+  const hasCenterPanel = Boolean(parameterPanelTarget);
   const layoutResetKey = hasEditorPanel ? "layout-with-editor" : "layout-without-editor";
 
   return (
@@ -1068,39 +1074,17 @@ const Index = () => {
           />
         </ResizablePanel>
 
-        {hasCenterPanel && (
+        {parameterPanelTarget && (
           <>
             <ResizableHandle withHandle />
-
             <ResizablePanel
-              id="center-panel"
+              id="parameter-panel"
               order={2}
-              defaultSize={
-                hasEditorPanel
-                  ? centerDefaultWithEditor
-                  : PANEL_SIZES.parameter.default
-              }
-              minSize={
-                hasEditorPanel
-                  ? centerMinWithEditor
-                  : PANEL_SIZES.parameter.min
-              }
-              maxSize={
-                hasEditorPanel
-                  ? centerMaxWithEditor
-                  : PANEL_SIZES.parameter.max
-              }
+              defaultSize={PANEL_SIZES.parameter.default}
+              minSize={PANEL_SIZES.parameter.min}
+              maxSize={PANEL_SIZES.parameter.max}
+              className={`border-r border-border ${sidePanelClass}`}
             >
-              <ResizablePanelGroup direction="horizontal">
-            {parameterPanelTarget && (
-                <ResizablePanel
-                  id="parameter-panel"
-                  order={1}
-                  defaultSize={parameterDefaultInCenter}
-                  minSize={parameterMinInCenter}
-                  maxSize={parameterMaxInCenter}
-                  className={`border-r border-border ${sidePanelClass}`}
-                >
                   <div className="flex h-full flex-col">
                     <div className="flex items-center justify-between border-b border-border bg-[hsl(var(--panel-header))] px-4 py-3">
                       <h2 className="text-sm font-semibold text-foreground">Parameters</h2>
@@ -1327,47 +1311,11 @@ const Index = () => {
                       )}
                     </div>
                   </div>
-                </ResizablePanel>
-            )}
-
-            {parameterPanelTarget && hasEditorPanel && <ResizableHandle withHandle />}
-
-            {hasEditorPanel && (
-            <ResizablePanel
-              id="editor-panel"
-              order={parameterPanelTarget ? 2 : 1}
-              minSize={PANEL_SIZES.editor.min}
-            >
-              <main className="relative h-full min-w-0 bg-white">
-                <HtmlEditor
-                  contentHtml={editorContentHtml}
-                  documentVersion={openedDocumentVersion}
-                  onControlApiReady={handleEditorControlApiReady}
-                  onContentChange={handleEditorContentChange}
-                  onExportDocx={() => void handleExportDocx()}
-                  isExportingDocx={isExportingDocx}
-                  onCloseEditor={() => {
-                    setCurrentFileId("");
-                    setCurrentFileName("");
-                  }}
-                />
-                {isOpeningDocument && (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-white">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground shadow-sm bg-green-50">
-                      <Loader2 className="h-4 w-4 animate-spin text-primary bg-green-50" />
-                      <span>Abrindo documento...</span>
-                    </div>
-                  </div>
-                )}
-              </main>
             </ResizablePanel>
-            )}
-              </ResizablePanelGroup>
-            </ResizablePanel>
-
-            <ResizableHandle withHandle />
           </>
         )}
+
+        <ResizableHandle withHandle />
 
         <ResizablePanel
           id="right-panel"
@@ -1399,6 +1347,40 @@ const Index = () => {
             chatDisabled={!openAiReady}
           />
         </ResizablePanel>
+
+        {hasEditorPanel && (
+          <>
+            <ResizableHandle withHandle />
+            <ResizablePanel
+              id="editor-panel"
+              order={hasCenterPanel ? 4 : 3}
+              minSize={PANEL_SIZES.editor.min}
+            >
+              <main className="relative h-full min-w-0 bg-white">
+                <HtmlEditor
+                  contentHtml={editorContentHtml}
+                  documentVersion={openedDocumentVersion}
+                  onControlApiReady={handleEditorControlApiReady}
+                  onContentChange={handleEditorContentChange}
+                  onExportDocx={() => void handleExportDocx()}
+                  isExportingDocx={isExportingDocx}
+                  onCloseEditor={() => {
+                    setCurrentFileId("");
+                    setCurrentFileName("");
+                  }}
+                />
+                {isOpeningDocument && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-white">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground shadow-sm bg-green-50">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary bg-green-50" />
+                      <span>Abrindo documento...</span>
+                    </div>
+                  </div>
+                )}
+              </main>
+            </ResizablePanel>
+          </>
+        )}
       </ResizablePanelGroup>
 
     </div>
