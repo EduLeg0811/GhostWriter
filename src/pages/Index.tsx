@@ -497,7 +497,7 @@ const Index = () => {
       return;
     }
 
-    // Evita perder a API por eventos transitórios de foco/re-render quando o editor ainda está aberto.
+    // Evita perder a API por eventos transitorios de foco/re-render quando o editor ainda esta aberto.
     if (currentFileIdRef.current) return;
 
     htmlEditorControlApiRef.current = null;
@@ -761,6 +761,7 @@ const Index = () => {
       }
       const markdown = matches
         .map((item, idx) => {
+
           const title = (item.title || "").trim();
           const text = (item.text || "").trim();
           const body = text || Object.values(item.data || {}).filter(Boolean).join(" | ");
@@ -818,6 +819,7 @@ const Index = () => {
 
       const markdown = matches
         .map((item, idx) => {
+
           const row = item.data || {};
           const rowTitle = String(row.title || item.title || "").trim();
           const rowText = String(row.text || item.text || "").trim();
@@ -876,7 +878,7 @@ const Index = () => {
       const pensata = paragraph || "Paragrafo nao encontrado.";
       const analysisMessages = buildPensataAnalysisPrompt(pensata);
       const analysis = (await callOpenAI(analysisMessages)).trim();
-      const content = analysis ? `${pensata}\n\n*Análise IA:*\n${analysis}` : pensata;
+      const content = analysis ? `${pensata}\n\n*AnÃ¡lise IA:*\n${analysis}` : pensata;
       addResponse("app_random_pensata", header, content);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Pensata do Dia.";
@@ -1388,6 +1390,8 @@ const Index = () => {
 };
 
 export default Index;
+
+
 
 
 

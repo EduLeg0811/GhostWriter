@@ -31,8 +31,8 @@ export interface AIResponse {
 
 const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactNode }> = {
   define: { label: "Definir", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
-  synonyms: { label: "SinonÃ­mia", icon: <Repeat2 className="h-3.5 w-3.5 text-primary" /> },
-  epigraph: { label: "EpÃ­grafe", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
+  synonyms: { label: "Sinonímia", icon: <Repeat2 className="h-3.5 w-3.5 text-primary" /> },
+  epigraph: { label: "Epígrafe", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   rewrite: { label: "Reescrever", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
   summarize: { label: "Resumir", icon: <FileText className="h-3.5 w-3.5 text-primary" /> },
   translate: { label: "Traduzir", icon: <Languages className="h-3.5 w-3.5 text-primary" /> },
@@ -94,6 +94,46 @@ const RightPanel = ({
   const applyIndentedLine = (block: Element, px = 19): void => {
     const htmlBlock = block as HTMLElement;
     htmlBlock.style.paddingLeft = `${px}px`;
+  };
+
+  const styleNumberedListItemsHtml = (html: string): string => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
+    const root = doc.body.firstElementChild as HTMLDivElement | null;
+    if (!root) return html;
+
+    const blocks = Array.from(root.querySelectorAll("p, li"));
+    const numberedPattern = /^\s*(\d{1,2})\.\s*/;
+    const numberedBlocks = blocks
+      .map((block) => {
+        const text = (block.textContent || "").replace(/\u00a0/g, " ");
+        const match = text.match(numberedPattern);
+        if (!match) return null;
+        return { block, index: Number(match[1]) };
+      })
+      .filter((item): item is { block: Element; index: number } => item !== null);
+
+    const shouldPad = numberedBlocks.length >= 10;
+
+    for (const item of numberedBlocks) {
+      const block = item.block;
+      const normalizedIndex = shouldPad && item.index < 10 ? `0${item.index}` : String(item.index);
+
+      const firstStrong = block.querySelector("strong");
+      if (firstStrong && /^\s*\d{1,2}\.\s*$/.test((firstStrong.textContent || "").replace(/\u00a0/g, " "))) {
+        firstStrong.textContent = `${normalizedIndex}.  `;
+      } else if (block.firstChild && block.firstChild.nodeType === Node.TEXT_NODE) {
+        const raw = (block.firstChild.nodeValue || "").replace(/\u00a0/g, " ");
+        block.firstChild.nodeValue = raw.replace(/^\s*\d{1,2}\.\s*/, `${normalizedIndex}.  `);
+      }
+
+      // Hanging indent: index stays on the left, wrapped lines align with item text.
+      applyHangingIndent(block, 28);
+      (block as HTMLElement).style.marginTop = "0.2em";
+      (block as HTMLElement).style.marginBottom = "0.2em";
+    }
+
+    return root.innerHTML;
   };
 
   const escapeHtml = (value: string): string =>
@@ -260,9 +300,9 @@ const RightPanel = ({
     const { content, type, query } = response;
     const markdown = normalizeHistoryContentToMarkdown(content);
     const html = markdownToEditorHtml(markdown);
-    if (type === "app_book_search") return styleBookSearchSourceRefHtml(highlightBookSearchHtml(html, query));
-    if (type === "app_verbete_search") return styleVerbeteSearchHtml(highlightBookSearchHtml(html, query));
-    return html;
+    if (type === "app_book_search") return styleNumberedListItemsHtml(styleBookSearchSourceRefHtml(highlightBookSearchHtml(html, query)));
+    if (type === "app_verbete_search") return styleNumberedListItemsHtml(styleVerbeteSearchHtml(highlightBookSearchHtml(html, query)));
+    return styleNumberedListItemsHtml(html);
   };
 
   const responseToAppendBodyHtml = (response: AIResponse): string => {

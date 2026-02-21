@@ -257,6 +257,13 @@ def find_refs_by_titles(titles: list[str], xlsx_path: Path | None = None) -> dic
 
     items: list[dict[str, Any]] = []
 
+    def _row_get(row: dict[str, str], *keys: str) -> str:
+        for key in keys:
+            value = row.get(key)
+            if value is not None:
+                return str(value)
+        return ""
+
     def _extract_number_from_text(text: str) -> int | None:
         m = re.search(r"\bn\.\s*(\d+)\b", text or "", flags=re.IGNORECASE)
         if m:
@@ -264,10 +271,12 @@ def find_refs_by_titles(titles: list[str], xlsx_path: Path | None = None) -> dic
         return None
 
     def _extract_number(row: dict[str, str]) -> int | None:
-        raw_number = (row.get("numero") or row.get("number") or "").strip()
+        raw_number = _row_get(row, "numero", "number").strip()
         if raw_number.isdigit():
             return int(raw_number)
-        return _extract_number_from_text((row.get("ref_list") or "") + "\n" + (row.get("ref_biblio") or ""))
+        return _extract_number_from_text(
+            _row_get(row, "ref_list", "ref list") + "\n" + _row_get(row, "ref_biblio", "ref biblio")
+        )
 
     def _extract_author_prefix(ref_biblio_value: str) -> str | None:
         m = re.match(r"^\s*(\*\*[^*]+\*\*,\s*[^;]+);\s*", ref_biblio_value or "")
@@ -321,8 +330,8 @@ def find_refs_by_titles(titles: list[str], xlsx_path: Path | None = None) -> dic
                     break
 
         if matched:
-            ref_list_value = (matched.get("ref_list") or "").strip()
-            ref_biblio_value = (matched.get("ref_biblio") or "").strip()
+            ref_list_value = _row_get(matched, "ref_list", "ref list").strip()
+            ref_biblio_value = _row_get(matched, "ref_biblio", "ref biblio").strip()
             items.append({
                 "input": requested,
                 "number": _extract_number(matched),
