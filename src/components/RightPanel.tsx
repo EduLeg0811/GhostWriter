@@ -1,9 +1,14 @@
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BookOpen, Clock, Copy, FileText, Languages, Loader2, MessageSquare, PenLine, Repeat2, Search, SendHorizontal, Trash2 } from "lucide-react";
+import { ArrowRight, BookOpen, Clock, Copy, FileText, Languages, Loader2, MessageSquare, PenLine, Repeat2, RotateCcw, Search, SendHorizontal, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { markdownToEditorHtml, normalizeHistoryContentToMarkdown } from "@/lib/markdown";
+
+// DESTAQUE: fonte padrao (inicial + reset) dos cards do Historico.
+const HISTORY_FONT_DEFAULT = 0.75;
+// DESTAQUE: incremento/decremento aplicado nos botoes A- e A+.
+const HISTORY_FONT_STEP = 0.05;
 
 export interface AIResponse {
   id: string;
@@ -68,6 +73,19 @@ const RightPanel = ({
   chatDisabled = false,
 }: RightPanelProps) => {
   const [prompt, setPrompt] = useState("");
+  const [historyFontScale, setHistoryFontScale] = useState(HISTORY_FONT_DEFAULT);
+  const HISTORY_FONT_MIN = 0.6;
+  const HISTORY_FONT_MAX = 1.4;
+  const historyFontStyle = { fontSize: `${historyFontScale}em`, lineHeight: 1.5 };
+  const decreaseHistoryFont = () => {
+    setHistoryFontScale((prev) => Math.max(HISTORY_FONT_MIN, Number((prev - HISTORY_FONT_STEP).toFixed(2))));
+  };
+  const increaseHistoryFont = () => {
+    setHistoryFontScale((prev) => Math.min(HISTORY_FONT_MAX, Number((prev + HISTORY_FONT_STEP).toFixed(2))));
+  };
+  const resetHistoryFont = () => {
+    setHistoryFontScale(HISTORY_FONT_DEFAULT);
+  };
   const isHttpUrlText = (value: string): boolean => /^https?:\/\/\S+$/i.test((value || "").trim());
 
   const applyExternalLinkLineStyle = (block: Element, urlText: string, doc: Document): void => {
@@ -392,6 +410,36 @@ const RightPanel = ({
           )}
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-[11px] font-semibold"
+            onClick={decreaseHistoryFont}
+            title="Diminuir fonte dos cards"
+            disabled={historyFontScale <= HISTORY_FONT_MIN}
+          >
+            A-
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-[11px] font-semibold"
+            onClick={increaseHistoryFont}
+            title="Aumentar fonte dos cards"
+            disabled={historyFontScale >= HISTORY_FONT_MAX}
+          >
+            A+
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={resetHistoryFont}
+            title="Resetar fonte dos cards (xs)"
+            disabled={historyFontScale === HISTORY_FONT_DEFAULT}
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={onClear} title="Limpar histórico">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
@@ -412,21 +460,21 @@ const RightPanel = ({
               const meta = typeLabels[r.type];
               return (
                 <div key={r.id} className="space-y-2 rounded-lg border border-border bg-white p-3">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-primary" style={historyFontStyle}>
                     {meta.icon}
                     {meta.label}
-                    <span className="ml-auto text-xs font-normal text-muted-foreground">
+                    <span className="ml-auto font-normal text-muted-foreground">
                       {r.timestamp.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
 
                   {(r.query || r.type === "app_random_pensata") && (
-                    <p className="line-clamp-2 border-l-2 border-primary/30 pl-2 text-xs text-muted-foreground">
+                    <p className="line-clamp-2 border-l-2 border-primary/30 pl-2 text-xs text-muted-foreground" style={historyFontStyle}>
                       {renderQuerySubtitle(r)}
                     </p>
                   )}
 
-                  <div className="prose prose-sm max-w-none text-xs text-foreground" dangerouslySetInnerHTML={{ __html: responseToEditorHtml(r) }} />
+                  <div className="prose prose-sm max-w-none text-xs text-foreground" style={historyFontStyle} dangerouslySetInnerHTML={{ __html: responseToEditorHtml(r) }} />
 
                   <div className="flex justify-end">
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => void copyToClipboard(r)} title="Copiar resposta">
@@ -484,6 +532,13 @@ const RightPanel = ({
 };
 
 export default RightPanel;
+
+
+
+
+
+
+
 
 
 

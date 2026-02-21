@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,19 @@ const BookSearchPanel = ({
   onClose,
   showPanelChrome = true,
 }: BookSearchPanelProps) => {
+  const termTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const resizeTermTextarea = () => {
+    const el = termTextareaRef.current;
+    if (!el) return;
+    el.style.height = "36px";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  useEffect(() => {
+    resizeTermTextarea();
+  }, [term]);
+
   const orderedBookOptions = [
     ...Object.keys(BOOK_OPTION_LABELS).filter((key) => bookOptions.includes(key)),
     ...bookOptions.filter((option) => !(option in BOOK_OPTION_LABELS)),
@@ -75,19 +89,23 @@ const BookSearchPanel = ({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Termo</Label>
+        <div className="flex items-center gap-3">
+          <Label className="w-16 shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Termo</Label>
           <Textarea
-            className="min-h-10 rounded-md border border-input bg-white px-3 py-1 text-xs leading-relaxed text-foreground"
-            rows={2}
+            ref={termTextareaRef}
+            className="h-9 min-h-9 flex-1 resize-none overflow-hidden rounded-md border border-input bg-white px-3 py-1 text-xs leading-relaxed text-foreground"
+            rows={1}
             value={term}
-            onChange={(e) => onTermChange(e.target.value)}
-            placeholder="Digite uma palavra ou termo"
+            onChange={(e) => {
+              onTermChange(e.target.value);
+              resizeTermTextarea();
+            }}
+            //placeholder="Digite uma palavra ou termo"
           />
         </div>
 
-        <div className="space-y-2">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Máximo de resultados</Label>
+        <div className="flex items-center gap-3">
+          <Label className="w-16 shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Limite</Label>
           <Input
             type="number"
             min={1}
@@ -98,7 +116,7 @@ const BookSearchPanel = ({
               const next = Number.isFinite(raw) ? Math.max(1, Math.min(100, raw)) : 1;
               onMaxResultsChange(next);
             }}
-            className="h-9 text-xs bg-white"
+            className="h-9 bg-white !text-xs text-right"
           />
         </div>
 
@@ -143,4 +161,5 @@ const BookSearchPanel = ({
 };
 
 export default BookSearchPanel;
+
 

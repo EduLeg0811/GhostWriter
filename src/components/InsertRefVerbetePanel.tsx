@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -27,6 +28,18 @@ const InsertRefVerbetePanel = ({
   showPanelChrome = true,
 }: InsertRefVerbetePanelProps) => {
   const canRun = verbeteInput.trim().length > 0 && !isRunning;
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const resizeTextarea = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  useLayoutEffect(() => {
+    resizeTextarea();
+  }, [verbeteInput]);
 
   const content = (
     <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
@@ -42,10 +55,14 @@ const InsertRefVerbetePanel = ({
           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Verbetes</Label>
           <p className="text-xs text-muted-foreground">Nomes dos verbetes separados por virgula, ponto-e-virgula ou quebra de linha.</p>
           <Textarea
-            className="min-h-40 rounded-md border border-input bg-white px-3 py-2 text-xs leading-relaxed text-foreground"
+            ref={textareaRef}
+            className="min-h-40 resize-none overflow-hidden rounded-md border border-input bg-white px-3 py-2 !text-xs leading-relaxed text-foreground"
             rows={4}
             value={verbeteInput}
-            onChange={(e) => onVerbeteInputChange(e.target.value)}
+            onChange={(e) => {
+              onVerbeteInputChange(e.target.value);
+              resizeTextarea();
+            }}
           />
         </div>
 

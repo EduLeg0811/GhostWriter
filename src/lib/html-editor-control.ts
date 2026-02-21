@@ -117,6 +117,33 @@ function clearHighlightInHtml(html: string, term: string): { html: string; match
   return { html: root.innerHTML, matches, cleared };
 }
 
+function countOccurrencesInHtml(html: string, term: string): number {
+  const normalizedTerm = (term || "").trim();
+  if (!normalizedTerm) return 0;
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div>${html || ""}</div>`, "text/html");
+  const root = doc.body.firstElementChild as HTMLDivElement | null;
+  if (!root) return 0;
+
+  const regex = new RegExp(escapeRegExp(normalizedTerm), "gi");
+  let matches = 0;
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+
+  while (walker.nextNode()) {
+    const textNode = walker.currentNode as Text;
+    const value = textNode.nodeValue || "";
+    if (!value) continue;
+    regex.lastIndex = 0;
+    const found = value.match(regex);
+    if (found?.length) {
+      matches += found.length;
+    }
+  }
+
+  return matches;
+}
+
 function normalizeAppendHtml(html: string): string {
   const raw = (html || "").trim();
   if (!raw) return "";
@@ -247,6 +274,10 @@ export class HtmlEditorControlApi {
     const { html, matches, cleared } = clearHighlightInHtml(this.editor.getHTML(), term);
     this.editor.commands.setContent(html, { emitUpdate: true });
     return { terms: 1, matches, cleared };
+  }
+
+  async countOccurrencesInDocument(term: string): Promise<number> {
+    return countOccurrencesInHtml(this.editor.getHTML(), term);
   }
 
   async runMacro2ManualNumberingSelection(

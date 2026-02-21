@@ -28,6 +28,7 @@ interface LeftPanelProps {
   onOpenParameterSection: (section: "actions" | "apps" | "macros") => void;
   onRunRandomPensata: () => Promise<void> | void;
   onOpenBookSearch: () => void;
+  onOpenVerbetografia: () => void;
   isLoading: boolean;
   hasDocumentOpen: boolean;
   onRefreshStats?: () => void;
@@ -42,6 +43,7 @@ const LeftPanel = ({
   onOpenParameterSection,
   onRunRandomPensata,
   onOpenBookSearch,
+  onOpenVerbetografia,
   isLoading,
   hasDocumentOpen,
   onRefreshStats,
@@ -234,7 +236,20 @@ const LeftPanel = ({
                 <Search className="mr-2 h-4 w-4 shrink-0 text-primary" />
                 <span className="min-w-0 flex-1 text-left">
                   <span className="block break-words text-sm font-medium text-foreground">Busca de Palavras</span>
-                  <span className="block break-words text-xs text-muted-foreground">Busca palavras e termos em livros</span>
+                  <span className="block break-words text-xs text-muted-foreground">Busca palavras e termos nas fontes</span>
+                </span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                className={sectionActionButtonClass}
+                onClick={onOpenVerbetografia}
+                disabled={actionDisabled}
+              >
+                <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Verbetografia</span>
+                  <span className="block break-words text-xs text-muted-foreground">Tabela automatizada de verbete</span>
                 </span>
               </Button>
 
@@ -292,7 +307,7 @@ const LeftPanel = ({
             >
               <img src="/LO.png" alt="LO" className="h-16 w-16 shrink-0 object-contain bg-white" />
               <span className="min-w-0 flex-1 text-left">
-                <span className="text-normal font-semibold tracking-wide text-orange-600 shadow-lg">Pensata do Dia</span>
+                <span className="text-sm font-semibold tracking-wide text-orange-600 shadow-lg">Pensata do Dia</span>
                 <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Bibliomancia Digital</p>
               </span>
             </Button>
@@ -308,14 +323,55 @@ const LeftPanel = ({
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-3">
                 <img src="/cons-ia.png" alt="Cons-IA" className="h-16 w-16 rounded-md" />
-                <div className="flex flex-col">
-                  <span className="text-normal font-semibold tracking-wide text-orange-600 shadow-lg">Cons-IA</span>
-                  <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Toolbox de IA da Conscienciologia</p>
-                </div>
+                <span className="min-w-0 flex-1 text-left">
+                <span className="text-sm font-semibold tracking-wide text-orange-600 shadow-lg">Cons-IA</span>
+                <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Toolbox de IA da Conscienciologia</p>
+              </span>
               </div>
               <ExternalLink className="h-4 w-4 shrink-0 opacity-90 transition group-hover:translate-x-0.5" />
             </div>
           </a>
+
+
+          
+          <a
+            //href="https://cons-ia.org/BooksPDF/"
+            href="https://www.dropbox.com/scl/fo/qh87067rpgc7ndjpv50eb/AGWrUeEVDyDZRlOWqDNcJ00?rlkey=jw6lkzp9fkugkamcx500z0k9g&st=owkldr8v&dl=0"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group block rounded-xl border border-orange-200 bg-white px-4 py-2 text-blue-600 shadow-sm transition-all duration-200 hover:bg-white hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-[0_10px_24px_-14px_rgba(0,0,0,0.45),0_3px_8px_-4px_rgba(0,0,0,0.25)]"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <img src="/Books.png" alt="PDF" className="h-16 w-16 rounded-md" />
+                <span className="min-w-0 flex-1 text-left">
+                <span className="text-sm font-semibold tracking-wide text-orange-600 shadow-lg">Livros em PDF</span>
+                <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Download de livros da Conscienciologia</p>
+              </span>
+              </div>
+              <ExternalLink className="h-4 w-4 shrink-0 opacity-90 transition group-hover:translate-x-0.5" />
+            </div>
+          </a>
+
+
+          <a
+            href="https://consciencioteca.onrender.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group block rounded-xl border border-orange-200 bg-white px-4 py-2 text-blue-600 shadow-sm transition-all duration-200 hover:bg-white hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-[0_10px_24px_-14px_rgba(0,0,0,0.45),0_3px_8px_-4px_rgba(0,0,0,0.25)]"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <img src="/WV-Green3.png" alt="Videos" className="h-12 w-16 rounded-md" />
+                <span className="min-w-0 flex-1 text-left">
+                <span className="text-sm font-semibold tracking-wide text-orange-600 shadow-lg">Consciencioteca</span>
+                <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Canal de vídeos da Conscienciologia</p>
+              </span>
+              </div>
+              <ExternalLink className="h-4 w-4 shrink-0 opacity-90 transition group-hover:translate-x-0.5" />
+            </div>
+          </a>
+
 
         </div>
         

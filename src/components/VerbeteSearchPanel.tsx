@@ -55,24 +55,26 @@ const VerbeteSearchPanel = ({
         <Separator />
 
         <div className="flex items-center gap-2">
+          <Label className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Definologia</Label>
+          <Input value={text} onChange={(e) => onTextChange(e.target.value)} className="ml-auto h-8 w-[30ch] text-xs md:text-xs bg-white" />
+        </div>
+
+        <div className="flex items-center gap-2">
           <Label className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Autor</Label>
-          <Input value={author} onChange={(e) => onAuthorChange(e.target.value)} className="h-8 text-xs md:text-xs bg-white" />
+          <Input value={author} onChange={(e) => onAuthorChange(e.target.value)} className="ml-auto h-8 w-[30ch] text-xs md:text-xs bg-white" />
         </div>
 
         <div className="flex items-center gap-2">
           <Label className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Titulo</Label>
-          <Input value={titleField} onChange={(e) => onTitleFieldChange(e.target.value)} className="h-8 text-xs md:text-xs bg-white" />
+          <Input value={titleField} onChange={(e) => onTitleFieldChange(e.target.value)} className="ml-auto h-8 w-[30ch] text-xs md:text-xs bg-white" />
         </div>
 
         <div className="flex items-center gap-2">
-          <Label className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Area</Label>
-          <Input value={area} onChange={(e) => onAreaChange(e.target.value)} className="h-8 text-xs md:text-xs bg-white" />
+          <Label className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Especialidade</Label>
+          <Input value={area} onChange={(e) => onAreaChange(e.target.value)} className="ml-auto h-8 w-[30ch] text-xs md:text-xs bg-white" />
         </div>
 
-        <div className="flex items-center gap-2">
-          <Label className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Definologia</Label>
-          <Input value={text} onChange={(e) => onTextChange(e.target.value)} className="h-8 text-xs md:text-xs bg-white" />
-        </div>
+       
 
         <div className="flex items-center gap-2">
           <Label className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Limite</Label>
@@ -86,7 +88,7 @@ const VerbeteSearchPanel = ({
               const next = Number.isFinite(raw) ? Math.max(1, Math.min(200, raw)) : 1;
               onMaxResultsChange(next);
             }}
-            className="h-8 text-xs md:text-xs bg-white"
+            className="ml-auto h-8 w-[30ch] bg-white !text-xs text-right"
           />
         </div>
 

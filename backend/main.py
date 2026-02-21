@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import time
 import uuid
@@ -164,6 +165,11 @@ class SaveFileTextRequest(BaseModel):
     html: str = ""
 
 
+class VerbetografiaOpenTableRequest(BaseModel):
+    title: str = ""
+    specialty: str = ""
+
+
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -253,6 +259,48 @@ def decode_xml_text(text: str) -> str:
 def encode_xml_text(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")\
         .replace('"', "&quot;").replace("'", "&apos;")
+
+
+def escape_html_text(text: str) -> str:
+    return (
+        (text or "")
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&#39;")
+    )
+
+
+def read_html_with_declared_charset(path: Path) -> str:
+    raw = path.read_bytes()
+    if raw.startswith(b"\xef\xbb\xbf"):
+        return raw[3:].decode("utf-8", errors="ignore")
+    if raw.startswith(b"\xff\xfe"):
+        return raw.decode("utf-16le", errors="ignore")
+    if raw.startswith(b"\xfe\xff"):
+        return raw.decode("utf-16be", errors="ignore")
+
+    # Primary path: files are expected in UTF-8 without BOM.
+    try:
+        return raw.decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        pass
+
+    head = raw[:4096].decode("latin-1", errors="ignore")
+    meta_match = re.search(r"charset\s*=\s*['\"]?\s*([A-Za-z0-9._-]+)", head, flags=re.IGNORECASE)
+    declared = (meta_match.group(1).strip().lower() if meta_match else "")
+    charset_aliases = {
+        "unicode": "utf-8",
+        "utf8": "utf-8",
+        "win-1252": "cp1252",
+        "windows-1252": "cp1252",
+    }
+    charset = charset_aliases.get(declared, declared or "utf-8")
+    try:
+        return raw.decode(charset, errors="ignore")
+    except LookupError:
+        return raw.decode("cp1252", errors="ignore")
 
 
 def ensure_run_highlight(run_xml: str, color: str = "yellow") -> str:
@@ -884,6 +932,66 @@ def api_random_pensata() -> dict[str, Any]:
     if not result.get("ok"):
         raise HTTPException(status_code=500, detail=result.get("error") or "Falha ao executar Pensata do Dia.")
     return result
+
+
+@app.post("/api/apps/verbetografia/open-table")
+def api_verbetografia_open_table(payload: VerbetografiaOpenTableRequest) -> dict[str, Any]:
+    run_storage_gc()
+
+    word_template_path = ROOT_DIR / "backend" / "Files" / "Verbetes" / "Tab_Verbete.docx"
+    html_template_path = ROOT_DIR / "backend" / "Files" / "Verbetes" / "Html_Verbete.htm"
+    if not word_template_path.exists():
+        raise HTTPException(status_code=500, detail="Arquivo base Tab_Verbete.docx nao encontrado em backend/Files/Verbetes.")
+    if not html_template_path.exists():
+        raise HTTPException(status_code=500, detail="Arquivo base Html_Verbete.htm nao encontrado em backend/Files/Verbetes.")
+
+    if os.name == "nt":
+        try:
+            os.startfile(str(word_template_path))  # type: ignore[attr-defined]
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=f"Falha ao abrir arquivo base da verbetografia: {exc}")
+
+    file_id = str(uuid.uuid4())
+    stored_name = f"{file_id}.htm"
+    target_path = UPLOADS_DIR / stored_name
+    shutil.copyfile(html_template_path, target_path)
+
+    html_content = read_html_with_declared_charset(target_path)
+
+    raw_title = (payload.title or "").strip() or "Título"
+    raw_specialty = (payload.specialty or "").strip() or "Especialidade"
+    title_html = escape_html_text(raw_title)
+    specialty_html = escape_html_text(raw_specialty)
+    heading_lines = (
+        f'<p style="margin:0 0 8px 0 !important;text-align:center !important;font-size:20px !important;line-height:1.25 !important;font-weight:700 !important;"><span style="font-size:20px !important;">{title_html}</span></p>'
+        f'<p style="margin:0 0 16px 0 !important;text-align:center !important;font-size:16px !important;line-height:1.25 !important;font-style:italic !important;"><span style="font-size:16px !important;">({specialty_html})</span></p>'
+    )
+    if "<body" in html_content.lower():
+        html_content = re.sub(r"(<body[^>]*>)", rf"\1{heading_lines}", html_content, count=1, flags=re.IGNORECASE)
+    else:
+        html_content = f"{heading_lines}\n{html_content}"
+    text_content = re.sub(r"<[^>]+>", " ", html_content)
+    text_content = re.sub(r"\s+", " ", text_content).strip()
+
+    metadata: dict[str, Any] = {
+        "id": file_id,
+        "originalName": html_template_path.name,
+        "storedName": stored_name,
+        "mimeType": "text/html",
+        "size": target_path.stat().st_size,
+        "ext": "htm",
+        "createdAt": time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime()),
+        "sourceTemplateWord": str(word_template_path),
+        "sourceTemplateHtmlPage": str(html_template_path),
+        # Compatibilidade retroativa.
+        "sourceTemplateHtml": str(html_template_path),
+        "editorHtml": html_content,
+        "editorText": text_content,
+        "verbetografiaTitle": raw_title,
+        "verbetografiaSpecialty": raw_specialty,
+    }
+    write_meta(file_id, metadata)
+    return metadata
 
 
 @app.get("/api/apps/lexical/books")

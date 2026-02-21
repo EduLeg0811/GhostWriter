@@ -22,6 +22,9 @@ interface Macro1HighlightPanelProps {
   onRunHighlight: () => void;
   onRunClear: () => void;
   isRunning: boolean;
+  predictedMatches: number | null;
+  isCountingMatches?: boolean;
+  hasDocumentOpen?: boolean;
   onClose?: () => void;
   showPanelChrome?: boolean;
 }
@@ -37,6 +40,9 @@ const Macro1HighlightPanel = ({
   onRunHighlight,
   onRunClear,
   isRunning,
+  predictedMatches,
+  isCountingMatches = false,
+  hasDocumentOpen = false,
   onClose,
   showPanelChrome = true,
 }: Macro1HighlightPanelProps) => {
@@ -62,6 +68,15 @@ const Macro1HighlightPanel = ({
             placeholder="Digite o termo para destacar"
             className="h-9 bg-white text-xs placeholder:text-xs md:text-xs"
           />
+          <p className="text-xs text-muted-foreground">
+            {!term.trim()
+              ? "Informe um termo para ver a previa."
+              : !hasDocumentOpen
+                ? "Abra um documento para ver a contagem."
+                : isCountingMatches
+                  ? "Calculando ocorrencias..."
+                  : `Ocorrencias encontradas: ${predictedMatches ?? 0}`}
+          </p>
         </div>
 
         <div className="space-y-2">

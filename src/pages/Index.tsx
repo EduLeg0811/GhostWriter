@@ -10,6 +10,7 @@ import BiblioGeralPanel from "@/components/BiblioGeralPanel";
 import BiblioExternaPanel from "@/components/BiblioExternaPanel";
 import BookSearchPanel, { BOOK_OPTION_LABELS } from "@/components/BookSearchPanel";
 import VerbeteSearchPanel from "@/components/VerbeteSearchPanel";
+import VerbetografiaPanel from "@/components/VerbetografiaPanel";
 import Macro1HighlightPanel from "@/components/Macro1HighlightPanel";
 import Macro2ManualNumberingPanel from "@/components/Macro2ManualNumberingPanel";
 import type { Macro2SpacingMode } from "@/components/Macro2ManualNumberingPanel";
@@ -27,6 +28,7 @@ import {
   insertRefBookMacro,
   insertRefVerbeteApp,
   listLexicalBooksApp,
+  openVerbetografiaTableApp,
   randomPensataApp,
   saveFileText,
   searchLexicalBookApp,
@@ -36,7 +38,7 @@ import {
 } from "@/lib/backend-api";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 import { buildDocxBlobFromHtml } from "@/lib/docx-export";
-import { parseDocxArrayBuffer, warmupDocxParser } from "@/lib/file-parser";
+import { cleanupConvertedPdfHeaderHtml, parseDocxArrayBuffer, warmupDocxParser } from "@/lib/file-parser";
 import { markdownToEditorHtml, normalizeHistoryContentToMarkdown, plainTextToEditorHtml } from "@/lib/markdown";
 import {
   callOpenAI,
@@ -59,7 +61,8 @@ const OPENAI_VECTOR_STORE_LO = (import.meta.env.VITE_OPENAI_VECTOR_STORE_LO as s
 const OPENAI_VECTOR_STORE_TRANSLATE_RAG = (import.meta.env.VITE_OPENAI_VECTOR_STORE_TRANSLATE_RAG as string | undefined)?.trim() || "";
 
 type MacroActionId = "macro1" | "macro2";
-type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6";
+type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7";
+type AppPanelScope = "bibliografia" | "busca" | "verbetografia";
 type AiActionId = "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate";
 type ParameterPanelSection = "actions" | "macros" | "apps";
 type ParameterPanelTarget =
@@ -69,7 +72,11 @@ type ParameterPanelTarget =
   | null;
 
 const ACTION_PANEL_BUTTONS: AiActionId[] = ["define", "synonyms", "epigraph", "pensatas", "rewrite", "summarize", "translate"];
-const APP_PANEL_BUTTONS: AppActionId[] = ["app1", "app2", "app3", "app6"];
+const APP_PANEL_BUTTONS_BY_SCOPE: Record<AppPanelScope, AppActionId[]> = {
+  bibliografia: ["app1", "app2", "app3", "app6"],
+  busca: ["app4", "app5"],
+  verbetografia: ["app7"],
+};
 const MACRO_PANEL_BUTTONS: MacroActionId[] = ["macro1", "macro2"];
 const ACTION_PANEL_ICONS: Record<AiActionId, typeof BookOpen> = {
   define: BookOpen,
@@ -87,6 +94,7 @@ const APP_PANEL_ICONS: Record<AppActionId, typeof BookOpen> = {
   app4: Search,
   app5: Search,
   app6: Search,
+  app7: FileText,
 };
 const MACRO_PANEL_ICONS: Record<MacroActionId, typeof BookOpen> = {
   macro1: BookOpen,
@@ -96,21 +104,22 @@ const MACRO_PANEL_ICONS: Record<MacroActionId, typeof BookOpen> = {
 const parameterAppMeta: Record<AppActionId, { title: string; description: string }> = {
   app1: { title: "Bibliografia de Livros", description: "Monta Bibliografia de livros de Waldo Vieira." },
   app2: { title: "Bibliografia de Verbetes", description: "Monta Listagem ou Bibliografia de verbetes." },
-  app3: { title: "Bibliografia Autores", description: "Busca bibliogr\u00e1fia de livros e artigos de autores." },
-  app4: { title: "Busca em Livros", description: "Busca palavras e termos em livros." },
-  app5: { title: "Busca em Verbetes", description: "Busca campos em verbetes da EC." },
-  app6: { title: "Bibliografia Externa", description: "Busca referencias bibliograficas na internet." },
+  app3: { title: "Bibliografia Autores", description: "Busca bibliografia de livros e artigos de autores." },
+  app4: { title: "Busca em Livros", description: "Busca palavras ou termos nas fontes." },
+  app5: { title: "Busca em Verbetes", description: "Busca palavras ou termos nas fontes." },
+  app6: { title: "Bibliografia Externa", description: "Busca referencias bibliográficas na internet." },
+  app7: { title: "Tabela Atomatizada", description: "Abre tabela no Word e no editor HTML." },
 };
 const parameterMacroMeta: Record<MacroActionId, { title: string; description: string }> = {
   macro1: { title: "Highlight", description: "Destaca termos no documento (highlight em cores)." },
-  macro2: { title: "Numerar lista", description: "Aplica numera\u00e7\u00e3o manual \u00e0 lista de itens." },
+  macro2: { title: "Numerar lista", description: "Aplica numeração manual à lista de itens." },
 };
 const parameterActionMeta: Record<AiActionId, { title: string; description: string }> = {
-  define: { title: "Definir", description: "Definologia conscienciol\u00f3gica." },
-  synonyms: { title: "Sinon\u00edmia", description: "Sinonimologia." },
-  epigraph: { title: "Ep\u00edgrafe", description: "Sugere ep\u00edgrafe." },
+  define: { title: "Definir", description: "Definologia conscienciológica." },
+  synonyms: { title: "Sinonímia", description: "Sinonimologia." },
+  epigraph: { title: "Epígrafe", description: "Sugere epígrafe." },
   rewrite: { title: "Reescrever", description: "Melhora clareza e fluidez." },
-  summarize: { title: "Resumir", description: "S\u00edntese concisa." },
+  summarize: { title: "Resumir", description: "Síntese concisa." },
   pensatas: { title: "Pensatas LO", description: "Pensatas afins." },
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
 };
@@ -146,6 +155,8 @@ const TRANSLATE_LANGUAGE_OPTIONS = [
 // Ajuste aqui para alterar facilmente o default no frontend.
 const DEFAULT_BOOK_SEARCH_MAX_RESULTS = 10;
 
+const PDF_HEADER_SIGNATURE_RE = /enciclop(?:Ã©|é|e)dia\s+da\s+conscienciologia/i;
+
 const Index = () => {
   const [responses, setResponses] = useState<AIResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -153,6 +164,7 @@ const Index = () => {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [documentText, setDocumentText] = useState("");
   const [currentFileName, setCurrentFileName] = useState("");
+  const [currentFileConvertedFromPdf, setCurrentFileConvertedFromPdf] = useState(false);
   const [documentPageCount, setDocumentPageCount] = useState<number | null>(null);
   const [documentParagraphCount, setDocumentParagraphCount] = useState<number | null>(null);
   const [documentWordCount, setDocumentWordCount] = useState<number | null>(null);
@@ -195,15 +207,21 @@ const Index = () => {
   const [verbeteSearchText, setVerbeteSearchText] = useState("");
   const [verbeteSearchMaxResults, setVerbeteSearchMaxResults] = useState(DEFAULT_BOOK_SEARCH_MAX_RESULTS);
   const [isRunningVerbeteSearch, setIsRunningVerbeteSearch] = useState(false);
-  const [isBookSearchEntryMode, setIsBookSearchEntryMode] = useState(false);
+  const [verbetografiaTitle, setVerbetografiaTitle] = useState("");
+  const [verbetografiaSpecialty, setVerbetografiaSpecialty] = useState("");
+  const [isRunningVerbetografiaOpenTable, setIsRunningVerbetografiaOpenTable] = useState(false);
+  const [appPanelScope, setAppPanelScope] = useState<AppPanelScope | null>(null);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [translateLanguage, setTranslateLanguage] = useState<(typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"]>("Ingles");
   const [macro1Term, setMacro1Term] = useState("");
   const [macro1ColorId, setMacro1ColorId] = useState<(typeof MACRO1_HIGHLIGHT_COLORS)[number]["id"]>("yellow");
+  const [macro1PredictedMatches, setMacro1PredictedMatches] = useState<number | null>(null);
+  const [isCountingMacro1Matches, setIsCountingMacro1Matches] = useState(false);
   const [macro2SpacingMode, setMacro2SpacingMode] = useState<Macro2SpacingMode>("nbsp_double");
   const saveTimerRef = useRef<number | null>(null);
   const htmlEditorControlApiRef = useRef<HtmlEditorControlApi | null>(null);
   const currentFileIdRef = useRef("");
+  const macro1CountRequestIdRef = useRef(0);
 
   const stats = useTextStats(
     documentText || actionText,
@@ -255,14 +273,25 @@ const Index = () => {
       setDocumentText(baseText);
 
       if (savedHtml) {
-        setEditorContentHtml(savedHtml);
+        const shouldCleanupSavedHtml = currentFileConvertedFromPdf || PDF_HEADER_SIGNATURE_RE.test(savedHtml);
+        const cleanedSavedHtml = shouldCleanupSavedHtml
+          ? cleanupConvertedPdfHeaderHtml(savedHtml).trim()
+          : savedHtml;
+        setEditorContentHtml(cleanedSavedHtml);
+        if (shouldCleanupSavedHtml && cleanedSavedHtml !== savedHtml) {
+          void saveFileText(fileId, { text: baseText, html: cleanedSavedHtml });
+        }
         return;
       }
 
       if ((data.ext || "").toLowerCase() === "docx") {
         try {
           const buffer = await fetchFileContentBuffer(fileId);
-          const convertedHtml = (await parseDocxArrayBuffer(buffer)).trim();
+          const parsedHtml = (await parseDocxArrayBuffer(buffer)).trim();
+          const shouldCleanupParsedHtml = currentFileConvertedFromPdf || PDF_HEADER_SIGNATURE_RE.test(parsedHtml);
+          const convertedHtml = shouldCleanupParsedHtml
+            ? cleanupConvertedPdfHeaderHtml(parsedHtml).trim()
+            : parsedHtml;
           if (convertedHtml) {
             setEditorContentHtml(convertedHtml);
             void saveFileText(fileId, { text: baseText, html: convertedHtml });
@@ -335,6 +364,7 @@ const Index = () => {
       setActionText("");
       setCurrentFileId(uploaded.id);
       setCurrentFileName(uploaded.originalName || uploaded.storedName || "documento.docx");
+      setCurrentFileConvertedFromPdf(Boolean(uploaded.convertedFromPdf));
       return uploaded;
     } finally {
       setIsOpeningDocument(false);
@@ -348,6 +378,7 @@ const Index = () => {
       setActionText("");
       setCurrentFileId(created.id);
       setCurrentFileName(created.originalName || created.storedName || "novo-documento.docx");
+      setCurrentFileConvertedFromPdf(false);
     } finally {
       setIsOpeningDocument(false);
     }
@@ -431,7 +462,7 @@ const Index = () => {
   }, []);
 
   const handleOpenParameterSection = useCallback((section: ParameterPanelSection) => {
-    setIsBookSearchEntryMode(false);
+    setAppPanelScope(section === "apps" ? "bibliografia" : null);
     setParameterPanelTarget({ section, id: null });
   }, []);
 
@@ -502,7 +533,43 @@ const Index = () => {
 
     htmlEditorControlApiRef.current = null;
     setHtmlEditorControlApi(null);
-  }, []);
+  }, [currentFileConvertedFromPdf]);
+
+  useEffect(() => {
+    const input = macro1Term.trim();
+    const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
+    const hasDocumentOpen = Boolean(currentFileId);
+
+    if (!input) {
+      setIsCountingMacro1Matches(false);
+      setMacro1PredictedMatches(null);
+      return;
+    }
+    if (!editorApi || !hasDocumentOpen) {
+      setIsCountingMacro1Matches(false);
+      setMacro1PredictedMatches(null);
+      return;
+    }
+
+    const requestId = macro1CountRequestIdRef.current + 1;
+    macro1CountRequestIdRef.current = requestId;
+    setIsCountingMacro1Matches(true);
+
+    void editorApi
+      .countOccurrencesInDocument(input)
+      .then((count) => {
+        if (macro1CountRequestIdRef.current !== requestId) return;
+        setMacro1PredictedMatches(count);
+      })
+      .catch(() => {
+        if (macro1CountRequestIdRef.current !== requestId) return;
+        setMacro1PredictedMatches(0);
+      })
+      .finally(() => {
+        if (macro1CountRequestIdRef.current !== requestId) return;
+        setIsCountingMacro1Matches(false);
+      });
+  }, [macro1Term, htmlEditorControlApi, currentFileId, editorContentHtml]);
 
   const handleRunMacro1Highlight = useCallback(async () => {
     const editorApi = await getEditorApi();
@@ -712,7 +779,13 @@ const Index = () => {
   }, [lexicalBooks, selectedLexicalBook]);
 
   const handleActionApps = useCallback((type: AppActionId) => {
-    setIsBookSearchEntryMode(false);
+    if (type === "app4" || type === "app5") {
+      setAppPanelScope("busca");
+    } else if (type === "app7") {
+      setAppPanelScope("verbetografia");
+    } else {
+      setAppPanelScope("bibliografia");
+    }
     setParameterPanelTarget({ section: "apps", id: type });
     if (type === "app1") {
       setRefBookPages("");
@@ -729,13 +802,42 @@ const Index = () => {
     if (type === "app5") {
       // Sem pre-load; usa base fixa EC.xlsx
     }
-  }, [actionText, biblioExternaTitle, biblioGeralTitle, ensureLexicalBooksLoaded]);
+    if (type === "app7") {
+      if (!verbetografiaTitle.trim() && actionText.trim()) setVerbetografiaTitle(actionText.trim());
+    }
+  }, [actionText, biblioExternaTitle, biblioGeralTitle, ensureLexicalBooksLoaded, verbetografiaTitle]);
 
   const handleOpenBookSearchFromLeft = useCallback(() => {
-    setIsBookSearchEntryMode(true);
+    setAppPanelScope("busca");
     setParameterPanelTarget({ section: "apps", id: null });
     void ensureLexicalBooksLoaded();
   }, [ensureLexicalBooksLoaded]);
+
+  const handleOpenVerbetografiaFromLeft = useCallback(() => {
+    setAppPanelScope("verbetografia");
+    setParameterPanelTarget({ section: "apps", id: null });
+  }, []);
+
+  const handleOpenVerbetografiaTable = useCallback(async () => {
+    setIsRunningVerbetografiaOpenTable(true);
+    setIsOpeningDocument(true);
+    try {
+      const uploaded = await openVerbetografiaTableApp({
+        title: verbetografiaTitle.trim(),
+        specialty: verbetografiaSpecialty.trim(),
+      });
+      setActionText("");
+      setCurrentFileId(uploaded.id);
+      setCurrentFileName(uploaded.originalName || uploaded.storedName || "Tab_Verbete.docx");
+      setCurrentFileConvertedFromPdf(false);
+      toast.success("Tabela aberta no Word e no editor.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Falha ao abrir tabela de verbetografia.");
+    } finally {
+      setIsOpeningDocument(false);
+      setIsRunningVerbetografiaOpenTable(false);
+    }
+  }, [verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunLexicalSearch = useCallback(async () => {
     const book = selectedLexicalBook.trim();
@@ -878,7 +980,7 @@ const Index = () => {
       const pensata = paragraph || "Paragrafo nao encontrado.";
       const analysisMessages = buildPensataAnalysisPrompt(pensata);
       const analysis = (await callOpenAI(analysisMessages)).trim();
-      const content = analysis ? `${pensata}\n\n*AnÃ¡lise IA:*\n${analysis}` : pensata;
+      const content = analysis ? `${pensata}\n\n*Análise IA:*\n${analysis}` : pensata;
       addResponse("app_random_pensata", header, content);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Pensata do Dia.";
@@ -1047,7 +1149,7 @@ const Index = () => {
   }, [currentFileId, currentFileName, documentText, editorContentHtml, htmlEditorControlApi]);
 
   const isHistoryProcessing =
-    isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningVerbeteSearch;
+    isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningVerbeteSearch || isRunningVerbetografiaOpenTable;
   const hasEditorPanel = Boolean(currentFileId) || isOpeningDocument;
   const hasCenterPanel = Boolean(parameterPanelTarget);
   const layoutResetKey = hasEditorPanel ? "layout-with-editor" : "layout-without-editor";
@@ -1070,6 +1172,7 @@ const Index = () => {
             onOpenParameterSection={handleOpenParameterSection}
             onRunRandomPensata={handleRunRandomPensata}
             onOpenBookSearch={handleOpenBookSearchFromLeft}
+            onOpenVerbetografia={handleOpenVerbetografiaFromLeft}
             isLoading={isLoading}
             hasDocumentOpen={Boolean(currentFileId)}
             onRefreshStats={() => void handleRefreshStats()}
@@ -1126,9 +1229,7 @@ const Index = () => {
                         ))}
 
                         {parameterPanelTarget.section === "apps" &&
-                          ((isBookSearchEntryMode || parameterPanelTarget.id === "app4" || parameterPanelTarget.id === "app5")
-                            ? (["app4", "app5"] as AppActionId[])
-                            : APP_PANEL_BUTTONS).map((id) => (
+                          APP_PANEL_BUTTONS_BY_SCOPE[appPanelScope ?? "bibliografia"].map((id) => (
                           (() => {
                             const Icon = APP_PANEL_ICONS[id];
                             return (
@@ -1201,6 +1302,9 @@ const Index = () => {
                           onRunHighlight={() => void handleRunMacro1Highlight()}
                           onRunClear={() => void handleClearMacro1Highlight()}
                           isRunning={isLoading}
+                          predictedMatches={macro1PredictedMatches}
+                          isCountingMatches={isCountingMacro1Matches}
+                          hasDocumentOpen={Boolean(currentFileId)}
                           showPanelChrome={false}
                         />
                       ) : parameterPanelTarget.section === "macros" && parameterPanelTarget.id === "macro2" ? (
@@ -1306,6 +1410,18 @@ const Index = () => {
                           isRunning={isRunningVerbeteSearch}
                           showPanelChrome={false}
                         />
+                      ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app7" ? (
+                        <VerbetografiaPanel
+                          title={parameterAppMeta.app7.title}
+                          description={parameterAppMeta.app7.description}
+                          verbeteTitle={verbetografiaTitle}
+                          specialty={verbetografiaSpecialty}
+                          onVerbeteTitleChange={setVerbetografiaTitle}
+                          onSpecialtyChange={setVerbetografiaSpecialty}
+                          onOpenTable={() => void handleOpenVerbetografiaTable()}
+                          isRunning={isRunningVerbetografiaOpenTable}
+                          showPanelChrome={false}
+                        />
                       ) : (
                         <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
                         
@@ -1369,6 +1485,7 @@ const Index = () => {
                   onCloseEditor={() => {
                     setCurrentFileId("");
                     setCurrentFileName("");
+                    setCurrentFileConvertedFromPdf(false);
                   }}
                 />
                 {isOpeningDocument && (
@@ -1390,6 +1507,7 @@ const Index = () => {
 };
 
 export default Index;
+
 
 
 

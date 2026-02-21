@@ -32,17 +32,17 @@ export function useTextStats(
     const normalized = text.replace(/\r\n/g, "\n");
     const trimmed = normalized.trim();
     const wordList = trimmed ? trimmed.split(/\s+/).filter(Boolean) : [];
-    const words = wordCountOverride !== null ? Math.max(0, wordCountOverride) : 0;
-    const characters = characterCountOverride !== null ? Math.max(0, characterCountOverride) : 0;
+    const words = wordCountOverride !== null ? Math.max(0, wordCountOverride) : wordList.length;
+    const characters = characterCountOverride !== null ? Math.max(0, characterCountOverride) : normalized.replace(/\s+/g, "").length;
     const charactersWithSpaces = characterWithSpacesCountOverride !== null
       ? Math.max(0, characterWithSpacesCountOverride)
-      : 0;
+      : normalized.length;
     const paragraphs = paragraphCountOverride !== null
       ? Math.max(0, paragraphCountOverride)
-      : 0;
+      : (trimmed ? trimmed.split(/\n+/).map((item) => item.trim()).filter(Boolean).length : 0);
     const pages = pageCountOverride !== null
       ? Math.max(0, pageCountOverride)
-      : 0;
+      : (charactersWithSpaces > 0 ? Math.max(1, Math.ceil(charactersWithSpaces / 3000)) : 0);
     const minutes = words > 0 ? Math.max(1, Math.ceil(words / 200)) : 0;
     const readingTime = `${minutes} min`;
 
