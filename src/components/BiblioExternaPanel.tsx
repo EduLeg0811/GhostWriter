@@ -5,16 +5,22 @@ import { Separator } from "@/components/ui/separator";
 import { Loader2, Play, X } from "lucide-react";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 
-interface BiblioGeralPanelProps {
+interface BiblioExternaPanelProps {
   title: string;
   description: string;
   author: string;
   titleField: string;
   year: string;
+  journal: string;
+  publisher: string;
+  identifier: string;
   extra: string;
   onAuthorChange: (value: string) => void;
   onTitleFieldChange: (value: string) => void;
   onYearChange: (value: string) => void;
+  onJournalChange: (value: string) => void;
+  onPublisherChange: (value: string) => void;
+  onIdentifierChange: (value: string) => void;
   onExtraChange: (value: string) => void;
   onRun: () => void;
   isRunning: boolean;
@@ -22,23 +28,29 @@ interface BiblioGeralPanelProps {
   showPanelChrome?: boolean;
 }
 
-const BiblioGeralPanel = ({
+const BiblioExternaPanel = ({
   title,
   description,
   author,
   titleField,
   year,
+  journal,
+  publisher,
+  identifier,
   extra,
   onAuthorChange,
   onTitleFieldChange,
   onYearChange,
+  onJournalChange,
+  onPublisherChange,
+  onIdentifierChange,
   onExtraChange,
   onRun,
   isRunning,
   onClose,
   showPanelChrome = true,
-}: BiblioGeralPanelProps) => {
-  const canRun = (author.trim() || titleField.trim() || year.trim() || extra.trim()) && !isRunning;
+}: BiblioExternaPanelProps) => {
+  const canRun = (author.trim() || titleField.trim() || year.trim() || journal.trim() || publisher.trim() || identifier.trim() || extra.trim()) && !isRunning;
 
   const content = (
     <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
@@ -63,6 +75,21 @@ const BiblioGeralPanel = ({
         <div className="flex items-center gap-2">
           <Label className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ano</Label>
           <Input value={year} onChange={(e) => onYearChange(e.target.value)} className="h-8 text-xs md:text-xs bg-white" />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Label className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Revista</Label>
+          <Input value={journal} onChange={(e) => onJournalChange(e.target.value)} className="h-8 text-xs md:text-xs bg-white" />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Label className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Editora</Label>
+          <Input value={publisher} onChange={(e) => onPublisherChange(e.target.value)} className="h-8 text-xs md:text-xs bg-white" />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Label className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">DOI/ISBN</Label>
+          <Input value={identifier} onChange={(e) => onIdentifierChange(e.target.value)} className="h-8 text-xs md:text-xs bg-white" />
         </div>
 
         <div className="flex items-center gap-2">
@@ -102,4 +129,4 @@ const BiblioGeralPanel = ({
   );
 };
 
-export default BiblioGeralPanel;
+export default BiblioExternaPanel;

@@ -20,8 +20,10 @@ export interface AIResponse {
     | "app_ref_verbete_list"
     | "app_ref_verbete_biblio"
     | "app_biblio_geral"
+    | "app_biblio_externa"
     | "app_random_pensata"
-    | "app_book_search";
+    | "app_book_search"
+    | "app_verbete_search";
   query: string;
   content: string;
   timestamp: Date;
@@ -29,8 +31,8 @@ export interface AIResponse {
 
 const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactNode }> = {
   define: { label: "Definir", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
-  synonyms: { label: "Sinonímia", icon: <Repeat2 className="h-3.5 w-3.5 text-primary" /> },
-  epigraph: { label: "Epígrafe", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
+  synonyms: { label: "SinonÃ­mia", icon: <Repeat2 className="h-3.5 w-3.5 text-primary" /> },
+  epigraph: { label: "EpÃ­grafe", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   rewrite: { label: "Reescrever", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
   summarize: { label: "Resumir", icon: <FileText className="h-3.5 w-3.5 text-primary" /> },
   translate: { label: "Traduzir", icon: <Languages className="h-3.5 w-3.5 text-primary" /> },
@@ -39,9 +41,11 @@ const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactN
   app_ref_book: { label: "Bibliografia de Livros", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
   app_ref_verbete_list: { label: "Listagem de Verbetes", icon: <FileText className="h-3.5 w-3.5 text-primary" /> },
   app_ref_verbete_biblio: { label: "Bibliografia de Verbetes", icon: <FileText className="h-3.5 w-3.5 text-primary" /> },
-  app_biblio_geral: { label: "Bibliografia Geral", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
+  app_biblio_geral: { label: "Bibliografia Autores", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
+  app_biblio_externa: { label: "Bibliografia Externa", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_random_pensata: { label: "Pensata Sorteada", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
   app_book_search: { label: "Book Search", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
+  app_verbete_search: { label: "Busca em Verbetes", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
 };
 
 interface RightPanelProps {
@@ -64,6 +68,34 @@ const RightPanel = ({
   chatDisabled = false,
 }: RightPanelProps) => {
   const [prompt, setPrompt] = useState("");
+  const isHttpUrlText = (value: string): boolean => /^https?:\/\/\S+$/i.test((value || "").trim());
+
+  const applyExternalLinkLineStyle = (block: Element, urlText: string, doc: Document): void => {
+    const htmlBlock = block as HTMLElement;
+    htmlBlock.style.fontSize = "0.8em";
+    htmlBlock.style.color = "rgba(22, 184, 70, 1)";
+    const a = doc.createElement("a");
+    a.href = urlText;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = "PDF";
+    a.style.color = "inherit";
+    a.style.textDecoration = "none";
+    block.innerHTML = "";
+    block.appendChild(a);
+  };
+
+  const applyHangingIndent = (block: Element, px = 19): void => {
+    const htmlBlock = block as HTMLElement;
+    htmlBlock.style.paddingLeft = `${px}px`;
+    htmlBlock.style.textIndent = `${-px}px`;
+  };
+
+  const applyIndentedLine = (block: Element, px = 19): void => {
+    const htmlBlock = block as HTMLElement;
+    htmlBlock.style.paddingLeft = `${px}px`;
+  };
+
   const escapeHtml = (value: string): string =>
     (value || "")
       .replace(/&/g, "&amp;")
@@ -168,20 +200,78 @@ const RightPanel = ({
     return root.innerHTML;
   };
 
+  const styleVerbeteSearchHtml = (html: string): string => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
+    const root = doc.body.firstElementChild as HTMLDivElement | null;
+    if (!root) return html;
+
+    const blocks = Array.from(root.querySelectorAll("p"));
+    if (blocks.length === 0) return html;
+
+    for (const block of blocks) {
+      const rawText = (block.textContent || "").trim();
+      const hasExternalHref = Array.from(block.querySelectorAll("a")).some((a) => isHttpUrlText(a.getAttribute("href") || ""));
+      const hasHeaderShape =
+        block.querySelector("strong") !== null &&
+        block.querySelector("em") !== null &&
+        rawText.includes("#");
+
+      if (hasHeaderShape) {
+        block.style.color = "#1e3a8a";
+        block.style.fontWeight = "700";
+        applyHangingIndent(block);
+      } else {
+        applyIndentedLine(block);
+      }
+
+      const isUrl = isHttpUrlText(rawText);
+      if (isUrl) {
+        applyExternalLinkLineStyle(block, rawText, doc);
+      } else if (hasExternalHref) {
+        const anchor = block.querySelector("a");
+        const href = (anchor as HTMLAnchorElement | null)?.href?.trim() || "";
+        if (href) applyExternalLinkLineStyle(block, href, doc);
+      }
+    }
+
+    return root.innerHTML;
+  };
+
+  const removeVerbeteLinkLineHtml = (html: string): string => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
+    const root = doc.body.firstElementChild as HTMLDivElement | null;
+    if (!root) return html;
+
+    const blocks = Array.from(root.querySelectorAll("p, li"));
+    for (const block of blocks) {
+      const text = (block.textContent || "").trim();
+      const isUrl = isHttpUrlText(text);
+      const isPdfLabel = /^pdf$/i.test(text);
+      const hasExternalHref = Array.from(block.querySelectorAll("a")).some((a) => isHttpUrlText(a.getAttribute("href") || ""));
+      if (isUrl || isPdfLabel || hasExternalHref) block.remove();
+    }
+
+    return root.innerHTML;
+  };
+
   const responseToEditorHtml = (response: AIResponse): string => {
     const { content, type, query } = response;
     const markdown = normalizeHistoryContentToMarkdown(content);
     const html = markdownToEditorHtml(markdown);
-    if (type !== "app_book_search") return html;
-    return styleBookSearchSourceRefHtml(highlightBookSearchHtml(html, query));
+    if (type === "app_book_search") return styleBookSearchSourceRefHtml(highlightBookSearchHtml(html, query));
+    if (type === "app_verbete_search") return styleVerbeteSearchHtml(highlightBookSearchHtml(html, query));
+    return html;
   };
 
   const responseToAppendBodyHtml = (response: AIResponse): string => {
     const { content, type, query } = response;
     const markdown = normalizeHistoryContentToMarkdown(content).replace(/\r\n/g, "\n").replace(/\n{2,}/g, "\n");
     const html = markdownToEditorHtml(markdown);
-    if (type !== "app_book_search") return html;
-    return highlightBookSearchHtml(html, query);
+    if (type === "app_book_search") return highlightBookSearchHtml(html, query);
+    if (type === "app_verbete_search") return removeVerbeteLinkLineHtml(highlightBookSearchHtml(html, query));
+    return html;
   };
 
   const htmlToPlainText = (html: string): string => {
@@ -191,7 +281,9 @@ const RightPanel = ({
   };
 
   const copyToClipboard = async (response: AIResponse) => {
-    const html = responseToEditorHtml(response);
+    const html = response.type === "app_verbete_search"
+      ? removeVerbeteLinkLineHtml(responseToEditorHtml(response))
+      : responseToEditorHtml(response);
     const text = htmlToPlainText(html);
 
     if (window.ClipboardItem && navigator.clipboard?.write) {
@@ -208,7 +300,7 @@ const RightPanel = ({
 
   const renderQuerySubtitle = (response: AIResponse): React.ReactNode => {
     if (response.type === "app_random_pensata") return "Léxico de Ortopensatas (2a ed., 2019)";
-    if (response.type !== "app_book_search") return response.query;
+    if (response.type !== "app_book_search" && response.type !== "app_verbete_search") return response.query;
 
     const query = response.query || "";
     const match = query.match(/^Livro:\s*(.+?)(\s*\|.*)?$/i);
@@ -251,13 +343,15 @@ const RightPanel = ({
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border bg-[hsl(var(--panel-header))] px-4 py-3">
         <h2 className="text-sm font-semibold text-foreground">Histórico({responses.length})</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-1 items-center justify-center">
           {isSending && (
-            <div className="inline-flex h-6 items-center gap-1.5 rounded-full border border-green-200 bg-green-50/95 px-2.5 text-[11px] font-semibold leading-none text-green-800 ring-1 ring-green-100">
-              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-green-700" />
+            <div className="inline-flex h-9 items-center gap-2 rounded-full border border-green-300 bg-green-100 px-5 text-sm font-bold leading-none text-blue-700 ring-1 ring-green-200 shadow-sm">
+              <Loader2 className="h-5 w-5 shrink-0 animate-spin text-blue-700" />
               <span className="leading-none">Processando</span>
             </div>
           )}
+        </div>
+        <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive" onClick={onClear} title="Limpar histórico">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>

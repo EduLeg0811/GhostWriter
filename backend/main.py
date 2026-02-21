@@ -125,9 +125,29 @@ class BiblioGeralRequest(BaseModel):
     topK: int = 10
 
 
+class BiblioExternaRequest(BaseModel):
+    query: str = ""
+    author: str = ""
+    title: str = ""
+    year: str = ""
+    journal: str = ""
+    publisher: str = ""
+    identifier: str = ""
+    extra: str = ""
+    topK: int = 5
+
+
 class LexicalSearchRequest(BaseModel):
     book: str
     term: str
+    limit: int = 50
+
+
+class LexicalVerbeteSearchRequest(BaseModel):
+    author: str = ""
+    title: str = ""
+    area: str = ""
+    text: str = ""
     limit: int = 50
 
 
@@ -572,7 +592,15 @@ def run_pdf_to_docx(pdf_path: Path, docx_path: Path) -> None:
 def run_python_json_script(script_path: Path, args: list[str]) -> dict[str, Any]:
     proc = subprocess.run([backend_python_cmd, str(script_path), *args], capture_output=True, text=True)
     if proc.returncode != 0:
-        details = proc.stderr.strip() or proc.stdout.strip() or f"processo finalizado com codigo {proc.returncode}"
+        stdout_text = (proc.stdout or "").strip()
+        if stdout_text:
+            try:
+                parsed = json.loads(stdout_text)
+                if isinstance(parsed, dict):
+                    return parsed
+            except Exception:
+                pass
+        details = proc.stderr.strip() or stdout_text or f"processo finalizado com codigo {proc.returncode}"
         raise RuntimeError(f"Falha na execucao Python: {details}")
     return json.loads(proc.stdout)
 
@@ -722,7 +750,10 @@ def api_insert_ref_book(payload: InsertRefBookRequest) -> dict[str, Any]:
     script_path = PYTHON_DIR / "insert_ref_book.py"
     result = run_python_json_script(script_path, [book])
     if not result.get("ok"):
-        raise HTTPException(status_code=500, detail=result.get("error") or "Falha ao executar macro1 no Python.")
+        message = str(result.get("error") or "Falha ao executar macro1 no Python.")
+        if "Livro nao identificado" in message or "Titulo nao encontrado" in message or "Parametro" in message:
+            raise HTTPException(status_code=400, detail=message)
+        raise HTTPException(status_code=500, detail=message)
     return result
 
 
@@ -760,7 +791,7 @@ def api_biblio_geral(payload: BiblioGeralRequest) -> dict[str, Any]:
     try:
         matches = search_bibliography(str(excel_path), author=author, title=title, year=year, extra=extra, top_k=top_k)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Falha ao executar Bibliografia Geral: {exc}")
+        raise HTTPException(status_code=500, detail=f"Falha ao executar Bibliografia Autores: {exc}")
 
     refs = [str(item.get("ref") or "").strip() for item in matches if str(item.get("ref") or "").strip()]
     markdown = "\n".join(f"**{idx}.** {ref}" for idx, ref in enumerate(refs, start=1))
@@ -770,6 +801,78 @@ def api_biblio_geral(payload: BiblioGeralRequest) -> dict[str, Any]:
             "query": {"author": author, "title": title, "year": year, "extra": extra},
             "matches": refs,
             "markdown": markdown,
+        },
+    }
+
+
+@app.post("/api/apps/biblio-externa")
+def api_biblio_externa(payload: BiblioExternaRequest) -> dict[str, Any]:
+    require_openai_key()
+    query = (payload.query or "").strip()
+    author = (payload.author or "").strip()
+    title = (payload.title or "").strip()
+    year = (payload.year or "").strip()
+    journal = (payload.journal or "").strip()
+    publisher = (payload.publisher or "").strip()
+    identifier = (payload.identifier or "").strip()
+    extra = (payload.extra or "").strip()
+
+    if not query:
+        parts = [
+            author and f"author: {author}",
+            title and f"title: {title}",
+            year and f"year: {year}",
+            journal and f"journal: {journal}",
+            publisher and f"publisher: {publisher}",
+            identifier and f"doi/isbn: {identifier}",
+            extra and f"extra: {extra}",
+        ]
+        query = " | ".join([p for p in parts if p])
+
+    if not query:
+        raise HTTPException(status_code=400, detail="Informe ao menos um campo de busca da bibliografia externa.")
+
+    try:
+        from backend.functions.biblio_openAI import BibliografiaService
+    except Exception:
+        from functions.biblio_openAI import BibliografiaService
+
+    try:
+        service = BibliografiaService(api_key=openai_api_key)
+        result = service.gerar_com_validacao(
+            query,
+            criterios={
+                "author": author,
+                "title": title,
+                "year": year,
+                "journal": journal,
+                "publisher": publisher,
+                "identifier": identifier,
+                "extra": extra,
+            },
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Falha ao executar Bibliografia Externa: {exc}")
+
+    referencias = result.get("matches") if isinstance(result, dict) else None
+    if isinstance(referencias, list):
+        matches = [str(item).strip() for item in referencias if str(item).strip()]
+    else:
+        matches = []
+    referencia = str(result.get("referencia") or "").strip()
+    score = result.get("score") if isinstance(result, dict) else None
+    if not matches and referencia:
+        matches = [referencia]
+    markdown = "\n".join(f"**{idx}.** {ref}" for idx, ref in enumerate(matches, start=1))
+    return {
+        "ok": True,
+        "result": {
+            "query": query,
+            "matches": matches,
+            "markdown": markdown,
+            "score": score,
         },
     }
 
@@ -821,6 +924,51 @@ def api_lexical_search(payload: LexicalSearchRequest) -> dict[str, Any]:
         "result": {
             "book": book,
             "term": term,
+            "total": total,
+            "matches": matches,
+        },
+    }
+
+
+@app.post("/api/apps/lexical/verbetes/search")
+def api_lexical_verbete_search(payload: LexicalVerbeteSearchRequest) -> dict[str, Any]:
+    author = (payload.author or "").strip()
+    title = (payload.title or "").strip()
+    area = (payload.area or "").strip()
+    text = (payload.text or "").strip()
+    if not author and not title and not area and not text:
+        raise HTTPException(status_code=400, detail="Informe ao menos um campo de busca.")
+    limit = max(1, min(int(payload.limit or 50), 200))
+
+    try:
+        from backend.functions.lexical_search_service import search_lexical_verbetes_with_total
+    except Exception:
+        from functions.lexical_search_service import search_lexical_verbetes_with_total
+
+    try:
+        total, matches = search_lexical_verbetes_with_total(
+            author=author,
+            title=title,
+            area=area,
+            text=text,
+            limit=limit,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Falha ao executar busca em verbetes: {exc}")
+
+    return {
+        "ok": True,
+        "result": {
+            "query": {
+                "author": author,
+                "title": title,
+                "area": area,
+                "text": text,
+            },
             "total": total,
             "matches": matches,
         },

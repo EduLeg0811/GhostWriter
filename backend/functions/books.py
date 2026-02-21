@@ -27,6 +27,8 @@ SUFIXO_BIBLIO_VERBETE_NEW = "verbete; *In*: **Vieira**, Waldo; Org.; ***Enciclop
 def _norm(text: str) -> str:
     clean = unicodedata.normalize("NFKD", (text or "").strip().lower())
     clean = "".join(ch for ch in clean if not unicodedata.combining(ch))
+    # Remove ruido de encoding/caracteres estranhos para estabilizar matching.
+    clean = re.sub(r"[^a-z0-9\s\-\(\)\.]", " ", clean)
     clean = re.sub(r"\s+", " ", clean)
     return clean
 
@@ -107,29 +109,74 @@ def _read_books_table(xlsx_path: Path) -> list[dict[str, str]]:
 
 
 def bookName(book: str) -> str:
-    mapping = {
-        _norm("LO (1a ed.)"): "Lexico de Ortopensatas (1a Ed.)",
-        _norm("LO (2a ed.)"): "Lexico de Ortopensatas (2a Ed.)",
-        _norm("DAC"): "Dicionario de Argumentos da Conscienciologia",
-        _norm("700 Experimentos"): "700 Experimentos da Conscienciologia",
-        _norm("Projeciologia"): "Projeciologia",
-        _norm("Tenepes"): "Manual da Tenepes",
-        _norm("Proéxis"): "Manual da Proexis",
-        _norm("Dupla"): "Manual da Dupla Evolutiva",
-        _norm("Conscienciograma"): "Conscienciograma",
-        _norm("Redação"): "Manual de Redacao da Conscienciologia",
-        _norm("Megapensenes"): "Manual dos Megapensenes Trivocabulares",
-        _norm("Temas"): "Temas da Conscienciologia",
-        _norm("200 Teáticas"): "200 Teaticas da Conscienciologia",
-        _norm("Nossa Evolução"): "Nossa Evolucao",
-        _norm("HSR"): "Homo sapiens reurbanisatus",
-        _norm("HSP"): "Homo sapiens pacificus",
-        _norm("Neologismos"): "Dicionario de Neologismos da Conscienciologia",
-        _norm("Enciclopédia (10a ed.)"): "Enciclopedia da Conscienciologia (10 ed.)",
-        _norm("Enciclopédia (novos verbetes)"): "Enciclopedia da Conscienciologia (novos)",
-        _norm("Projecões da Consciencia"): "Projecoes da Consciencia",
+    code = _norm(book).upper().replace(" ", "")
+
+    # Tabela final de codigos (interno) -> nome por extenso.
+    code_to_title = {
+        "PC": "Projecoes da Consciencia",
+        "PROJ": "Projeciologia",
+        "EXP": "700 Experimentos da Conscienciologia",
+        "CCG": "Conscienciograma",
+        "TNP": "Manual da Tenepes",
+        "MP": "Manual da Proexis",
+        "MDE": "Manual da Dupla Evolutiva",
+        "MRC": "Manual de Redacao da Conscienciologia",
+        "MMT": "Manual dos Megapensenes Trivocabulares",
+        "TC": "Temas da Conscienciologia",
+        "TEAT": "200 Teaticas da Conscienciologia",
+        "NE": "Nossa Evolucao",
+        "HSR": "Homo sapiens reurbanisatus",
+        "HSP": "Homo sapiens pacificus",
+        "DNC": "Dicionario de Neologismos da Conscienciologia",
+        "DAC": "Dicionario de Argumentos da Conscienciologia",
+        # Canonicos para codigo unico.
+        "LO": "Lexico de Ortopensatas (2a ed.)",
+        "EC": "Enciclopedia da Conscienciologia (10 ed.)",
     }
-    return mapping.get(_norm(book), "Livro nao identificado")
+
+    if code in code_to_title:
+        return code_to_title[code]
+
+    # Compatibilidade: se vier nome antigo, tenta mapear por aproximacao.
+    raw = _norm(book)
+    if "projec" in raw and "consc" in raw:
+        return code_to_title["PC"]
+    if "projeciologia" in raw:
+        return code_to_title["PROJ"]
+    if "700" in raw and "experimentos" in raw:
+        return code_to_title["EXP"]
+    if "conscienciograma" in raw:
+        return code_to_title["CCG"]
+    if "tenepes" in raw:
+        return code_to_title["TNP"]
+    if "proex" in raw:
+        return code_to_title["MP"]
+    if "dupla" in raw and "evolutiva" in raw:
+        return code_to_title["MDE"]
+    if "redac" in raw:
+        return code_to_title["MRC"]
+    if "megapensenes" in raw:
+        return code_to_title["MMT"]
+    if "temas" in raw and "conscienciologia" in raw:
+        return code_to_title["TC"]
+    if "200" in raw and "teat" in raw:
+        return code_to_title["TEAT"]
+    if "nossa" in raw and "evolu" in raw:
+        return code_to_title["NE"]
+    if "reurbanisatus" in raw or raw.endswith("hsr"):
+        return code_to_title["HSR"]
+    if "pacificus" in raw or raw.endswith("hsp"):
+        return code_to_title["HSP"]
+    if "neolog" in raw:
+        return code_to_title["DNC"]
+    if "argument" in raw and "dicion" in raw:
+        return code_to_title["DAC"]
+    if "lexico" in raw and "ortopensatas" in raw:
+        return code_to_title["LO"]
+    if "enciclop" in raw:
+        return code_to_title["EC"]
+
+    return "Livro nao identificado"
 
 
 def find_simple_by_book(book: str, xlsx_path: Path | None = None) -> str:

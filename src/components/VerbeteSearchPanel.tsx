@@ -1,44 +1,48 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import { Loader2, Play, X } from "lucide-react";
+import { Input } from "./ui/input";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 
-interface BiblioGeralPanelProps {
+interface VerbeteSearchPanelProps {
   title: string;
   description: string;
   author: string;
   titleField: string;
-  year: string;
-  extra: string;
+  area: string;
+  text: string;
+  maxResults: number;
   onAuthorChange: (value: string) => void;
   onTitleFieldChange: (value: string) => void;
-  onYearChange: (value: string) => void;
-  onExtraChange: (value: string) => void;
-  onRun: () => void;
+  onAreaChange: (value: string) => void;
+  onTextChange: (value: string) => void;
+  onMaxResultsChange: (value: number) => void;
+  onRunSearch: () => void;
   isRunning: boolean;
   onClose?: () => void;
   showPanelChrome?: boolean;
 }
 
-const BiblioGeralPanel = ({
+const VerbeteSearchPanel = ({
   title,
   description,
   author,
   titleField,
-  year,
-  extra,
+  area,
+  text,
+  maxResults,
   onAuthorChange,
   onTitleFieldChange,
-  onYearChange,
-  onExtraChange,
-  onRun,
+  onAreaChange,
+  onTextChange,
+  onMaxResultsChange,
+  onRunSearch,
   isRunning,
   onClose,
   showPanelChrome = true,
-}: BiblioGeralPanelProps) => {
-  const canRun = (author.trim() || titleField.trim() || year.trim() || extra.trim()) && !isRunning;
+}: VerbeteSearchPanelProps) => {
+  const canRun = (author.trim() || titleField.trim() || area.trim() || text.trim()) && !isRunning;
 
   const content = (
     <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
@@ -51,26 +55,42 @@ const BiblioGeralPanel = ({
         <Separator />
 
         <div className="flex items-center gap-2">
-          <Label className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Autor</Label>
+          <Label className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Autor</Label>
           <Input value={author} onChange={(e) => onAuthorChange(e.target.value)} className="h-8 text-xs md:text-xs bg-white" />
         </div>
 
         <div className="flex items-center gap-2">
-          <Label className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Titulo</Label>
+          <Label className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Titulo</Label>
           <Input value={titleField} onChange={(e) => onTitleFieldChange(e.target.value)} className="h-8 text-xs md:text-xs bg-white" />
         </div>
 
         <div className="flex items-center gap-2">
-          <Label className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ano</Label>
-          <Input value={year} onChange={(e) => onYearChange(e.target.value)} className="h-8 text-xs md:text-xs bg-white" />
+          <Label className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Area</Label>
+          <Input value={area} onChange={(e) => onAreaChange(e.target.value)} className="h-8 text-xs md:text-xs bg-white" />
         </div>
 
         <div className="flex items-center gap-2">
-          <Label className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Extra</Label>
-          <Input value={extra} onChange={(e) => onExtraChange(e.target.value)} className="h-8 text-xs md:text-xs bg-white" />
+          <Label className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Definologia</Label>
+          <Input value={text} onChange={(e) => onTextChange(e.target.value)} className="h-8 text-xs md:text-xs bg-white" />
         </div>
 
-        <Button variant="secondary" size="sm" className={primaryActionButtonClass} onClick={onRun} disabled={!canRun}>
+        <div className="flex items-center gap-2">
+          <Label className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Limite</Label>
+          <Input
+            type="number"
+            min={1}
+            max={200}
+            value={String(maxResults)}
+            onChange={(e) => {
+              const raw = Number.parseInt(e.target.value || "1", 10);
+              const next = Number.isFinite(raw) ? Math.max(1, Math.min(200, raw)) : 1;
+              onMaxResultsChange(next);
+            }}
+            className="h-8 text-xs md:text-xs bg-white"
+          />
+        </div>
+
+        <Button variant="secondary" size="sm" className={primaryActionButtonClass} onClick={onRunSearch} disabled={!canRun}>
           {isRunning ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin text-black relative z-10" />
@@ -79,7 +99,7 @@ const BiblioGeralPanel = ({
           ) : (
             <>
               <Play className="mr-2 h-4 w-4 text-black relative z-10" />
-              <span className="relative z-10 text-blue-500">Bibliografia</span>
+              <span className="relative z-10 text-blue-500">Buscar</span>
             </>
           )}
         </Button>
@@ -102,4 +122,4 @@ const BiblioGeralPanel = ({
   );
 };
 
-export default BiblioGeralPanel;
+export default VerbeteSearchPanel;

@@ -13,6 +13,27 @@ except Exception as exc:  # pragma: no cover - import guard
 
 LEXICAL_DIR = Path(__file__).resolve().parents[1] / "Files" / "Lexical"
 _BOOL_OPS: dict[str, int] = {"!": 3, "&": 2, "|": 1}
+BOOK_CODE_TO_FILE: dict[str, str] = {
+    "PC": "PC",  # nao ha arquivo na base atual
+    "PROJ": "PROJ",
+    "EXP": "700EXP",
+    "CCG": "CCG",
+    "TNP": "TNP",
+    "MP": "PROEXIS",
+    "MDE": "DUPLA",
+    "MRC": "MRC",  # nao ha arquivo na base atual
+    "MMT": "MMT",  # nao ha arquivo na base atual
+    "TC": "TEMAS",
+    "TEAT": "200TEAT",
+    "NE": "NE",  # nao ha arquivo na base atual
+    "HSR": "HSR",
+    "HSP": "HSP",
+    "DNC": "DNC",  # nao ha arquivo na base atual
+    "DAC": "DAC",
+    "LO": "LO",
+    "EC": "EC",
+}
+FILE_TO_BOOK_CODE: dict[str, str] = {filename: code for code, filename in BOOK_CODE_TO_FILE.items()}
 
 # Limite proprio do backend para buscas lexicais em livro.
 # A varredura e interrompida quando atingir esse teto para evitar
@@ -251,20 +272,29 @@ def _process_found_paragraph(paragraph: str, search_term: str) -> str:
 def list_lexical_books() -> list[str]:
     if not LEXICAL_DIR.exists():
         return []
-    return sorted(path.stem for path in LEXICAL_DIR.glob("*.xlsx"))
+    codes: list[str] = []
+    for code, filename in BOOK_CODE_TO_FILE.items():
+        if not (LEXICAL_DIR / f"{filename}.xlsx").exists():
+            continue
+        codes.append(code)
+    return sorted(codes)
 
 
 def _search_lexical_book_internal(book: str, term: str, limit: int = 50) -> tuple[int, list[dict[str, Any]]]:
-    book_name = (book or "").strip()
+    book_code = (book or "").strip().upper()
     raw_term = (term or "").strip()
-    if not book_name:
+    if not book_code:
         raise ValueError("Parametro 'book' e obrigatorio.")
     if not raw_term:
         raise ValueError("Parametro 'term' e obrigatorio.")
 
-    source_path = LEXICAL_DIR / f"{book_name}.xlsx"
+    filename = BOOK_CODE_TO_FILE.get(book_code)
+    if not filename:
+        # Compatibilidade legada: aceita nome de arquivo/stem diretamente.
+        filename = (book or "").strip()
+    source_path = LEXICAL_DIR / f"{filename}.xlsx"
     if not source_path.exists():
-        raise FileNotFoundError(f"Livro lexical nao encontrado: {book_name}.xlsx")
+        raise FileNotFoundError(f"Livro lexical nao encontrado: {book_code}.")
 
     max_rows = max(1, min(int(limit or 50), MAX_BOOK_SEARCH))
     term_norm = _normalize_for_match(raw_term)
@@ -316,7 +346,7 @@ def _search_lexical_book_internal(book: str, term: str, limit: int = 50) -> tupl
             if len(rows) < max_rows:
                 rows.append(
                     {
-                        "book": book_name,
+                        "book": book_code,
                         "row": row_index,
                         "number": row_number,
                         "title": str(row_map.get("title") or "").strip(),
@@ -339,3 +369,90 @@ def search_lexical_book(book: str, term: str, limit: int = 50) -> list[dict[str,
 
 def search_lexical_book_with_total(book: str, term: str, limit: int = 50) -> tuple[int, list[dict[str, Any]]]:
     return _search_lexical_book_internal(book=book, term=term, limit=limit)
+
+
+def search_lexical_verbetes_with_total(
+    author: str = "",
+    title: str = "",
+    area: str = "",
+    text: str = "",
+    limit: int = 50,
+) -> tuple[int, list[dict[str, Any]]]:
+    source_path = LEXICAL_DIR / "EC.xlsx"
+    if not source_path.exists():
+        raise FileNotFoundError("Base de verbetes nao encontrada: EC.xlsx")
+
+    filters = {
+        "author": (author or "").strip(),
+        "title": (title or "").strip(),
+        "area": (area or "").strip(),
+        "text": (text or "").strip(),
+    }
+    active_filters = {key: value for key, value in filters.items() if value}
+    if not active_filters:
+        raise ValueError("Informe ao menos um campo de busca.")
+
+    normalized_filters = {key: _normalize_for_match(value) for key, value in active_filters.items()}
+    max_rows = max(1, min(int(limit or 50), MAX_BOOK_SEARCH))
+
+    # Para verbetes, precisamos acessar hyperlinks das celulas (coluna "link"),
+    # por isso usamos modo normal (nao read_only).
+    workbook = openpyxl.load_workbook(source_path, read_only=False, data_only=True)
+    try:
+        sheet = workbook[workbook.sheetnames[0]]
+        header_cells = next(sheet.iter_rows(min_row=1, max_row=1, values_only=False), ())
+        headers = [str(cell.value).strip().lower() if getattr(cell, "value", None) is not None else "" for cell in header_cells]
+
+        rows: list[dict[str, Any]] = []
+        total_matches = 0
+        for row_index, cells in enumerate(sheet.iter_rows(min_row=2, values_only=False), start=2):
+            if not cells:
+                continue
+
+            row_map: dict[str, Any] = {}
+            for idx, cell in enumerate(cells):
+                value = getattr(cell, "value", None)
+                key = headers[idx] if idx < len(headers) and headers[idx] else f"col_{idx + 1}"
+                cell_text = "" if value is None else str(value).strip()
+                if key == "link":
+                    hyperlink = getattr(cell, "hyperlink", None)
+                    target = ""
+                    if hyperlink is not None:
+                        target = str(getattr(hyperlink, "target", "") or getattr(hyperlink, "location", "") or "").strip()
+                    row_map[key] = target or cell_text
+                else:
+                    row_map[key] = cell_text
+
+            matched = True
+            for field, needle in normalized_filters.items():
+                field_value = _normalize_for_match(str(row_map.get(field) or ""))
+                if not needle or needle not in field_value:
+                    matched = False
+                    break
+            if not matched:
+                continue
+
+            row_number_raw = row_map.get("number") or ""
+            try:
+                row_number = int(str(row_number_raw))
+            except Exception:
+                row_number = None
+
+            total_matches += 1
+            if len(rows) < max_rows:
+                rows.append(
+                    {
+                        "row": row_index,
+                        "number": row_number,
+                        "title": str(row_map.get("title") or "").strip(),
+                        "text": str(row_map.get("text") or "").strip(),
+                        "link": str(row_map.get("link") or "").strip(),
+                        "data": row_map,
+                    }
+                )
+            if total_matches >= MAX_BOOK_SEARCH:
+                break
+
+        return total_matches, rows
+    finally:
+        workbook.close()

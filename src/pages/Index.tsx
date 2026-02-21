@@ -7,7 +7,9 @@ import HtmlEditor from "@/components/HtmlEditor";
 import InsertRefBookPanel from "@/components/InsertRefBookPanel";
 import InsertRefVerbetePanel from "@/components/InsertRefVerbetePanel";
 import BiblioGeralPanel from "@/components/BiblioGeralPanel";
+import BiblioExternaPanel from "@/components/BiblioExternaPanel";
 import BookSearchPanel, { BOOK_OPTION_LABELS } from "@/components/BookSearchPanel";
+import VerbeteSearchPanel from "@/components/VerbeteSearchPanel";
 import Macro1HighlightPanel from "@/components/Macro1HighlightPanel";
 import Macro2ManualNumberingPanel from "@/components/Macro2ManualNumberingPanel";
 import type { Macro2SpacingMode } from "@/components/Macro2ManualNumberingPanel";
@@ -17,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { useTextStats } from "@/hooks/useTextStats";
 import {
   createBlankDocOnServer,
+  biblioExternaApp,
   biblioGeralApp,
   fetchFileContentBuffer,
   fetchFileText,
@@ -27,6 +30,7 @@ import {
   randomPensataApp,
   saveFileText,
   searchLexicalBookApp,
+  searchVerbeteApp,
   UploadedFileMeta,
   uploadFileToServer,
 } from "@/lib/backend-api";
@@ -45,15 +49,17 @@ import {
   buildSummarizePrompt,
   buildTranslatePrompt,
   buildChatPrompt,
+  buildPensataAnalysisPrompt,
 } from "@/lib/openai";
 import { sectionActionButtonClass } from "@/styles/buttonStyles";
+import { BOOK_LABELS, type BookCode } from "@/lib/bookCatalog";
 
 const OPENAI_VECTOR_STORES = (import.meta.env.VITE_OPENAI_VECTOR_STORES as string | undefined)?.trim() || "";
 const OPENAI_VECTOR_STORE_LO = (import.meta.env.VITE_OPENAI_VECTOR_STORE_LO as string | undefined)?.trim() || "";
 const OPENAI_VECTOR_STORE_TRANSLATE_RAG = (import.meta.env.VITE_OPENAI_VECTOR_STORE_TRANSLATE_RAG as string | undefined)?.trim() || "";
 
 type MacroActionId = "macro1" | "macro2";
-type AppActionId = "app1" | "app2" | "app3" | "app4";
+type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6";
 type AiActionId = "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate";
 type ParameterPanelSection = "actions" | "macros" | "apps";
 type ParameterPanelTarget =
@@ -63,7 +69,7 @@ type ParameterPanelTarget =
   | null;
 
 const ACTION_PANEL_BUTTONS: AiActionId[] = ["define", "synonyms", "epigraph", "pensatas", "rewrite", "summarize", "translate"];
-const APP_PANEL_BUTTONS: AppActionId[] = ["app1", "app2", "app3"];
+const APP_PANEL_BUTTONS: AppActionId[] = ["app1", "app2", "app3", "app6"];
 const MACRO_PANEL_BUTTONS: MacroActionId[] = ["macro1", "macro2"];
 const ACTION_PANEL_ICONS: Record<AiActionId, typeof BookOpen> = {
   define: BookOpen,
@@ -79,6 +85,8 @@ const APP_PANEL_ICONS: Record<AppActionId, typeof BookOpen> = {
   app2: Repeat2,
   app3: Search,
   app4: Search,
+  app5: Search,
+  app6: Search,
 };
 const MACRO_PANEL_ICONS: Record<MacroActionId, typeof BookOpen> = {
   macro1: BookOpen,
@@ -88,8 +96,10 @@ const MACRO_PANEL_ICONS: Record<MacroActionId, typeof BookOpen> = {
 const parameterAppMeta: Record<AppActionId, { title: string; description: string }> = {
   app1: { title: "Bibliografia de Livros", description: "Monta Bibliografia de livros de Waldo Vieira." },
   app2: { title: "Bibliografia de Verbetes", description: "Monta Listagem ou Bibliografia de verbetes." },
-  app3: { title: "Bibliografia Geral", description: "Busca correspond\u00eancias bibliogr\u00e1ficas." },
+  app3: { title: "Bibliografia Autores", description: "Busca bibliogr\u00e1fia de livros e artigos de autores." },
   app4: { title: "Busca em Livros", description: "Busca palavras e termos em livros." },
+  app5: { title: "Busca em Verbetes", description: "Busca campos em verbetes da EC." },
+  app6: { title: "Bibliografia Externa", description: "Busca referencias bibliograficas na internet." },
 };
 const parameterMacroMeta: Record<MacroActionId, { title: string; description: string }> = {
   macro1: { title: "Highlight", description: "Destaca termos no documento (highlight em cores)." },
@@ -156,7 +166,7 @@ const Index = () => {
   const [openAiReady, setOpenAiReady] = useState(false);
   const [htmlEditorControlApi, setHtmlEditorControlApi] = useState<HtmlEditorControlApi | null>(null);
   const [parameterPanelTarget, setParameterPanelTarget] = useState<ParameterPanelTarget>(null);
-  const [selectedRefBook, setSelectedRefBook] = useState("LO");
+  const [selectedRefBook, setSelectedRefBook] = useState<BookCode>("LO");
   const [refBookPages, setRefBookPages] = useState("");
   const [isRunningInsertRefBook, setIsRunningInsertRefBook] = useState(false);
   const [verbeteInput, setVerbeteInput] = useState("");
@@ -166,11 +176,25 @@ const Index = () => {
   const [biblioGeralYear, setBiblioGeralYear] = useState("");
   const [biblioGeralExtra, setBiblioGeralExtra] = useState("");
   const [isRunningBiblioGeral, setIsRunningBiblioGeral] = useState(false);
+  const [biblioExternaAuthor, setBiblioExternaAuthor] = useState("");
+  const [biblioExternaTitle, setBiblioExternaTitle] = useState("");
+  const [biblioExternaYear, setBiblioExternaYear] = useState("");
+  const [biblioExternaJournal, setBiblioExternaJournal] = useState("");
+  const [biblioExternaPublisher, setBiblioExternaPublisher] = useState("");
+  const [biblioExternaIdentifier, setBiblioExternaIdentifier] = useState("");
+  const [biblioExternaExtra, setBiblioExternaExtra] = useState("");
+  const [isRunningBiblioExterna, setIsRunningBiblioExterna] = useState(false);
   const [lexicalBooks, setLexicalBooks] = useState<string[]>([]);
   const [selectedLexicalBook, setSelectedLexicalBook] = useState<string>("");
   const [lexicalTerm, setLexicalTerm] = useState("");
   const [lexicalMaxResults, setLexicalMaxResults] = useState(DEFAULT_BOOK_SEARCH_MAX_RESULTS);
   const [isRunningLexicalSearch, setIsRunningLexicalSearch] = useState(false);
+  const [verbeteSearchAuthor, setVerbeteSearchAuthor] = useState("");
+  const [verbeteSearchTitle, setVerbeteSearchTitle] = useState("");
+  const [verbeteSearchArea, setVerbeteSearchArea] = useState("");
+  const [verbeteSearchText, setVerbeteSearchText] = useState("");
+  const [verbeteSearchMaxResults, setVerbeteSearchMaxResults] = useState(DEFAULT_BOOK_SEARCH_MAX_RESULTS);
+  const [isRunningVerbeteSearch, setIsRunningVerbeteSearch] = useState(false);
   const [isBookSearchEntryMode, setIsBookSearchEntryMode] = useState(false);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [translateLanguage, setTranslateLanguage] = useState<(typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"]>("Ingles");
@@ -413,8 +437,15 @@ const Index = () => {
   const getEditorApi = useCallback(async (): Promise<HtmlEditorControlApi | null> => {
     const immediate = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
     if (immediate) return immediate;
-    await new Promise((resolve) => window.setTimeout(resolve, 60));
-    return htmlEditorControlApiRef.current ?? htmlEditorControlApi;
+
+    // O controle do editor pode demorar alguns ciclos para ficar disponivel
+    // apos re-render/layout. Fazemos retry curto para evitar falso negativo.
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 80));
+      const api = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
+      if (api) return api;
+    }
+    return null;
   }, [htmlEditorControlApi]);
 
   const handleAppendHistoryToEditor = useCallback(async (html: string) => {
@@ -513,7 +544,7 @@ const Index = () => {
     }
   }, [getEditorApi, macro1Term]);
 
-  const handleSelectRefBook = useCallback((book: string) => {
+  const handleSelectRefBook = useCallback((book: BookCode) => {
     setSelectedRefBook(book);
   }, []);
 
@@ -532,7 +563,7 @@ const Index = () => {
       const pages = normalizeRefPages(refBookPages);
       const result = pages ? `${rawResult}; p. ${pages}.` : rawResult;
       if (result) {
-        addResponse("app_ref_book", `Livro: ${selectedRefBook}${pages ? ` | p. ${pages}` : ""}`, result);
+        addResponse("app_ref_book", `Livro: ${BOOK_LABELS[selectedRefBook] ?? selectedRefBook}${pages ? ` | p. ${pages}` : ""}`, result);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Insert Ref Book.";
@@ -592,12 +623,58 @@ const Index = () => {
         toast.info("Nenhuma bibliografia encontrada.");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Falha ao executar Bibliografia Geral.";
+      const msg = err instanceof Error ? err.message : "Falha ao executar Bibliografia Autores.";
       toast.error(msg);
     } finally {
       setIsRunningBiblioGeral(false);
     }
   }, [biblioGeralAuthor, biblioGeralExtra, biblioGeralTitle, biblioGeralYear]);
+
+  const handleRunBiblioExterna = useCallback(async () => {
+    const author = biblioExternaAuthor.trim();
+    const title = biblioExternaTitle.trim();
+    const year = biblioExternaYear.trim();
+    const journal = biblioExternaJournal.trim();
+    const publisher = biblioExternaPublisher.trim();
+    const identifier = biblioExternaIdentifier.trim();
+    const extra = biblioExternaExtra.trim();
+    if (!author && !title && !year && !journal && !publisher && !identifier && !extra) {
+      toast.error("Informe ao menos um campo para Bibliografia Externa.");
+      return;
+    }
+
+    setIsRunningBiblioExterna(true);
+    try {
+      const data = await biblioExternaApp({ author, title, year, journal, publisher, identifier, extra });
+      const markdown = (data.result.markdown || "").trim();
+      const scorePercentual = Number(data.result.score?.score_percentual ?? NaN);
+      const classificacao = (data.result.score?.classificacao || "").trim();
+      const scoreLine = Number.isFinite(scorePercentual)
+        ? `Confiabilidade: **${scorePercentual.toFixed(2)}%**${classificacao ? ` (${classificacao})` : ""}`
+        : "";
+      const content = [scoreLine, markdown].filter(Boolean).join("\n\n");
+      if (content) {
+        const queryParts = [
+          author && `autor: ${author}`,
+          title && `titulo: ${title}`,
+          year && `ano: ${year}`,
+          journal && `revista: ${journal}`,
+          publisher && `editora: ${publisher}`,
+          identifier && `doi/isbn: ${identifier}`,
+          extra && `extra: ${extra}`,
+        ].filter(Boolean);
+        addResponse("app_biblio_externa", queryParts.join(" | "), content);
+      }
+      if (!data.result.matches?.length) {
+        toast.info("Nenhuma bibliografia externa encontrada.");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Falha ao executar Bibliografia Externa.";
+      toast.error(msg);
+    } finally {
+      setIsRunningBiblioExterna(false);
+    }
+  }, [biblioExternaAuthor, biblioExternaExtra, biblioExternaIdentifier, biblioExternaJournal, biblioExternaPublisher, biblioExternaTitle, biblioExternaYear]);
 
   const ensureLexicalBooksLoaded = useCallback(async () => {
     if (lexicalBooks.length > 0) return lexicalBooks;
@@ -625,10 +702,16 @@ const Index = () => {
     if (type === "app3") {
       if (!biblioGeralTitle.trim() && actionText.trim()) setBiblioGeralTitle(actionText.trim());
     }
+    if (type === "app6") {
+      if (!biblioExternaTitle.trim() && actionText.trim()) setBiblioExternaTitle(actionText.trim());
+    }
     if (type === "app4") {
       void ensureLexicalBooksLoaded();
     }
-  }, [actionText, biblioGeralTitle, ensureLexicalBooksLoaded]);
+    if (type === "app5") {
+      // Sem pre-load; usa base fixa EC.xlsx
+    }
+  }, [actionText, biblioExternaTitle, biblioGeralTitle, ensureLexicalBooksLoaded]);
 
   const handleOpenBookSearchFromLeft = useCallback(() => {
     setIsBookSearchEntryMode(true);
@@ -677,7 +760,7 @@ const Index = () => {
             : sourceBook === "DAC"
               ? `(**${sourceBookLabel}**; *${sourceTitle}*; ${argumentoPart})`
               : `(**${sourceBookLabel}**; *${sourceTitle}*)`;
-          return `**${idx + 1}.** ${titlePrefix}${body} ${sourceRef}`;
+          return `**${idx + 1}.\u00A0\u00A0**${titlePrefix}${body} ${sourceRef}`;
         })
         .join("\n\n");
       const shownInfo = totalFound > maxResults ? ` | Exibidos: ${maxResults}` : "";
@@ -694,8 +777,75 @@ const Index = () => {
     }
   }, [lexicalMaxResults, lexicalTerm, selectedLexicalBook]);
 
+  const handleRunVerbeteSearch = useCallback(async () => {
+    const author = verbeteSearchAuthor.trim();
+    const title = verbeteSearchTitle.trim();
+    const area = verbeteSearchArea.trim();
+    const text = verbeteSearchText.trim();
+    const maxResults = Math.max(1, Math.min(200, verbeteSearchMaxResults || 1));
+    if (!author && !title && !area && !text) {
+      toast.error("Preencha ao menos um campo para buscar em verbetes.");
+      return;
+    }
+
+    setIsRunningVerbeteSearch(true);
+    try {
+      const data = await searchVerbeteApp({ author, title, area, text, limit: maxResults });
+      const totalFound = Number(data.result.total || 0);
+      const matches = (data.result.matches || []).slice(0, maxResults);
+      if (matches.length <= 0) {
+        toast.info("Nenhum verbete encontrado.");
+        return;
+      }
+
+      const markdown = matches
+        .map((item, idx) => {
+          const row = item.data || {};
+          const rowTitle = String(row.title || item.title || "").trim();
+          const rowText = String(row.text || item.text || "").trim();
+          const rowArea = String(row.area || "").trim();
+          const rowAuthor = String(row.author || "").trim();
+          const rowNumber = item.number != null ? String(item.number).trim() : "";
+          const rowDate = String(row.date || "").trim();
+          const rowLink = String(item.link || row.link || "").trim();
+
+          const titlePart = `${rowTitle || "s/titulo"}`;
+          const areaPart = `${rowArea || "s/area"}`;
+          const authorPart = `${rowAuthor || "s/autor"}`;
+          const numberPart = `# ${rowNumber || "?"}`;
+          const datePart = rowDate || "s/data";
+          const definologiaPart = `**Definologia.** ${rowText || ""}`.trim();
+          const linkPart = rowLink ? `[PDF](${rowLink})` : "";
+          const headerLine = `**${idx + 1}.\u00A0\u00A0** **${titlePart}** (*${areaPart}*) ● *${authorPart}* ● ${numberPart} ● ${datePart}`;
+          return `${headerLine}\n${definologiaPart}\n${linkPart}`;
+        })
+        .join("\n\n");
+
+      const queryParts = [
+        author && `Author: ${author}`,
+        title && `Title: ${title}`,
+        area && `Area: ${area}`,
+        text && `Text: ${text}`,
+      ].filter(Boolean);
+      addResponse(
+        "app_verbete_search",
+        `${queryParts.join(" | ")} | Total: ${totalFound}${totalFound > maxResults ? ` | Exibidos: ${maxResults}` : ""}`,
+        markdown,
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Falha ao executar Busca em Verbetes.";
+      toast.error(msg);
+    } finally {
+      setIsRunningVerbeteSearch(false);
+    }
+  }, [verbeteSearchArea, verbeteSearchAuthor, verbeteSearchMaxResults, verbeteSearchText, verbeteSearchTitle]);
+
   const handleRunRandomPensata = useCallback(async () => {
     if (isLoading) return;
+    if (!openAiReady) {
+      toast.error("Backend sem OPENAI_API_KEY. Configure no servidor.");
+      return;
+    }
     setIsLoading(true);
     try {
       const data = await randomPensataApp();
@@ -705,14 +855,18 @@ const Index = () => {
       const total = Number(result.total_paragraphs || 0);
       const paragraph = (result.paragraph || "").trim();
       const header = `Livro: ${source} | Paragrafo: ${number}${total > 0 ? `/${total}` : ""}`;
-      addResponse("app_random_pensata", header, paragraph || "Paragrafo nao encontrado.");
+      const pensata = paragraph || "Paragrafo nao encontrado.";
+      const analysisMessages = buildPensataAnalysisPrompt(pensata);
+      const analysis = (await callOpenAI(analysisMessages)).trim();
+      const content = analysis ? `${pensata}\n\n*Análise IA:*\n${analysis}` : pensata;
+      addResponse("app_random_pensata", header, content);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Pensata do Dia.";
       toast.error(msg);
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading]);
+  }, [isLoading, openAiReady]);
 
   const handleAction = useCallback(async (type: AiActionId) => {
     const text = actionText.trim();
@@ -872,7 +1026,8 @@ const Index = () => {
     }
   }, [currentFileId, currentFileName, documentText, editorContentHtml, htmlEditorControlApi]);
 
-  const isHistoryProcessing = isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningLexicalSearch;
+  const isHistoryProcessing =
+    isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningVerbeteSearch;
   const hasEditorPanel = Boolean(currentFileId) || isOpeningDocument;
   const hasCenterPanel = hasEditorPanel || Boolean(parameterPanelTarget);
   const centerDefaultWithEditor = 100 - PANEL_SIZES.left.default - PANEL_SIZES.right.default;
@@ -985,7 +1140,9 @@ const Index = () => {
                         ))}
 
                         {parameterPanelTarget.section === "apps" &&
-                          ((isBookSearchEntryMode || parameterPanelTarget.id === "app4") ? (["app4"] as AppActionId[]) : APP_PANEL_BUTTONS).map((id) => (
+                          ((isBookSearchEntryMode || parameterPanelTarget.id === "app4" || parameterPanelTarget.id === "app5")
+                            ? (["app4", "app5"] as AppActionId[])
+                            : APP_PANEL_BUTTONS).map((id) => (
                           (() => {
                             const Icon = APP_PANEL_ICONS[id];
                             return (
@@ -1108,6 +1265,28 @@ const Index = () => {
                           isRunning={isRunningBiblioGeral}
                           showPanelChrome={false}
                         />
+                      ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app6" ? (
+                        <BiblioExternaPanel
+                          title={parameterAppMeta.app6.title}
+                          description={parameterAppMeta.app6.description}
+                          author={biblioExternaAuthor}
+                          titleField={biblioExternaTitle}
+                          year={biblioExternaYear}
+                          journal={biblioExternaJournal}
+                          publisher={biblioExternaPublisher}
+                          identifier={biblioExternaIdentifier}
+                          extra={biblioExternaExtra}
+                          onAuthorChange={setBiblioExternaAuthor}
+                          onTitleFieldChange={setBiblioExternaTitle}
+                          onYearChange={setBiblioExternaYear}
+                          onJournalChange={setBiblioExternaJournal}
+                          onPublisherChange={setBiblioExternaPublisher}
+                          onIdentifierChange={setBiblioExternaIdentifier}
+                          onExtraChange={setBiblioExternaExtra}
+                          onRun={() => void handleRunBiblioExterna()}
+                          isRunning={isRunningBiblioExterna}
+                          showPanelChrome={false}
+                        />
                       ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app4" ? (
                         <BookSearchPanel
                           title={parameterAppMeta.app4.title}
@@ -1121,6 +1300,24 @@ const Index = () => {
                           onMaxResultsChange={setLexicalMaxResults}
                           onRunSearch={() => void handleRunLexicalSearch()}
                           isRunning={isRunningLexicalSearch}
+                          showPanelChrome={false}
+                        />
+                      ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app5" ? (
+                        <VerbeteSearchPanel
+                          title={parameterAppMeta.app5.title}
+                          description={parameterAppMeta.app5.description}
+                          author={verbeteSearchAuthor}
+                          titleField={verbeteSearchTitle}
+                          area={verbeteSearchArea}
+                          text={verbeteSearchText}
+                          maxResults={verbeteSearchMaxResults}
+                          onAuthorChange={setVerbeteSearchAuthor}
+                          onTitleFieldChange={setVerbeteSearchTitle}
+                          onAreaChange={setVerbeteSearchArea}
+                          onTextChange={setVerbeteSearchText}
+                          onMaxResultsChange={setVerbeteSearchMaxResults}
+                          onRunSearch={() => void handleRunVerbeteSearch()}
+                          isRunning={isRunningVerbeteSearch}
                           showPanelChrome={false}
                         />
                       ) : (
@@ -1209,6 +1406,7 @@ const Index = () => {
 };
 
 export default Index;
+
 
 
 

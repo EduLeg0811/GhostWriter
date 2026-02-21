@@ -4,36 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Play, X } from "lucide-react";
 import { Textarea } from "./ui/textarea";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
+import { BOOK_ORDER, BOOK_LABELS, type BookCode } from "@/lib/bookCatalog";
 
-const REF_BOOK_OPTIONS = [
-  "Projeções da Consciência",
-  "Projeciologia",
-  "700 Experimentos da Conscienciologia",
-  "Conscienciograma",
-  "Manual da Tenepes",
-  "Manual da Proéxis",
-  "Manual da Dupla Evolutiva",
-  "Manual de Redação da Conscienciologia",
-  "Manual dos Megapensenes",
-  "Temas da Conscienciologia",
-  "200 Teáticas da Conscienciologia",
-  "Nossa Evolução",
-  "Homo sapiens reurbanisatus (HSR)",
-  "Homo sapiens pacificus (HSP)",
-  "Dicionário de Neologismos",
-  "Dicionário de Argumentos (DAC)",
-  "Léxico de Ortopensatas (LO - 1a ed.)",
-  "Léxico de Ortopensatas (LO - 2a ed.)",
-  "Enciclopédia da Conscienciologia (10a ed.)",
-  "Enciclopédia da Conscienciologia (novos verbetes)",
-] as const;
+const REF_BOOK_OPTIONS: BookCode[] = [...BOOK_ORDER];
 
 interface InsertRefBookPanelProps {
   title: string;
   description: string;
-  selectedRefBook: string;
+  selectedRefBook: BookCode;
   refBookPages: string;
-  onSelectRefBook: (value: string) => void;
+  onSelectRefBook: (value: BookCode) => void;
   onRefBookPagesChange: (value: string) => void;
   onRunInsertRefBook: () => void;
   isRunningInsertRefBook: boolean;
@@ -75,7 +55,7 @@ const InsertRefBookPanel = ({
                   checked={selectedRefBook === option}
                   onChange={() => onSelectRefBook(option)}
                 />
-                <span>{option}</span>
+                <span>{BOOK_LABELS[option]}</span>
               </label>
             ))}
           </div>

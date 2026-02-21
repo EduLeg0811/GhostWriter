@@ -147,3 +147,18 @@ export function buildChatPrompt(fullText: string, userMessage: string, history: 
     { role: "user", content: userMessage },
   ];
 }
+
+export function buildPensataAnalysisPrompt(pensata: string): ChatMessage[] {
+  return [
+    {
+      role: "system",
+      content:
+        "Voce e um especialista em Conscienciologia. Responda em portugues brasileiro, com objetividade e clareza.",
+    },
+    {
+      role: "user",
+      content:
+        `Analise a seguinte pensata, segundo a Conscienciologia. Apresente a resposta da analise em apenas 1 paragrafo breve. Forneca tambem um exemplo pratico que ilustra a pensata, tambem em 1 paragrafo curto.\n\nPensata:\n"${pensata}"`,
+    },
+  ];
+}

@@ -5,25 +5,11 @@ import { Loader2, Play, X } from "lucide-react";
 import { Textarea } from "./ui/textarea";
 import { Input } from "./ui/input";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
+import { BOOK_LABELS } from "@/lib/bookCatalog";
 
 
 
-export const BOOK_OPTION_LABELS: Record<string, string> = {
-  
-  "PROJ": "Projeciologia",
-  "700EXP": "700 Experimentos da Conscienciologia",
-  "CCG": "Conscienciograma",
-  "200TEAT": "200 Teáticas da Conscienciologia",
-  "TEMAS": "Temas da Conscienciologia",
-  "TNP": "Manual da Tenepes",
-  "PROEXIS": "Manual da Proéxis",
-  "DUPLA": "Manual da Dupla Evolutiva",
-  "HSR": "Homo sapiens reurbanisatus",
-  "HSP": "Homo sapiens pacificus",
-  "DAC": "Dicionário de Argumentos da Conscienciologia",
-  "LO": "Léxico de Ortopensatas",
-  "QUEST": "Questionamentos das Minitertúlias",
-};
+export const BOOK_OPTION_LABELS: Record<string, string> = BOOK_LABELS;
 
 interface BookSearchPanelProps {
   title: string;
@@ -157,3 +143,4 @@ const BookSearchPanel = ({
 };
 
 export default BookSearchPanel;
+

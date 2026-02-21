@@ -15,6 +15,53 @@ export interface UploadedFileMeta {
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const apiUrl = (path: string): string => `${API_BASE_URL}${path}`;
 
+const RETRYABLE_STATUS = new Set([429, 502, 503, 504]);
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function safeReadError(res: Response): Promise<string> {
+  try {
+    const text = (await res.text()).trim();
+    if (!text) return `HTTP ${res.status}`;
+    try {
+      const parsed = JSON.parse(text) as { detail?: string };
+      return parsed?.detail || text;
+    } catch {
+      return text;
+    }
+  } catch {
+    return `HTTP ${res.status}`;
+  }
+}
+
+async function fetchJsonWithRetry<T>(input: string, init: RequestInit, retries = 2): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const res = await fetch(input, init);
+      if (res.ok) return (await res.json()) as T;
+
+      const message = await safeReadError(res);
+      if (attempt < retries && RETRYABLE_STATUS.has(res.status)) {
+        await wait(180 * (attempt + 1));
+        continue;
+      }
+      throw new Error(message);
+    } catch (err: unknown) {
+      lastError = err;
+      const isNetworkError =
+        err instanceof TypeError ||
+        (err instanceof Error && /failed to fetch|networkerror|load failed/i.test(err.message));
+      if (attempt < retries && isNetworkError) {
+        await wait(180 * (attempt + 1));
+        continue;
+      }
+      break;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Falha de rede ao comunicar com o backend.");
+}
+
 export async function uploadFileToServer(file: File): Promise<UploadedFileMeta> {
   const form = new FormData();
   form.append("file", file);
@@ -101,6 +148,26 @@ export async function biblioGeralApp(payload: { author?: string; title?: string;
   return res.json();
 }
 
+export async function biblioExternaApp(payload: {
+  query?: string;
+  author?: string;
+  title?: string;
+  year?: string;
+  journal?: string;
+  publisher?: string;
+  identifier?: string;
+  extra?: string;
+  topK?: number;
+}): Promise<{ ok: boolean; result: { query: string; matches: string[]; markdown: string; score?: { score_percentual?: number; classificacao?: string } } }> {
+  const res = await fetch(apiUrl("/api/apps/biblio-externa"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function randomPensataApp(): Promise<{ ok: boolean; result: { paragraph: string; paragraph_number: number; total_paragraphs: number; source: string } }> {
   const res = await fetch(apiUrl("/api/apps/random-pensata"), {
     method: "POST",
@@ -112,9 +179,7 @@ export async function randomPensataApp(): Promise<{ ok: boolean; result: { parag
 }
 
 export async function listLexicalBooksApp(): Promise<{ ok: boolean; result: { books: string[] } }> {
-  const res = await fetch(apiUrl("/api/apps/lexical/books"));
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  return fetchJsonWithRetry(apiUrl("/api/apps/lexical/books"), { method: "GET", cache: "no-store" });
 }
 
 export async function searchLexicalBookApp(payload: {
@@ -137,11 +202,44 @@ export async function searchLexicalBookApp(payload: {
     }>;
   };
 }> {
-  const res = await fetch(apiUrl("/api/apps/lexical/search"), {
+  return fetchJsonWithRetry(apiUrl("/api/apps/lexical/search"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    cache: "no-store",
   });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+}
+
+export async function searchVerbeteApp(payload: {
+  author?: string;
+  title?: string;
+  area?: string;
+  text?: string;
+  limit?: number;
+}): Promise<{
+  ok: boolean;
+  result: {
+    query: {
+      author: string;
+      title: string;
+      area: string;
+      text: string;
+    };
+    total: number;
+    matches: Array<{
+      row: number;
+      number: number | null;
+      title: string;
+      text: string;
+      link: string;
+      data: Record<string, string>;
+    }>;
+  };
+}> {
+  return fetchJsonWithRetry(apiUrl("/api/apps/lexical/verbetes/search"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
 }

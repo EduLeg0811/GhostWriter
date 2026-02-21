@@ -14,10 +14,14 @@ export function renderBasicMarkdown(text: string): string {
 }
 
 function renderInlineMarkdown(text: string): string {
-  return (text || "")
+  const escaped = (text || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
+    // suporte basico a links markdown: [label](https://...)
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+  return escaped
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/g, "<em>$1</em>");
 }

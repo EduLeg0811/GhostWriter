@@ -233,8 +233,8 @@ const LeftPanel = ({
               >
                 <Search className="mr-2 h-4 w-4 shrink-0 text-primary" />
                 <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Busca de Termos</span>
-                  <span className="block break-words text-xs text-muted-foreground">Busca termos em livros</span>
+                  <span className="block break-words text-sm font-medium text-foreground">Busca de Palavras</span>
+                  <span className="block break-words text-xs text-muted-foreground">Busca palavras e termos em livros</span>
                 </span>
               </Button>
 
@@ -286,11 +286,11 @@ const LeftPanel = ({
           <div className="space-y-1.5">
             <Button
               variant="ghost"
-              className={`${sectionActionButtonClass} group flex items-center justify-between rounded-xl border border-orange-200 bg-white px-4 py-2 text-blue-600 shadow-sm transition hover:brightness-110`}
+              className={`${sectionActionButtonClass} group flex items-center justify-between rounded-xl border border-orange-200 bg-white px-4 py-2 text-blue-600 shadow-sm transition-all duration-200 hover:!bg-white hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-[0_10px_24px_-14px_rgba(0,0,0,0.45),0_3px_8px_-4px_rgba(0,0,0,0.25)]`}
               onClick={() => void onRunRandomPensata()}
               disabled={actionDisabled}
             >
-              <img src="/LO.png" alt="LO" className="h-16 w-16 shrink-0 object-contain" />
+              <img src="/LO.png" alt="LO" className="h-16 w-16 shrink-0 object-contain bg-white" />
               <span className="min-w-0 flex-1 text-left">
                 <span className="text-normal font-semibold tracking-wide text-orange-600 shadow-lg">Pensata do Dia</span>
                 <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Bibliomancia Digital</p>
@@ -303,8 +303,7 @@ const LeftPanel = ({
             href="https://cons-ia.org/"
             target="_blank"
             rel="noopener noreferrer"
-            className="group block rounded-xl border border-orange-200 bg-white px-4 py-2 text-blue-600 shadow-sm transition hover:brightness-110"
-            title="Abrir Cons-IA em nova aba"
+            className="group block rounded-xl border border-orange-200 bg-white px-4 py-2 text-blue-600 shadow-sm transition-all duration-200 hover:bg-white hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-[0_10px_24px_-14px_rgba(0,0,0,0.45),0_3px_8px_-4px_rgba(0,0,0,0.25)]"
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-3">
