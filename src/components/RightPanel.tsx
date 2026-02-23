@@ -318,8 +318,8 @@ const RightPanel = ({
     const { content, type, query } = response;
     const markdown = normalizeHistoryContentToMarkdown(content);
     const html = markdownToEditorHtml(markdown);
-    if (type === "app_book_search") return styleNumberedListItemsHtml(styleBookSearchSourceRefHtml(highlightBookSearchHtml(html, query)));
-    if (type === "app_verbete_search") return styleNumberedListItemsHtml(styleVerbeteSearchHtml(highlightBookSearchHtml(html, query)));
+    if (type === "app_book_search") return html;
+    if (type === "app_verbete_search") return html;
     return styleNumberedListItemsHtml(html);
   };
 

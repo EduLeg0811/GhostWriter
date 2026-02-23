@@ -98,16 +98,19 @@ for prefix, namespace in DOCX_XML_NAMESPACES.items():
     ET.register_namespace(prefix, namespace)
 
 
-class VectorSearchRequest(BaseModel):
-    vectorStoreId: str
-    query: str
-    maxNumResults: int = 5
-
-
-class ChatRequest(BaseModel):
-    messages: list[dict[str, Any]]
+class ExecuteLLMRequest(BaseModel):
     model: str = "gpt-4.1-mini"
+    messages: list[dict[str, Any]]
+    systemPrompt: str = ""
     temperature: float = 0.7
+    maxOutputTokens: int | None = None
+    gpt5Verbosity: str | None = None
+    gpt5Effort: str | None = None
+    tools: list[dict[str, Any]] | None = None
+    vectorStoreIds: list[str] = []
+    ragQuery: str = ""
+    vectorMaxResults: int = 5
+    returnChunksOnly: bool = False
 
 
 class InsertRefBookRequest(BaseModel):
@@ -1200,33 +1203,41 @@ def api_file_highlight(file_id: str, payload: HighlightRequest) -> dict[str, Any
     return {"ok": True, "updated": updated, "matches": matches, "term": term, "color": "yellow"}
 
 
-@app.post("/api/ai/chat")
-def api_ai_chat(payload: ChatRequest) -> dict[str, Any]:
+@app.post("/api/ai/execute")
+def api_ai_execute(payload: ExecuteLLMRequest) -> dict[str, Any]:
     require_openai_key()
     if not payload.messages:
         raise HTTPException(status_code=400, detail="messages invalido.")
-    upstream = requests.post("https://api.openai.com/v1/chat/completions", headers={"Content-Type": "application/json", "Authorization": f"Bearer {openai_api_key}"}, json={"model": payload.model, "messages": payload.messages, "temperature": payload.temperature}, timeout=60)
-    if not upstream.ok:
-        raise HTTPException(status_code=upstream.status_code, detail=upstream.text)
-    data = upstream.json()
-    return {"content": (data.get("choices") or [{}])[0].get("message", {}).get("content", "")}
+    try:
+        from backend.functions.llm_gateway import execute_llm_request
+    except Exception:
+        from functions.llm_gateway import execute_llm_request
+    try:
+        result = execute_llm_request(
+            api_key=openai_api_key,
+            model=payload.model,
+            messages=payload.messages,
+            system_prompt=payload.systemPrompt,
+            temperature=payload.temperature,
+            max_output_tokens=payload.maxOutputTokens,
+            gpt5_verbosity=payload.gpt5Verbosity,
+            gpt5_effort=payload.gpt5Effort,
+            tools=payload.tools,
+            vector_store_ids=payload.vectorStoreIds,
+            rag_query=payload.ragQuery,
+            vector_max_results=max(1, min(int(payload.vectorMaxResults or 5), 20)),
+        )
+    except requests.HTTPError as exc:
+        response = exc.response
+        detail = response.text if response is not None else str(exc)
+        status_code = response.status_code if response is not None else 500
+        raise HTTPException(status_code=status_code, detail=detail)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Falha na execucao LLM: {exc}")
 
-
-@app.post("/api/ai/vector-search")
-def api_ai_vector_search(payload: VectorSearchRequest) -> dict[str, Any]:
-    require_openai_key()
-    if not payload.vectorStoreId or not payload.query:
-        raise HTTPException(status_code=400, detail="vectorStoreId e query sao obrigatorios.")
-    upstream = requests.post(f"https://api.openai.com/v1/vector_stores/{payload.vectorStoreId}/search", headers={"Content-Type": "application/json", "Authorization": f"Bearer {openai_api_key}", "OpenAI-Beta": "assistants=v2"}, json={"query": payload.query, "max_num_results": payload.maxNumResults}, timeout=60)
-    if not upstream.ok:
-        raise HTTPException(status_code=upstream.status_code, detail=upstream.text)
-    data = upstream.json()
-    chunks = []
-    for item in data.get("data", []):
-        text = "\n".join((c.get("text") or "") for c in item.get("content", []))
-        if text:
-            chunks.append(text)
-    return {"chunks": chunks}
+    if payload.returnChunksOnly:
+        return {"chunks": result.get("chunks", [])}
+    return {"content": result.get("content", ""), "chunks": result.get("chunks", [])}
 
 
 @app.get("/")

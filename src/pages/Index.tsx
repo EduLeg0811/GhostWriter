@@ -41,9 +41,17 @@ import { buildDocxBlobFromHtml } from "@/lib/docx-export";
 import { cleanupConvertedPdfHeaderHtml, parseDocxArrayBuffer, warmupDocxParser } from "@/lib/file-parser";
 import { markdownToEditorHtml, normalizeHistoryContentToMarkdown, plainTextToEditorHtml } from "@/lib/markdown";
 import {
-  callOpenAI,
+  executeLLM,
   ChatMessage,
-  searchVectorStore,
+  CHAT_MODEL,
+  CHAT_TEMPERATURE,
+  CHAT_GPT5_VERBOSITY,
+  CHAT_GPT5_EFFORT,
+  CHAT_MAX_OUTPUT_TOKENS,
+  CHAT_SYSTEM_PROMPT,
+  LLM_VECTOR_STORES,
+  LLM_VECTOR_STORE_LO,
+  LLM_VECTOR_STORE_TRANSLATE_RAG,
   buildDefinePrompt,
   buildSynonymsPrompt,
   buildEpigraphPrompt,
@@ -55,10 +63,6 @@ import {
 } from "@/lib/openai";
 import { sectionActionButtonClass } from "@/styles/buttonStyles";
 import { BOOK_LABELS, type BookCode } from "@/lib/bookCatalog";
-
-const OPENAI_VECTOR_STORES = (import.meta.env.VITE_OPENAI_VECTOR_STORES as string | undefined)?.trim() || "";
-const OPENAI_VECTOR_STORE_LO = (import.meta.env.VITE_OPENAI_VECTOR_STORE_LO as string | undefined)?.trim() || "";
-const OPENAI_VECTOR_STORE_TRANSLATE_RAG = (import.meta.env.VITE_OPENAI_VECTOR_STORE_TRANSLATE_RAG as string | undefined)?.trim() || "";
 
 type MacroActionId = "macro1" | "macro2";
 type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7";
@@ -979,7 +983,7 @@ const Index = () => {
       const header = `Livro: ${source} | Paragrafo: ${number}${total > 0 ? `/${total}` : ""}`;
       const pensata = paragraph || "Paragrafo nao encontrado.";
       const analysisMessages = buildPensataAnalysisPrompt(pensata);
-      const analysis = (await callOpenAI(analysisMessages)).trim();
+      const analysis = (await executeLLM({ messages: analysisMessages })).content.trim();
       const content = analysis ? `${pensata}\n\n*Análise IA:*\n${analysis}` : pensata;
       addResponse("app_random_pensata", header, content);
     } catch (err: unknown) {
@@ -1004,14 +1008,22 @@ const Index = () => {
     }
 
     if (type === "pensatas") {
-      if (!OPENAI_VECTOR_STORE_LO) {
+      if (!LLM_VECTOR_STORE_LO) {
         toast.error("Configure VITE_OPENAI_VECTOR_STORE_LO.");
         return;
       }
 
       setIsLoading(true);
       try {
-        const chunks = await searchVectorStore(OPENAI_VECTOR_STORE_LO, text);
+        const chunks = (
+          await executeLLM({
+            messages: [{ role: "user", content: text }],
+            vectorStoreIds: [LLM_VECTOR_STORE_LO],
+            ragQuery: text,
+            vectorMaxResults: 5,
+            returnChunksOnly: true,
+          })
+        ).chunks;
         if (chunks.length === 0) {
           toast.info("Nenhuma correspond\u00eancia encontrada na Vector Store LO.");
         } else {
@@ -1031,21 +1043,33 @@ const Index = () => {
     try {
       let ragContext: string | undefined;
       if (type === "define" || type === "synonyms") {
-        const storeIds = OPENAI_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
+        const storeIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
         if (storeIds.length > 0) {
-          const allChunks: string[] = [];
-          for (const storeId of storeIds) {
-            const chunks = await searchVectorStore(storeId, text);
-            allChunks.push(...chunks);
-          }
+          const allChunks = (
+            await executeLLM({
+              messages: [{ role: "user", content: text }],
+              vectorStoreIds: storeIds,
+              ragQuery: text,
+              vectorMaxResults: 5,
+              returnChunksOnly: true,
+            })
+          ).chunks;
           if (allChunks.length > 0) ragContext = allChunks.join("\n\n---\n\n");
         }
       }
       if (type === "translate") {
-        if (!OPENAI_VECTOR_STORE_TRANSLATE_RAG) {
+        if (!LLM_VECTOR_STORE_TRANSLATE_RAG) {
           throw new Error("Configure VITE_OPENAI_VECTOR_STORE_TRANSLATE_RAG.");
         }
-        const chunks = await searchVectorStore(OPENAI_VECTOR_STORE_TRANSLATE_RAG, text);
+        const chunks = (
+          await executeLLM({
+            messages: [{ role: "user", content: text }],
+            vectorStoreIds: [LLM_VECTOR_STORE_TRANSLATE_RAG],
+            ragQuery: text,
+            vectorMaxResults: 5,
+            returnChunksOnly: true,
+          })
+        ).chunks;
         if (chunks.length > 0) ragContext = chunks.join("\n\n---\n\n");
       }
 
@@ -1059,7 +1083,7 @@ const Index = () => {
       };
 
       const messages = promptMap[type](text);
-      const result = await callOpenAI(messages);
+      const result = (await executeLLM({ messages })).content;
       addResponse(type, text.slice(0, 80), result);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erro na chamada a IA.");
@@ -1077,11 +1101,27 @@ const Index = () => {
     setIsLoading(true);
     try {
       const messages = buildChatPrompt(actionText, message, chatHistory);
-      const result = await callOpenAI(messages);
-      setChatHistory((prev) => [...prev, { role: "user", content: message }, { role: "assistant", content: result }]);
-      addResponse("chat", message, result);
-    } catch (_err) {
-      // chat box is not rendered in this layout
+      const chatStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
+      const result = (
+        await executeLLM({
+          messages,
+          model: CHAT_MODEL,
+          temperature: CHAT_TEMPERATURE,
+          gpt5Verbosity: CHAT_GPT5_VERBOSITY,
+          gpt5Effort: CHAT_GPT5_EFFORT,
+          maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS,
+          systemPrompt: CHAT_SYSTEM_PROMPT,
+          vectorStoreIds: chatStoreIds,
+          ragQuery: message,
+        })
+      ).content.trim();
+      const finalContent = result || "Sem conteudo retornado pela IA.";
+      setChatHistory((prev) => [...prev, { role: "user", content: message }, { role: "assistant", content: finalContent }]);
+      addResponse("chat", message, finalContent);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Falha ao executar chat.";
+      toast.error(msg);
+      addResponse("chat", message, `Erro no chat: ${msg}`);
     } finally {
       setIsLoading(false);
     }
@@ -1216,7 +1256,7 @@ const Index = () => {
                             variant="ghost"
                             className={sectionActionButtonClass}
                             onClick={() => handleOpenAiActionParameters(id)}
-                            disabled={isLoading || (id === "pensatas" && !OPENAI_VECTOR_STORE_LO)}
+                            disabled={isLoading || (id === "pensatas" && !LLM_VECTOR_STORE_LO)}
                           >
                             <Icon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
                             <span className="min-w-0 flex-1 text-left">

@@ -544,14 +544,6 @@ class BibliografiaService:
     # ENRIQUECIMENTO VIA LLM (1 CHAMADA EM BATCH)
     # ============================================================
 
-    def _extrair_texto_openai(self, response: requests.Response) -> str:
-        payload = response.json()
-        for item in payload.get("output", []):
-            for bloco in item.get("content", []):
-                if bloco.get("type") == "output_text":
-                    return str(bloco.get("text") or "").strip()
-        return str(payload.get("output_text") or "").strip()
-
     def _parse_json_payload(self, text: str) -> dict:
         raw = (text or "").strip()
         if not raw:
@@ -635,27 +627,25 @@ Regras:
 """
 
         try:
-            resp = requests.post(
-                "https://api.openai.com/v1/responses",
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.api_key}",
-                },
-                json={
-                    "model": "gpt-4.1-mini",
-                    "tools": [{"type": "web_search"}],
-                    "input": [
-                        {"role": "system", "content": prompt},
-                        {"role": "user", "content": json.dumps({"consulta": consulta, "candidatos": pacote}, ensure_ascii=False)},
-                    ],
-                    "max_output_tokens": 1400,
-                },
+            try:
+                from backend.functions.llm_gateway import execute_llm_request
+            except Exception:
+                from functions.llm_gateway import execute_llm_request
+
+            result = execute_llm_request(
+                api_key=self.api_key,
+                model="gpt-4.1-mini",
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": json.dumps({"consulta": consulta, "candidatos": pacote}, ensure_ascii=False)},
+                ],
+                system_prompt="",
+                max_output_tokens=1400,
+                tools=[{"type": "web_search"}],
                 timeout=45,
             )
-            if resp.status_code != 200:
-                return {}
 
-            text = self._extrair_texto_openai(resp)
+            text = str(result.get("content") or "").strip()
             data = self._parse_json_payload(text)
             if not data:
                 return {}

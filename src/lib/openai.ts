@@ -6,27 +6,107 @@ export interface ChatMessage {
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const apiUrl = (path: string): string => `${API_BASE_URL}${path}`;
 
-// LLM CONFIG
-// Ajuste centralizado dos parametros de inferencia usados em TODAS as consultas.
-export const LLM_MODEL = "gpt-4.1-mini";
-export const LLM_TEMPERATURE = 0.7;
-export const LLM_TOP_P = 1;
-export const LLM_MAX_TOKENS: number | undefined = undefined;
-export const LLM_PRESENCE_PENALTY = 0;
-export const LLM_FREQUENCY_PENALTY = 0;
+// ============================================================
+// LLM DEFAULTS (CENTRALIZADOS)
+// ============================================================
+// Modelo padrao global.
+export const LLM_DEFAULT_MODEL = "gpt-4.1-mini";
+// Temperatura padrao global.
+export const LLM_DEFAULT_TEMPERATURE = 0.7;
+// Parametro GPT-5.x (text.verbosity na Responses API).
+export const LLM_DEFAULT_GPT5_VERBOSITY: "low" | "medium" | "high" = "low";
+// Parametro GPT-5.x (reasoning.effort na Responses API).
+export const LLM_DEFAULT_GPT5_EFFORT: "none" | "low" | "medium" | "high" = "none";
+// Prompt-base global (aplicado em todas as funcionalidades).
+export const LLM_DEFAULT_SYSTEM_PROMPT = "Você é um assistente tutor de Conscienciologia";
+// Vector stores vindos de .env.
+export const LLM_VECTOR_STORES = (import.meta.env.VITE_OPENAI_VECTOR_STORES as string | undefined)?.trim() || "";
+export const LLM_VECTOR_STORE_LO = (import.meta.env.VITE_OPENAI_VECTOR_STORE_LO as string | undefined)?.trim() || "";
+export const LLM_VECTOR_STORE_TRANSLATE_RAG =
+  (import.meta.env.VITE_OPENAI_VECTOR_STORE_TRANSLATE_RAG as string | undefined)?.trim() || "";
 
-export async function callOpenAI(messages: ChatMessage[]): Promise<string> {
-  const res = await fetch(apiUrl("/api/ai/chat"), {
+// ============================================================
+// CHAT DEFAULTS (AJUSTE ESPECIFICO DO CHAT)
+// ============================================================
+export const CHAT_MODEL = "gpt-5.2";
+export const CHAT_TEMPERATURE = LLM_DEFAULT_TEMPERATURE;
+export const CHAT_GPT5_VERBOSITY: "low" | "medium" | "high" = LLM_DEFAULT_GPT5_VERBOSITY;
+export const CHAT_GPT5_EFFORT: "none" | "low" | "medium" | "high" = LLM_DEFAULT_GPT5_EFFORT;
+export const CHAT_MAX_OUTPUT_TOKENS: number | undefined = undefined;
+export const CHAT_SYSTEM_PROMPT = `
+System: Você é um assistente especializado em Conscienciologia. Baseie respostas exclusivamente nos documentos fornecidos.
+
+# Diretrizes
+- Responda sempre em Markdown, com formatação estruturada, objetiva e limpa.
+- Responda no idioma do usuário, com tom acadêmico, claro e natural, similar ao de um professor universitário.
+- Use só os documentos fornecidos como referência.
+- Destaque termos-chave com itálico, negrito ou ambos, conforme contexto.
+- Não inclua referências nos textos principais.
+- Não mostre na resposta os checklists, planos de etapa ou qualquer processamento interno ao usuário.
+
+# Casos Especiais
+- Em perguntas básicas sobre Conscienciologia (ex.: "o que é a Conscienciologia?"), cite o livro "Nossa Evolução", de Waldo Vieira, e recomende o site www.icge.org.br.
+- Se não houver dados suficientes nos documentos para responder, informe a insuficiência de informações e sugira que o usuário reformule a pergunta.
+
+# Formatação das Respostas
+- Garanta apresentação limpa, objetiva e agradável em Markdown puro.
+
+## Padrão de Saída
+Respostas devem seguir o padrão abaixo em Markdown:
+
+# ##Título da Resposta (em negrito, header 1)
+
+**Definologia:** (1 frase breve definindo o tema de modo direto e objetivo, sempre de acordo com a ótica da Conscienciologia)
+
+# **Argumentação:** (em negrito)
+- Resposta direta da query do usuário, priorizando as listagens numéricas 01. , 02. , etc
+- Se aplicável, use tabelas Markdown para comparações
+
+# **Conclusão:** (em negrito)
+ - Breve síntese conclusiva em 1 frase.
+
+# ***Sugestões de Aprofundamento:*** (em negrito-italico)
+- Tema sugerido 1
+- Tema sugerido 2
+`;
+
+export interface ExecuteLLMParams {
+  messages: ChatMessage[];
+  model?: string;
+  temperature?: number;
+  systemPrompt?: string;
+  maxOutputTokens?: number;
+  gpt5Verbosity?: "low" | "medium" | "high";
+  gpt5Effort?: "none" | "low" | "medium" | "high";
+  vectorStoreIds?: string[];
+  ragQuery?: string;
+  vectorMaxResults?: number;
+  returnChunksOnly?: boolean;
+  tools?: Array<Record<string, unknown>>;
+}
+
+export interface ExecuteLLMResult {
+  content: string;
+  chunks: string[];
+}
+
+export async function executeLLM(params: ExecuteLLMParams): Promise<ExecuteLLMResult> {
+  const res = await fetch(apiUrl("/api/ai/execute"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: LLM_MODEL,
-      messages,
-      temperature: LLM_TEMPERATURE,
-      top_p: LLM_TOP_P,
-      max_tokens: LLM_MAX_TOKENS,
-      presence_penalty: LLM_PRESENCE_PENALTY,
-      frequency_penalty: LLM_FREQUENCY_PENALTY,
+      model: params.model ?? LLM_DEFAULT_MODEL,
+      messages: params.messages,
+      systemPrompt: params.systemPrompt ?? LLM_DEFAULT_SYSTEM_PROMPT,
+      temperature: params.temperature ?? LLM_DEFAULT_TEMPERATURE,
+      maxOutputTokens: params.maxOutputTokens,
+      gpt5Verbosity: params.gpt5Verbosity ?? LLM_DEFAULT_GPT5_VERBOSITY,
+      gpt5Effort: params.gpt5Effort ?? LLM_DEFAULT_GPT5_EFFORT,
+      vectorStoreIds: params.vectorStoreIds ?? [],
+      ragQuery: params.ragQuery ?? "",
+      vectorMaxResults: params.vectorMaxResults ?? 5,
+      returnChunksOnly: Boolean(params.returnChunksOnly),
+      tools: params.tools ?? null,
     }),
   });
 
@@ -36,28 +116,12 @@ export async function callOpenAI(messages: ChatMessage[]): Promise<string> {
   }
 
   const data = await res.json();
-  return data.content ?? "";
-}
-
-export async function searchVectorStore(vectorStoreId: string, query: string): Promise<string[]> {
-  const res = await fetch(apiUrl("/api/ai/vector-search"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ vectorStoreId, query, maxNumResults: 5 }),
-  });
-
-  if (!res.ok) {
-    console.warn(`Vector store search failed (${res.status})`);
-    return [];
-  }
-
-  const data = await res.json();
-  return data.chunks ?? [];
+  return { content: data.content ?? "", chunks: data.chunks ?? [] };
 }
 
 export function buildDefinePrompt(text: string, ragContext?: string): ChatMessage[] {
   const systemBase =
-    "Voce e um dicionario especializado em Conscienciologia. Busque nos textos da Conscienciologia fornecidos se ha uma Definologia ou Definicao ja pronta para o termo ou expressao. Caso haja, copie ipsis litteris. Caso nao haja, forneca a definicao clara e concisa. O formato de saida deve ser: <strong>Definologia.</strong> {artigo definido O, Os ou A, As dependendo do genero e do numero do termo de entrada} <em>{termo de entrada}</em> e {definologia ou definicao do termo}.";
+    "Voce e um dicionario especializado em Conscienciologia. Busque nos textos da Conscienciologia fornecidos se ha uma Definologia ou Definicao ja pronta para o termo ou expressao. Caso haja, copie ipsis litteris. Caso nao haja, escreva a definicao clara e concisa. O formato de saida deve ser: <strong>Definologia.</strong> {artigo definido O, Os ou A, As dependendo do genero e do numero do termo de entrada} <em>{termo de entrada}</em> e {definologia ou definicao do termo}.";
 
   const system = ragContext
     ? `${systemBase}\n\nContexto de referencia:\n${ragContext}`
@@ -71,7 +135,7 @@ export function buildDefinePrompt(text: string, ragContext?: string): ChatMessag
 
 export function buildSynonymsPrompt(text: string, ragContext?: string): ChatMessage[] {
   const systemBase =
-    "Voce e um especialista em Conscienciologia. Forneca exatamente 10 sinonimos em portugues brasileiro para o termo dado. De preferencia a termos que tenham relacao direta com a Conscienciologia. Liste-os numerados.";
+    "Voce e um especialista em Conscienciologia. Forneca exatamente 10 sinonimos em portugues brasileiro para o termo dado. De preferencia a termos da Conscienciologia. Liste-os numerados.";
 
   const system = ragContext
     ? `${systemBase}\n\nContexto de referencia:\n${ragContext}`
@@ -123,7 +187,7 @@ export function buildSummarizePrompt(text: string): ChatMessage[] {
 
 export function buildTranslatePrompt(text: string, targetLanguage: string, ragContext?: string): ChatMessage[] {
   const systemBase =
-    "Voce é um tradutor de textos da Conscienciologia. Traduza com fidelidade sem adicionar explicações. Busque SEMPRE por traduções já existentes dos termos próprios da Conscienciologia (jargões) no material fornecido. APENAS se não encontrar tradução já existente, crie uma tradução nova ou mantenha o termo original em itálico. Preserve estrutura, paragrafos e pontuação. O texto traduzido final deve ser o mais fiel possível ao original, sem adicionar explicações ou comentarios.";
+    "Voce é um tradutor de textos da Conscienciologia. Traduza com fidelidade sem adicionar explicações. Busque SEMPRE por palavras ou termos já traduzidos diretamente para a Conscienciologia (jargões) no material fornecido. APENAS se não encontrar tradução já existente, crie uma tradução nova ou mantenha o termo original em itálico. Preserve estrutura, paragrafos e pontuação. O texto traduzido final deve ser o mais fiel possível ao original, sem adicionar explicações ou comentarios.";
   const system = ragContext
     ? `${systemBase}\n\nContexto terminológico de referência da Conscienciologia(use para padronização terminológica quando aplicável):\n${ragContext}`
     : systemBase;

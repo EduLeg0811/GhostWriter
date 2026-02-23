@@ -136,7 +136,7 @@ const BookSearchPanel = ({
             ) : (
               <>
                 <Play className="mr-2 h-4 w-4 text-black relative z-10" />
-                <span className="relative z-10 text-blue-500">Pesquisar</span>
+                <span className="relative z-10 text-blue-500">Buscar</span>
               </>
             )}
           </Button>

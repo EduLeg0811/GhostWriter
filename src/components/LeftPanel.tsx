@@ -154,6 +154,8 @@ const LeftPanel = ({
             )}
           </div>
 
+          {hasDocumentOpen && (
+            <>
           <Separator className="my-1" />
 
           <div className="space-y-2.5">
@@ -178,93 +180,16 @@ const LeftPanel = ({
             </div>
           </div>
 
-          <Separator className="my-1" />
-
-          <div className="space-y-2.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ferramentas IA</Label>
-            <div className="space-y-1.5">
-              
-              
-              <Button
-                variant="ghost"
-                className={sectionActionButtonClass}
-                onClick={() => {
-                  setActiveActionId("actions");
-                  onOpenParameterSection("actions");
-                }}
-                disabled={actionDisabled}
-              >
-                {isLoading && activeActionId === "actions" ? (
-                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
-                ) : (
-                  <BookOpen className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                )}
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Ações IA</span>
-                  <span className="block break-words text-xs text-muted-foreground">Definir, Resumir, Traduzir e mais</span>
-                </span>
-              </Button>
 
 
-              <Button
-                variant="ghost"
-                className={sectionActionButtonClass}
-                onClick={() => {
-                  setActiveActionId("apps");
-                  onOpenParameterSection("apps");
-                }}
-                disabled={actionDisabled}
-              >
-                {isLoading && activeActionId === "apps" ? (
-                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
-                ) : (
-                  <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                )}
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Bibliografia</span>
-                  <span className="block break-words text-xs text-muted-foreground">Ferramentas de bibliografia</span>
-                </span>
-              </Button>
-
-
-              <Button
-                variant="ghost"
-                className={sectionActionButtonClass}
-                onClick={onOpenBookSearch}
-                disabled={actionDisabled}
-              >
-                <Search className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Busca de Palavras</span>
-                  <span className="block break-words text-xs text-muted-foreground">Busca palavras e termos nas fontes</span>
-                </span>
-              </Button>
-
-              <Button
-                variant="ghost"
-                className={sectionActionButtonClass}
-                onClick={onOpenVerbetografia}
-                disabled={actionDisabled}
-              >
-                <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Verbetografia</span>
-                  <span className="block break-words text-xs text-muted-foreground">Tabela automatizada de verbete</span>
-                </span>
-              </Button>
-
-              
-            </div>
-          </div>
-
-
-
-               
-
+          
           {/*<Separator className="my-1" />*/}
 
           <div className="space-y-2.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Edição de Texto</Label>
+
+
+            {/*<Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Edição de Texto</Label>*/}
+
             <div className="space-y-1.5">
               <Button
                 variant="ghost"
@@ -287,6 +212,92 @@ const LeftPanel = ({
               </Button>
             </div>
           </div>
+
+          <Separator className="my-1" />
+            </>
+          )}
+
+          <div className="space-y-2.5">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ferramentas IA</Label>
+            <div className="space-y-1.5">
+              
+              
+              <Button
+                variant="default"
+                className={`${sectionActionButtonClass} border-0 shadow-none`}
+                onClick={() => {
+                  setActiveActionId("actions");
+                  onOpenParameterSection("actions");
+                }}
+                disabled={actionDisabled}
+              >
+                {isLoading && activeActionId === "actions" ? (
+                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <BookOpen className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                )}
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Ações IA</span>
+                  <span className="block break-words text-xs text-muted-foreground">Definir, Resumir, Traduzir e mais</span>
+                </span>
+              </Button>
+
+
+              <Button
+                variant="ghost"
+                className={`${sectionActionButtonClass} border-0 shadow-none`}
+                onClick={() => {
+                  setActiveActionId("apps");
+                  onOpenParameterSection("apps");
+                }}
+                disabled={actionDisabled}
+              >
+                {isLoading && activeActionId === "apps" ? (
+                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                )}
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Bibliografia</span>
+                  <span className="block break-words text-xs text-muted-foreground">Ferramentas de bibliografia</span>
+                </span>
+              </Button>
+
+
+              <Button
+                variant="ghost"
+                className={`${sectionActionButtonClass} border-0 shadow-none`}
+                onClick={onOpenBookSearch}
+                disabled={actionDisabled}
+              >
+                <Search className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Busca de Palavras</span>
+                  <span className="block break-words text-xs text-muted-foreground">Busca palavras e termos nas fontes</span>
+                </span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                className={`${sectionActionButtonClass} border-0 shadow-none`}
+                onClick={onOpenVerbetografia}
+                disabled={actionDisabled}
+              >
+                <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Verbetografia</span>
+                  <span className="block break-words text-xs text-muted-foreground">Tabela automatizada de verbete</span>
+                </span>
+              </Button>
+
+              
+            </div>
+          </div>
+
+
+
+               
+
 
         </div>
       </div>
