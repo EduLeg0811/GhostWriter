@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Loader2, Play, X } from "lucide-react";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
+import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 
 interface AiActionParametersPanelProps {
   title: string;
@@ -62,7 +63,7 @@ const AiActionParametersPanel = ({
         <Separator />
 
         <div className="space-y-2">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Caixa de Entrada</Label>
+          {/*<Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Caixa de Entrada</Label>*/}
           <div className="flex justify-end">
             <Button
               variant="ghost"
@@ -83,7 +84,7 @@ const AiActionParametersPanel = ({
               onActionTextChange(e.target.value);
               resizeTextarea();
             }}
-            placeholder="Select text in the document and click to get selection."
+            placeholder="Write a word, phrase or text"
             className="min-h-[110px] w-full overflow-hidden resize-none rounded-md border border-border bg-white px-3 py-2 text-xs outline-none focus:border-primary"
           />
         </div>
@@ -132,7 +133,7 @@ const AiActionParametersPanel = ({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-border bg-[hsl(var(--panel-header))] px-4 py-3">
+      <div className={`flex items-center justify-between border-b border-border ${panelsTopMenuBarBgClass} px-4 py-3`}>
         <h2 className="text-sm font-semibold text-foreground">Parameters</h2>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} title="Fechar Parameters">
           <X className="h-3.5 w-3.5" />
@@ -144,3 +145,4 @@ const AiActionParametersPanel = ({
 };
 
 export default AiActionParametersPanel;
+

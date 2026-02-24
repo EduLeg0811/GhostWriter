@@ -55,7 +55,14 @@ def search_vector_stores(
             json={"query": query, "max_num_results": max_num_results},
             timeout=timeout,
         )
-        upstream.raise_for_status()
+        try:
+            upstream.raise_for_status()
+        except requests.HTTPError as exc:
+            body = (upstream.text or "").strip() or "<empty body>"
+            raise requests.HTTPError(
+                f"Vector store search failed for '{sid}' (status {upstream.status_code}): {body}",
+                response=upstream,
+            ) from exc
         data = upstream.json()
         for item in data.get("data", []):
             text = "\n".join((c.get("text") or "") for c in item.get("content", []))

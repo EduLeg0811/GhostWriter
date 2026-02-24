@@ -948,12 +948,6 @@ def api_verbetografia_open_table(payload: VerbetografiaOpenTableRequest) -> dict
     if not html_template_path.exists():
         raise HTTPException(status_code=500, detail="Arquivo base Html_Verbete.htm nao encontrado em backend/Files/Verbetes.")
 
-    if os.name == "nt":
-        try:
-            os.startfile(str(word_template_path))  # type: ignore[attr-defined]
-        except OSError as exc:
-            raise HTTPException(status_code=500, detail=f"Falha ao abrir arquivo base da verbetografia: {exc}")
-
     file_id = str(uuid.uuid4())
     stored_name = f"{file_id}.htm"
     target_path = UPLOADS_DIR / stored_name
@@ -1229,7 +1223,7 @@ def api_ai_execute(payload: ExecuteLLMRequest) -> dict[str, Any]:
         )
     except requests.HTTPError as exc:
         response = exc.response
-        detail = response.text if response is not None else str(exc)
+        detail = ((response.text if response is not None else "") or "").strip() or str(exc)
         status_code = response.status_code if response is not None else 500
         raise HTTPException(status_code=status_code, detail=detail)
     except Exception as exc:

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BookOpen, FileText, Languages, ListOrdered, Loader2, PenLine, Repeat2, Search, X } from "lucide-react";
+import { BookOpen, FileText, Languages, ListOrdered, Loader2, Menu, PenLine, Repeat2, Search, X } from "lucide-react";
 import { toast } from "sonner";
+import { Separator } from "@/components/ui/separator";
 import LeftPanel from "@/components/LeftPanel";
 import RightPanel, { AIResponse } from "@/components/RightPanel";
 import HtmlEditor from "@/components/HtmlEditor";
@@ -39,6 +40,7 @@ import {
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 import { buildDocxBlobFromHtml } from "@/lib/docx-export";
 import { cleanupConvertedPdfHeaderHtml, parseDocxArrayBuffer, warmupDocxParser } from "@/lib/file-parser";
+import { buttonsPrimaryBgClass, cardsBgClass, panelsBgClass, panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 import { markdownToEditorHtml, normalizeHistoryContentToMarkdown, plainTextToEditorHtml } from "@/lib/markdown";
 import {
   executeLLM,
@@ -59,13 +61,17 @@ import {
   buildSummarizePrompt,
   buildTranslatePrompt,
   buildChatPrompt,
+  buildVerbeteDefinologiaPrompt,
+  buildVerbeteFraseEnfaticaPrompt,
+  buildVerbeteSinonimologiaPrompt,
+  buildVerbeteFatologiaPrompt,
   buildPensataAnalysisPrompt,
 } from "@/lib/openai";
 import { sectionActionButtonClass } from "@/styles/buttonStyles";
 import { BOOK_LABELS, type BookCode } from "@/lib/bookCatalog";
 
 type MacroActionId = "macro1" | "macro2";
-type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7";
+type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7" | "app8" | "app9" | "app10" | "app11";
 type AppPanelScope = "bibliografia" | "busca" | "verbetografia";
 type AiActionId = "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate";
 type ParameterPanelSection = "actions" | "macros" | "apps";
@@ -74,12 +80,13 @@ type ParameterPanelTarget =
   | { section: "macros"; id: MacroActionId | null }
   | { section: "apps"; id: AppActionId | null }
   | null;
+type MobilePanelId = "left" | "center" | "right" | "editor";
 
 const ACTION_PANEL_BUTTONS: AiActionId[] = ["define", "synonyms", "epigraph", "pensatas", "rewrite", "summarize", "translate"];
 const APP_PANEL_BUTTONS_BY_SCOPE: Record<AppPanelScope, AppActionId[]> = {
   bibliografia: ["app1", "app2", "app3", "app6"],
   busca: ["app4", "app5"],
-  verbetografia: ["app7"],
+  verbetografia: ["app7", "app8", "app9", "app10", "app11"],
 };
 const MACRO_PANEL_BUTTONS: MacroActionId[] = ["macro1", "macro2"];
 const ACTION_PANEL_ICONS: Record<AiActionId, typeof BookOpen> = {
@@ -99,6 +106,10 @@ const APP_PANEL_ICONS: Record<AppActionId, typeof BookOpen> = {
   app5: Search,
   app6: Search,
   app7: FileText,
+  app8: BookOpen,
+  app11: PenLine,
+  app9: Repeat2,
+  app10: ListOrdered,
 };
 const MACRO_PANEL_ICONS: Record<MacroActionId, typeof BookOpen> = {
   macro1: BookOpen,
@@ -112,7 +123,11 @@ const parameterAppMeta: Record<AppActionId, { title: string; description: string
   app4: { title: "Busca em Livros", description: "Busca palavras ou termos nas fontes." },
   app5: { title: "Busca em Verbetes", description: "Busca palavras ou termos nas fontes." },
   app6: { title: "Bibliografia Externa", description: "Busca referencias bibliográficas na internet." },
-  app7: { title: "Tabela Atomatizada", description: "Abre tabela no Word e no editor HTML." },
+  app7: { title: "Tabela Automatizada", description: "Abre tabela no Word e no editor HTML." },
+  app8: { title: "Definologia", description: "Gera Definologia do verbete via LLM." },
+  app9: { title: "Sinonimologia", description: "Gera Sinonimologia do verbete via LLM." },
+  app10: { title: "Fatologia", description: "Gera Fatologia do verbete via LLM." },
+  app11: { title: "Frase Enfática", description: "Gera Frase Enfática do verbete via LLM." },
 };
 const parameterMacroMeta: Record<MacroActionId, { title: string; description: string }> = {
   macro1: { title: "Highlight", description: "Destaca termos no documento (highlight em cores)." },
@@ -127,7 +142,7 @@ const parameterActionMeta: Record<AiActionId, { title: string; description: stri
   pensatas: { title: "Pensatas LO", description: "Pensatas afins." },
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
 };
-const sidePanelClass = "bg-card";
+const sidePanelClass = panelsBgClass;
 const PANEL_SIZES = {
   left: { default: 10, min: 10, max: 20 },
   parameter: { default: 12, min: 12, max: 20 },
@@ -160,6 +175,8 @@ const TRANSLATE_LANGUAGE_OPTIONS = [
 const DEFAULT_BOOK_SEARCH_MAX_RESULTS = 10;
 
 const PDF_HEADER_SIGNATURE_RE = /enciclop(?:Ã©|é|e)dia\s+da\s+conscienciologia/i;
+
+const CHAT_EDITOR_CONTEXT_MAX_CHARS = 10000;
 
 const Index = () => {
   const [responses, setResponses] = useState<AIResponse[]>([]);
@@ -214,6 +231,10 @@ const Index = () => {
   const [verbetografiaTitle, setVerbetografiaTitle] = useState("");
   const [verbetografiaSpecialty, setVerbetografiaSpecialty] = useState("");
   const [isRunningVerbetografiaOpenTable, setIsRunningVerbetografiaOpenTable] = useState(false);
+  const [isRunningVerbeteDefinologia, setIsRunningVerbeteDefinologia] = useState(false);
+  const [isRunningVerbeteFraseEnfatica, setIsRunningVerbeteFraseEnfatica] = useState(false);
+  const [isRunningVerbeteSinonimologia, setIsRunningVerbeteSinonimologia] = useState(false);
+  const [isRunningVerbeteFatologia, setIsRunningVerbeteFatologia] = useState(false);
   const [appPanelScope, setAppPanelScope] = useState<AppPanelScope | null>(null);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [translateLanguage, setTranslateLanguage] = useState<(typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"]>("Ingles");
@@ -222,10 +243,14 @@ const Index = () => {
   const [macro1PredictedMatches, setMacro1PredictedMatches] = useState<number | null>(null);
   const [isCountingMacro1Matches, setIsCountingMacro1Matches] = useState(false);
   const [macro2SpacingMode, setMacro2SpacingMode] = useState<Macro2SpacingMode>("nbsp_double");
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [activeMobilePanel, setActiveMobilePanel] = useState<MobilePanelId>("left");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const saveTimerRef = useRef<number | null>(null);
   const htmlEditorControlApiRef = useRef<HtmlEditorControlApi | null>(null);
   const currentFileIdRef = useRef("");
   const macro1CountRequestIdRef = useRef(0);
+  const previousHasEditorPanelRef = useRef(false);
 
   const stats = useTextStats(
     documentText || actionText,
@@ -537,7 +562,7 @@ const Index = () => {
 
     htmlEditorControlApiRef.current = null;
     setHtmlEditorControlApi(null);
-  }, [currentFileConvertedFromPdf]);
+  }, []);
 
   useEffect(() => {
     const input = macro1Term.trim();
@@ -785,7 +810,7 @@ const Index = () => {
   const handleActionApps = useCallback((type: AppActionId) => {
     if (type === "app4" || type === "app5") {
       setAppPanelScope("busca");
-    } else if (type === "app7") {
+    } else if (type === "app7" || type === "app8" || type === "app11" || type === "app9" || type === "app10") {
       setAppPanelScope("verbetografia");
     } else {
       setAppPanelScope("bibliografia");
@@ -806,7 +831,7 @@ const Index = () => {
     if (type === "app5") {
       // Sem pre-load; usa base fixa EC.xlsx
     }
-    if (type === "app7") {
+    if (type === "app7" || type === "app8" || type === "app11" || type === "app9" || type === "app10") {
       if (!verbetografiaTitle.trim() && actionText.trim()) setVerbetografiaTitle(actionText.trim());
     }
   }, [actionText, biblioExternaTitle, biblioGeralTitle, ensureLexicalBooksLoaded, verbetografiaTitle]);
@@ -834,7 +859,7 @@ const Index = () => {
       setCurrentFileId(uploaded.id);
       setCurrentFileName(uploaded.originalName || uploaded.storedName || "Tab_Verbete.docx");
       setCurrentFileConvertedFromPdf(false);
-      toast.success("Tabela aberta no Word e no editor.");
+      //toast.success("Tabela aberta no editor HTML.");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Falha ao abrir tabela de verbetografia.");
     } finally {
@@ -842,6 +867,206 @@ const Index = () => {
       setIsRunningVerbetografiaOpenTable(false);
     }
   }, [verbetografiaSpecialty, verbetografiaTitle]);
+
+  const handleRunVerbeteDefinologia = useCallback(async () => {
+    if (!openAiReady) {
+      toast.error("Backend sem OPENAI_API_KEY. Configure no servidor.");
+      return;
+    }
+    const title = verbetografiaTitle.trim();
+    const specialty = verbetografiaSpecialty.trim();
+    if (!title) {
+      toast.error("Informe o título do verbete.");
+      return;
+    }
+    if (!specialty) {
+      toast.error("Informe a especialidade do verbete.");
+      return;
+    }
+
+    setIsRunningVerbeteDefinologia(true);
+    try {
+      const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
+      const latestEditorText = editorApi ? await editorApi.getDocumentText() : documentText;
+      const normalizedEditorText = (latestEditorText || "").trim();
+      const editorContextTruncated = normalizedEditorText.length > CHAT_EDITOR_CONTEXT_MAX_CHARS;
+      const editorPlainTextContext = normalizedEditorText.slice(0, CHAT_EDITOR_CONTEXT_MAX_CHARS);
+      const query = `Escreva uma Definologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
+      const messages = buildVerbeteDefinologiaPrompt(query, editorPlainTextContext, editorContextTruncated);
+      const chatStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
+      const result = (
+        await executeLLM({
+          messages,
+          model: CHAT_MODEL,
+          temperature: CHAT_TEMPERATURE,
+          gpt5Verbosity: CHAT_GPT5_VERBOSITY,
+          gpt5Effort: CHAT_GPT5_EFFORT,
+          maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS,
+          systemPrompt: "",
+          vectorStoreIds: chatStoreIds,
+          ragQuery: query,
+        })
+      ).content.trim();
+      const finalContent = result || "Sem conteudo retornado pela IA.";
+      addResponse("app_verbete_definologia", `Título: ${title} | Especialidade: ${specialty}`, finalContent);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Falha ao executar Definologia.";
+      toast.error(msg);
+      addResponse("app_verbete_definologia", `Título: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Definologia: ${msg}`);
+    } finally {
+      setIsRunningVerbeteDefinologia(false);
+    }
+  }, [openAiReady, verbetografiaTitle, verbetografiaSpecialty, htmlEditorControlApi, documentText]);
+
+  const handleRunVerbeteFraseEnfatica = useCallback(async () => {
+    if (!openAiReady) {
+      toast.error("Backend sem OPENAI_API_KEY. Configure no servidor.");
+      return;
+    }
+    const title = verbetografiaTitle.trim();
+    const specialty = verbetografiaSpecialty.trim();
+    if (!title) {
+      toast.error("Informe o título do verbete.");
+      return;
+    }
+    if (!specialty) {
+      toast.error("Informe a especialidade do verbete.");
+      return;
+    }
+
+    setIsRunningVerbeteFraseEnfatica(true);
+    try {
+      const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
+      const latestEditorText = editorApi ? await editorApi.getDocumentText() : documentText;
+      const normalizedEditorText = (latestEditorText || "").trim();
+      const editorContextTruncated = normalizedEditorText.length > CHAT_EDITOR_CONTEXT_MAX_CHARS;
+      const editorPlainTextContext = normalizedEditorText.slice(0, CHAT_EDITOR_CONTEXT_MAX_CHARS);
+      const query = `Escreva uma Frase Enfática do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
+      const messages = buildVerbeteFraseEnfaticaPrompt(query, editorPlainTextContext, editorContextTruncated);
+      const chatStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
+      const result = (
+        await executeLLM({
+          messages,
+          model: CHAT_MODEL,
+          temperature: CHAT_TEMPERATURE,
+          gpt5Verbosity: CHAT_GPT5_VERBOSITY,
+          gpt5Effort: CHAT_GPT5_EFFORT,
+          maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS,
+          systemPrompt: "",
+          vectorStoreIds: chatStoreIds,
+          ragQuery: query,
+        })
+      ).content.trim();
+      const finalContent = result || "Sem conteudo retornado pela IA.";
+      addResponse("app_verbete_frase_enfatica", `Título: ${title} | Especialidade: ${specialty}`, finalContent);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Falha ao executar Frase Enfática.";
+      toast.error(msg);
+      addResponse("app_verbete_frase_enfatica", `Título: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Frase Enfática: ${msg}`);
+    } finally {
+      setIsRunningVerbeteFraseEnfatica(false);
+    }
+  }, [openAiReady, verbetografiaTitle, verbetografiaSpecialty, htmlEditorControlApi, documentText]);
+
+  const handleRunVerbeteSinonimologia = useCallback(async () => {
+    if (!openAiReady) {
+      toast.error("Backend sem OPENAI_API_KEY. Configure no servidor.");
+      return;
+    }
+    const title = verbetografiaTitle.trim();
+    const specialty = verbetografiaSpecialty.trim();
+    if (!title) {
+      toast.error("Informe o título do verbete.");
+      return;
+    }
+    if (!specialty) {
+      toast.error("Informe a especialidade do verbete.");
+      return;
+    }
+
+    setIsRunningVerbeteSinonimologia(true);
+    try {
+      const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
+      const latestEditorText = editorApi ? await editorApi.getDocumentText() : documentText;
+      const normalizedEditorText = (latestEditorText || "").trim();
+      const editorContextTruncated = normalizedEditorText.length > CHAT_EDITOR_CONTEXT_MAX_CHARS;
+      const editorPlainTextContext = normalizedEditorText.slice(0, CHAT_EDITOR_CONTEXT_MAX_CHARS);
+      const query = `Escreva uma Sinonimologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
+      const messages = buildVerbeteSinonimologiaPrompt(query, editorPlainTextContext, editorContextTruncated);
+      const chatStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
+      const result = (
+        await executeLLM({
+          messages,
+          model: CHAT_MODEL,
+          temperature: CHAT_TEMPERATURE,
+          gpt5Verbosity: CHAT_GPT5_VERBOSITY,
+          gpt5Effort: CHAT_GPT5_EFFORT,
+          maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS,
+          systemPrompt: "",
+          vectorStoreIds: chatStoreIds,
+          ragQuery: query,
+        })
+      ).content.trim();
+      const finalContent = result || "Sem conteudo retornado pela IA.";
+      addResponse("app_verbete_sinonimologia", `Título: ${title} | Especialidade: ${specialty}`, finalContent);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Falha ao executar Sinonimologia.";
+      toast.error(msg);
+      addResponse("app_verbete_sinonimologia", `Título: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Sinonimologia: ${msg}`);
+    } finally {
+      setIsRunningVerbeteSinonimologia(false);
+    }
+  }, [openAiReady, verbetografiaTitle, verbetografiaSpecialty, htmlEditorControlApi, documentText]);
+
+  const handleRunVerbeteFatologia = useCallback(async () => {
+    if (!openAiReady) {
+      toast.error("Backend sem OPENAI_API_KEY. Configure no servidor.");
+      return;
+    }
+    const title = verbetografiaTitle.trim();
+    const specialty = verbetografiaSpecialty.trim();
+    if (!title) {
+      toast.error("Informe o título do verbete.");
+      return;
+    }
+    if (!specialty) {
+      toast.error("Informe a especialidade do verbete.");
+      return;
+    }
+
+    setIsRunningVerbeteFatologia(true);
+    try {
+      const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
+      const latestEditorText = editorApi ? await editorApi.getDocumentText() : documentText;
+      const normalizedEditorText = (latestEditorText || "").trim();
+      const editorContextTruncated = normalizedEditorText.length > CHAT_EDITOR_CONTEXT_MAX_CHARS;
+      const editorPlainTextContext = normalizedEditorText.slice(0, CHAT_EDITOR_CONTEXT_MAX_CHARS);
+      const query = `Escreva uma Fatologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
+      const messages = buildVerbeteFatologiaPrompt(query, editorPlainTextContext, editorContextTruncated);
+      const chatStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
+      const result = (
+        await executeLLM({
+          messages,
+          model: CHAT_MODEL,
+          temperature: CHAT_TEMPERATURE,
+          gpt5Verbosity: CHAT_GPT5_VERBOSITY,
+          gpt5Effort: CHAT_GPT5_EFFORT,
+          maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS,
+          systemPrompt: "",
+          vectorStoreIds: chatStoreIds,
+          ragQuery: query,
+        })
+      ).content.trim();
+      const finalContent = result || "Sem conteudo retornado pela IA.";
+      addResponse("app_verbete_fatologia", `Título: ${title} | Especialidade: ${specialty}`, finalContent);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Falha ao executar Fatologia.";
+      toast.error(msg);
+      addResponse("app_verbete_fatologia", `Título: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Fatologia: ${msg}`);
+    } finally {
+      setIsRunningVerbeteFatologia(false);
+    }
+  }, [openAiReady, verbetografiaTitle, verbetografiaSpecialty, htmlEditorControlApi, documentText]);
 
   const handleRunLexicalSearch = useCallback(async () => {
     const book = selectedLexicalBook.trim();
@@ -1100,7 +1325,16 @@ const Index = () => {
     if (!openAiReady) return;
     setIsLoading(true);
     try {
-      const messages = buildChatPrompt(actionText, message, chatHistory);
+      let editorPlainTextContext = "";
+      let editorContextTruncated = false;
+      if (currentFileId) {
+        const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
+        const latestEditorText = editorApi ? await editorApi.getDocumentText() : documentText;
+        const normalizedEditorText = (latestEditorText || "").trim();
+        editorContextTruncated = normalizedEditorText.length > CHAT_EDITOR_CONTEXT_MAX_CHARS;
+        editorPlainTextContext = normalizedEditorText.slice(0, CHAT_EDITOR_CONTEXT_MAX_CHARS);
+      }
+      const messages = buildChatPrompt(actionText, message, chatHistory, editorPlainTextContext, editorContextTruncated);
       const chatStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
       const result = (
         await executeLLM({
@@ -1125,7 +1359,7 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [openAiReady, actionText, chatHistory]);
+  }, [openAiReady, actionText, chatHistory, currentFileId, documentText, htmlEditorControlApi]);
 
   const handleEditorContentChange = useCallback(({ html, text }: { html: string; text: string }) => {
     setEditorContentHtml(html);
@@ -1147,6 +1381,18 @@ const Index = () => {
     return () => {
       if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
     };
+  }, []);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 768px)");
+    const applyMobileState = (isMobile: boolean) => {
+      setIsMobileView(isMobile);
+      setIsMobileMenuOpen(false);
+    };
+    applyMobileState(mediaQuery.matches);
+    const handleChange = (event: MediaQueryListEvent) => applyMobileState(event.matches);
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
   }, []);
 
   const handleExportDocx = useCallback(async () => {
@@ -1180,7 +1426,7 @@ const Index = () => {
       link.click();
       link.remove();
       URL.revokeObjectURL(downloadUrl);
-      toast.success("Documento DOCX exportado.");
+      //toast.success("Documento DOCX exportado.");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Falha ao exportar DOCX.");
     } finally {
@@ -1189,39 +1435,114 @@ const Index = () => {
   }, [currentFileId, currentFileName, documentText, editorContentHtml, htmlEditorControlApi]);
 
   const isHistoryProcessing =
-    isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningVerbeteSearch || isRunningVerbetografiaOpenTable;
+    isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningVerbeteSearch || isRunningVerbetografiaOpenTable || isRunningVerbeteDefinologia || isRunningVerbeteFraseEnfatica || isRunningVerbeteSinonimologia || isRunningVerbeteFatologia;
   const hasEditorPanel = Boolean(currentFileId) || isOpeningDocument;
   const hasCenterPanel = Boolean(parameterPanelTarget);
   const layoutResetKey = hasEditorPanel ? "layout-with-editor" : "layout-without-editor";
+  const mobilePanelOptions: Array<{ id: MobilePanelId; label: string; disabled?: boolean }> = [
+    { id: "left", label: "Painel" },
+    { id: "center", label: "Parametros", disabled: !hasCenterPanel },
+    { id: "right", label: "Chat" },
+    { id: "editor", label: "Editor", disabled: !hasEditorPanel },
+  ];
+  const showLeftPanel = !isMobileView || activeMobilePanel === "left";
+  const showCenterPanel = hasCenterPanel && (!isMobileView || activeMobilePanel === "center");
+  const showRightPanel = !isMobileView || activeMobilePanel === "right";
+  const showEditorPanel = hasEditorPanel && (!isMobileView || activeMobilePanel === "editor");
+  const showHandleAfterLeft = showLeftPanel && (showCenterPanel || showRightPanel || showEditorPanel);
+  const showHandleAfterCenter = showCenterPanel && (showRightPanel || showEditorPanel);
+  const showHandleAfterRight = showRightPanel && showEditorPanel;
+
+  useEffect(() => {
+    if (!isMobileView) return;
+    if (activeMobilePanel === "center" && !hasCenterPanel) {
+      setActiveMobilePanel(hasEditorPanel ? "editor" : "left");
+      return;
+    }
+    if (activeMobilePanel === "editor" && !hasEditorPanel) {
+      setActiveMobilePanel("left");
+    }
+  }, [activeMobilePanel, hasCenterPanel, hasEditorPanel, isMobileView]);
+
+  useEffect(() => {
+    if (!isMobileView) {
+      previousHasEditorPanelRef.current = hasEditorPanel;
+      return;
+    }
+    if (!previousHasEditorPanelRef.current && hasEditorPanel) {
+      setActiveMobilePanel("editor");
+    }
+    previousHasEditorPanelRef.current = hasEditorPanel;
+  }, [hasEditorPanel, isMobileView]);
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
-      <ResizablePanelGroup key={layoutResetKey} direction="horizontal">
-        <ResizablePanel
-          id="left-panel"
-          order={1}
-          defaultSize={PANEL_SIZES.left.default}
-          minSize={PANEL_SIZES.left.min}
-          maxSize={PANEL_SIZES.left.max}
-          className="border-r border-border bg-card"
-        >
-          <LeftPanel
-            stats={stats}
-            onWordFileUpload={handleWordFileUpload}
-            onCreateBlankDocument={handleCreateBlankDocument}
-            onOpenParameterSection={handleOpenParameterSection}
-            onRunRandomPensata={handleRunRandomPensata}
-            onOpenBookSearch={handleOpenBookSearchFromLeft}
-            onOpenVerbetografia={handleOpenVerbetografiaFromLeft}
-            isLoading={isLoading}
-            hasDocumentOpen={Boolean(currentFileId)}
-            onRefreshStats={() => void handleRefreshStats()}
-          />
-        </ResizablePanel>
+      {isMobileView && (
+        <div className="relative flex h-14 items-center justify-between border-b border-border bg-card px-3">
+          <span className="text-sm font-semibold text-foreground">
+            {mobilePanelOptions.find((option) => option.id === activeMobilePanel)?.label ?? "Painel"}
+          </span>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9"
+            onClick={() => setIsMobileMenuOpen((open) => !open)}
+            aria-label="Abrir menu de paineis"
+          >
+            <Menu className="h-4 w-4" />
+          </Button>
+          {isMobileMenuOpen && (
+            <div className="absolute right-3 top-12 z-20 w-48 rounded-md border border-border bg-card p-1 shadow-lg">
+              {mobilePanelOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  disabled={option.disabled}
+                  onClick={() => {
+                    if (option.disabled) return;
+                    setActiveMobilePanel(option.id);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`flex w-full items-center rounded px-3 py-2 text-left text-sm ${
+                    option.id === activeMobilePanel ? "bg-muted font-medium text-foreground" : "text-muted-foreground"
+                  } disabled:cursor-not-allowed disabled:opacity-40`}
+                >
+                  <span>{option.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <ResizablePanelGroup key={layoutResetKey} direction="horizontal" className={isMobileView ? "h-[calc(100vh-3.5rem)]" : ""}>
+        {showLeftPanel && (
+          <ResizablePanel
+            id="left-panel"
+            order={1}
+            defaultSize={PANEL_SIZES.left.default}
+            minSize={PANEL_SIZES.left.min}
+            maxSize={PANEL_SIZES.left.max}
+            className="border-r border-border bg-card"
+          >
+            <LeftPanel
+              stats={stats}
+              onWordFileUpload={handleWordFileUpload}
+              onCreateBlankDocument={handleCreateBlankDocument}
+              onOpenParameterSection={handleOpenParameterSection}
+              onRunRandomPensata={handleRunRandomPensata}
+              onOpenBookSearch={handleOpenBookSearchFromLeft}
+              onOpenVerbetografia={handleOpenVerbetografiaFromLeft}
+              isLoading={isLoading}
+              hasDocumentOpen={Boolean(currentFileId)}
+              onRefreshStats={() => void handleRefreshStats()}
+            />
+          </ResizablePanel>
+        )}
 
-        {parameterPanelTarget && (
+        {showHandleAfterLeft && <ResizableHandle withHandle />}
+
+        {showCenterPanel && (
           <>
-            <ResizableHandle withHandle />
             <ResizablePanel
               id="parameter-panel"
               order={2}
@@ -1231,7 +1552,7 @@ const Index = () => {
               className={`border-r border-border ${sidePanelClass}`}
             >
                   <div className="flex h-full flex-col">
-                    <div className="flex items-center justify-between border-b border-border bg-[hsl(var(--panel-header))] px-4 py-3">
+                    <div className={`flex items-center justify-between border-b border-border ${panelsTopMenuBarBgClass} px-4 py-3`}>
                       <h2 className="text-sm font-semibold text-foreground">Parameters</h2>
                       <Button
                         variant="ghost"
@@ -1268,13 +1589,26 @@ const Index = () => {
                           })()
                         ))}
 
+
+                      
                         {parameterPanelTarget.section === "apps" &&
                           APP_PANEL_BUTTONS_BY_SCOPE[appPanelScope ?? "bibliografia"].map((id) => (
                           (() => {
                             const Icon = APP_PANEL_ICONS[id];
                             return (
+
+
+                              
+                          <div key={id} className="space-y-2">
+                            {appPanelScope === "verbetografia" && id === "app8" ? (
+                              <>
+                                <Separator className="my-4" />
+                                <p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                  Seções do Verbete
+                                </p>
+                              </>
+                            ) : null}
                           <Button
-                            key={id}
                             variant="ghost"
                             className={sectionActionButtonClass}
                             onClick={() => handleActionApps(id)}
@@ -1286,6 +1620,7 @@ const Index = () => {
                               <span className="block break-words text-xs text-muted-foreground">{parameterAppMeta[id].description}</span>
                             </span>
                           </Button>
+                          </div>
                             );
                           })()
                         ))}
@@ -1450,16 +1785,58 @@ const Index = () => {
                           isRunning={isRunningVerbeteSearch}
                           showPanelChrome={false}
                         />
-                      ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app7" ? (
+                      ) : parameterPanelTarget.section === "apps" && (parameterPanelTarget.id === "app7" || parameterPanelTarget.id === "app8" || parameterPanelTarget.id === "app11" || parameterPanelTarget.id === "app9" || parameterPanelTarget.id === "app10") ? (
                         <VerbetografiaPanel
-                          title={parameterAppMeta.app7.title}
-                          description={parameterAppMeta.app7.description}
+                          title={parameterAppMeta[parameterPanelTarget.id].title}
+                          description={parameterAppMeta[parameterPanelTarget.id].description}
                           verbeteTitle={verbetografiaTitle}
                           specialty={verbetografiaSpecialty}
                           onVerbeteTitleChange={setVerbetografiaTitle}
                           onSpecialtyChange={setVerbetografiaSpecialty}
-                          onOpenTable={() => void handleOpenVerbetografiaTable()}
-                          isRunning={isRunningVerbetografiaOpenTable}
+                          onRunAction={
+                            parameterPanelTarget.id === "app7"
+                              ? () => void handleOpenVerbetografiaTable()
+                              : parameterPanelTarget.id === "app8"
+                                ? () => void handleRunVerbeteDefinologia()
+                                : parameterPanelTarget.id === "app11"
+                                  ? () => void handleRunVerbeteFraseEnfatica()
+                                  : parameterPanelTarget.id === "app9"
+                                  ? () => void handleRunVerbeteSinonimologia()
+                                  : () => void handleRunVerbeteFatologia()
+                          }
+                          actionLabelIdle={
+                            parameterPanelTarget.id === "app7"
+                              ? "Abrir Tabela"
+                              : parameterPanelTarget.id === "app8"
+                                ? "Gerar Definologia"
+                                : parameterPanelTarget.id === "app11"
+                                  ? "Gerar Frase Enfática"
+                                : parameterPanelTarget.id === "app9"
+                                  ? "Gerar Sinonimologia"
+                                  : "Gerar Fatologia"
+                          }
+                          actionLabelRunning={
+                            parameterPanelTarget.id === "app7"
+                              ? "Abrindo"
+                              : parameterPanelTarget.id === "app8"
+                                ? "Gerando Definologia"
+                                : parameterPanelTarget.id === "app11"
+                                  ? "Gerando Frase Enfática"
+                                : parameterPanelTarget.id === "app9"
+                                  ? "Gerando Sinonimologia"
+                                  : "Gerando Fatologia"
+                          }
+                          isRunning={
+                            parameterPanelTarget.id === "app7"
+                              ? isRunningVerbetografiaOpenTable
+                              : parameterPanelTarget.id === "app8"
+                                ? isRunningVerbeteDefinologia
+                                : parameterPanelTarget.id === "app11"
+                                  ? isRunningVerbeteFraseEnfatica
+                                : parameterPanelTarget.id === "app9"
+                                  ? isRunningVerbeteSinonimologia
+                                  : isRunningVerbeteFatologia
+                          }
                           showPanelChrome={false}
                         />
                       ) : (
@@ -1473,48 +1850,51 @@ const Index = () => {
           </>
         )}
 
-        <ResizableHandle withHandle />
+        {showHandleAfterCenter && <ResizableHandle withHandle />}
 
-        <ResizablePanel
-          id="right-panel"
-          order={hasCenterPanel ? 3 : 2}
-          defaultSize={
-            hasEditorPanel
-              ? PANEL_SIZES.right.default
-              : hasCenterPanel
-                ? 100 - PANEL_SIZES.left.default - PANEL_SIZES.parameter.default
-                : 100 - PANEL_SIZES.left.default
-          }
-          minSize={PANEL_SIZES.right.min}
-          maxSize={
-            hasEditorPanel
-              ? PANEL_SIZES.right.max
-              : hasCenterPanel
-                ? 100 - PANEL_SIZES.left.min - PANEL_SIZES.parameter.min
-                : 100 - PANEL_SIZES.left.min
-          }
-          className={`border-l border-border ${sidePanelClass}`}
-        >
-          <RightPanel
-            responses={responses}
-            onClear={() => setResponses([])}
-            onSendMessage={(message) => void handleChat(message)}
-            onAppendToEditor={(html) => void handleAppendHistoryToEditor(html)}
-            showAppendToEditor={Boolean(currentFileId)}
-            isSending={isHistoryProcessing}
-            chatDisabled={!openAiReady}
-          />
-        </ResizablePanel>
+        {showRightPanel && (
+          <ResizablePanel
+            id="right-panel"
+            order={hasCenterPanel ? 3 : 2}
+            defaultSize={
+              hasEditorPanel
+                ? PANEL_SIZES.right.default
+                : hasCenterPanel
+                  ? 100 - PANEL_SIZES.left.default - PANEL_SIZES.parameter.default
+                  : 100 - PANEL_SIZES.left.default
+            }
+            minSize={PANEL_SIZES.right.min}
+            maxSize={
+              hasEditorPanel
+                ? PANEL_SIZES.right.max
+                : hasCenterPanel
+                  ? 100 - PANEL_SIZES.left.min - PANEL_SIZES.parameter.min
+                  : 100 - PANEL_SIZES.left.min
+            }
+            className={`border-l border-border ${sidePanelClass}`}
+          >
+            <RightPanel
+              responses={responses}
+              onClear={() => setResponses([])}
+              onSendMessage={(message) => void handleChat(message)}
+              onAppendToEditor={(html) => void handleAppendHistoryToEditor(html)}
+              showAppendToEditor={Boolean(currentFileId)}
+              isSending={isHistoryProcessing}
+              chatDisabled={!openAiReady}
+            />
+          </ResizablePanel>
+        )}
 
-        {hasEditorPanel && (
+        {showHandleAfterRight && <ResizableHandle withHandle />}
+
+        {showEditorPanel && (
           <>
-            <ResizableHandle withHandle />
             <ResizablePanel
               id="editor-panel"
               order={hasCenterPanel ? 4 : 3}
               minSize={PANEL_SIZES.editor.min}
             >
-              <main className="relative h-full min-w-0 bg-white">
+              <main className={`relative h-full min-w-0 ${panelsBgClass}`}>
                 <HtmlEditor
                   contentHtml={editorContentHtml}
                   documentVersion={openedDocumentVersion}
@@ -1529,9 +1909,9 @@ const Index = () => {
                   }}
                 />
                 {isOpeningDocument && (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-white">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground shadow-sm bg-green-50">
-                      <Loader2 className="h-4 w-4 animate-spin text-primary bg-green-50" />
+                  <div className={`absolute inset-0 z-10 flex items-center justify-center ${panelsBgClass}`}>
+                    <div className={`inline-flex items-center gap-2 rounded-full border border-border ${cardsBgClass} ${buttonsPrimaryBgClass} px-4 py-2 text-sm font-semibold text-foreground shadow-sm`}>
+                      <Loader2 className={`h-4 w-4 animate-spin text-primary ${buttonsPrimaryBgClass}`} />
                       <span>Abrindo documento...</span>
                     </div>
                   </div>
@@ -1547,6 +1927,10 @@ const Index = () => {
 };
 
 export default Index;
+
+
+
+
 
 
 

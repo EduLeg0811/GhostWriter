@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ListOrdered, Loader2, X } from "lucide-react";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
+import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 
 export type Macro2SpacingMode = "normal_single" | "normal_double" | "nbsp_single" | "nbsp_double";
 
@@ -103,7 +104,7 @@ const Macro2ManualNumberingPanel = ({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-border bg-[hsl(var(--panel-header))] px-4 py-3">
+      <div className={`flex items-center justify-between border-b border-border ${panelsTopMenuBarBgClass} px-4 py-3`}>
         <h2 className="text-sm font-semibold text-foreground">Parameters</h2>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} title="Fechar Parameters">
           <X className="h-3.5 w-3.5" />

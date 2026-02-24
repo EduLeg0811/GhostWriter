@@ -7,6 +7,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { Bold, Download, Highlighter, Italic, List, ListOrdered, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
+import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 
 interface HtmlEditorProps {
   contentHtml: string;
@@ -28,12 +29,20 @@ const HtmlEditor = ({
   isExportingDocx = false,
 }: HtmlEditorProps) => {
   const controlApiRef = useRef<HtmlEditorControlApi | null>(null);
+  const onControlApiReadyRef = useRef<HtmlEditorProps["onControlApiReady"]>(onControlApiReady);
   const [documentFontSizePx, setDocumentFontSizePx] = useState(15);
   const [documentLineHeightRatio, setDocumentLineHeightRatio] = useState(1.6);
   const DEFAULT_DOCUMENT_FONT_SIZE_PX = 12;
   const DEFAULT_DOCUMENT_LINE_HEIGHT_RATIO = 1.5;
 
   const normalizedContent = useMemo(() => (contentHtml || "").trim(), [contentHtml]);
+
+  useEffect(() => {
+    onControlApiReadyRef.current = onControlApiReady;
+    if (controlApiRef.current) {
+      onControlApiReadyRef.current?.(controlApiRef.current);
+    }
+  }, [onControlApiReady]);
 
   const editor = useEditor({
     extensions: [
@@ -57,7 +66,7 @@ const HtmlEditor = ({
       const api = new HtmlEditorControlApi(e);
       api.init();
       controlApiRef.current = api;
-      onControlApiReady?.(api);
+      onControlApiReadyRef.current?.(api);
     },
     onUpdate: ({ editor: e }) => {
       onContentChange?.({
@@ -81,9 +90,9 @@ const HtmlEditor = ({
         controlApiRef.current.destroy();
         controlApiRef.current = null;
       }
-      onControlApiReady?.(null);
+      onControlApiReadyRef.current?.(null);
     };
-  }, [onControlApiReady]);
+  }, []);
 
   const applyDocumentFontSize = useCallback((nextFontSizePx: number) => {
     const clamped = Math.max(8, Math.min(72, nextFontSizePx));
@@ -136,7 +145,7 @@ const HtmlEditor = ({
         } as CSSProperties
       }
     >
-      <div className="flex flex-wrap items-center gap-1 border-b border-border bg-[hsl(var(--panel-header))] px-4 py-2.5">
+      <div className={`flex flex-wrap items-center gap-1 border-b border-border ${panelsTopMenuBarBgClass} px-4 py-2.5`}>
         <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => editor.chain().focus().toggleBold().run()}>
           <Bold className="h-4 w-4" />
         </Button>
@@ -206,3 +215,4 @@ const HtmlEditor = ({
 };
 
 export default HtmlEditor;
+

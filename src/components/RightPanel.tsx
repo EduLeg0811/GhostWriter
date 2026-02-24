@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BookOpen, Clock, Copy, FileText, Languages, Loader2, MessageSquare, PenLine, Repeat2, RotateCcw, Search, SendHorizontal, Trash2 } from "lucide-react";
+import { ArrowRight, BookOpen, Clock, Copy, FileText, Languages, ListOrdered, Loader2, MessageSquare, PenLine, Repeat2, RotateCcw, Search, SendHorizontal, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { markdownToEditorHtml, normalizeHistoryContentToMarkdown } from "@/lib/markdown";
+import { buttonsPrimarySolidBgClass, cardsBgClass, chatSectionBgClass, panelsBgClass, panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 
 // DESTAQUE: fonte padrao (inicial + reset) dos cards do Historico.
 const HISTORY_FONT_DEFAULT = 0.75;
@@ -28,7 +29,11 @@ export interface AIResponse {
     | "app_biblio_externa"
     | "app_random_pensata"
     | "app_book_search"
-    | "app_verbete_search";
+    | "app_verbete_search"
+    | "app_verbete_definologia"
+    | "app_verbete_frase_enfatica"
+    | "app_verbete_sinonimologia"
+    | "app_verbete_fatologia";
   query: string;
   content: string;
   timestamp: Date;
@@ -51,6 +56,10 @@ const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactN
   app_random_pensata: { label: "Pensata Sorteada", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
   app_book_search: { label: "Book Search", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_verbete_search: { label: "Busca em Verbetes", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
+  app_verbete_definologia: { label: "Definologia", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
+  app_verbete_frase_enfatica: { label: "Frase Enfática", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
+  app_verbete_sinonimologia: { label: "Sinonimologia", icon: <Repeat2 className="h-3.5 w-3.5 text-primary" /> },
+  app_verbete_fatologia: { label: "Fatologia", icon: <ListOrdered className="h-3.5 w-3.5 text-primary" /> },
 };
 
 interface RightPanelProps {
@@ -318,8 +327,8 @@ const RightPanel = ({
     const { content, type, query } = response;
     const markdown = normalizeHistoryContentToMarkdown(content);
     const html = markdownToEditorHtml(markdown);
-    if (type === "app_book_search") return html;
-    if (type === "app_verbete_search") return html;
+    if (type === "app_book_search") return styleBookSearchSourceRefHtml(highlightBookSearchHtml(html, query));
+    if (type === "app_verbete_search") return styleVerbeteSearchHtml(highlightBookSearchHtml(html, query));
     return styleNumberedListItemsHtml(html);
   };
 
@@ -398,8 +407,8 @@ const RightPanel = ({
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-border bg-[hsl(var(--panel-header))] px-4 py-3">
+    <div className={`flex h-full flex-col ${panelsBgClass}`}>
+      <div className={`flex items-center justify-between border-b border-border ${panelsTopMenuBarBgClass} px-4 py-3`}>
         <h2 className="text-sm font-semibold text-foreground">Histórico({responses.length})</h2>
         <div className="flex flex-1 items-center justify-center">
           {isSending && (
@@ -459,7 +468,7 @@ const RightPanel = ({
             {responses.map((r) => {
               const meta = typeLabels[r.type];
               return (
-                <div key={r.id} className="space-y-2 rounded-lg border border-border bg-white p-3">
+                <div key={r.id} className={`space-y-2 rounded-lg border border-border ${cardsBgClass} p-3`}>
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-primary" style={historyFontStyle}>
                     {meta.icon}
                     {meta.label}
@@ -474,7 +483,11 @@ const RightPanel = ({
                     </p>
                   )}
 
-                  <div className="prose prose-sm max-w-none text-xs text-foreground" style={historyFontStyle} dangerouslySetInnerHTML={{ __html: responseToEditorHtml(r) }} />
+                  <div
+                    className={`prose prose-sm max-w-none text-xs text-foreground ${r.type === "app_verbete_frase_enfatica" ? "uppercase" : ""}`}
+                    style={historyFontStyle}
+                    dangerouslySetInnerHTML={{ __html: responseToEditorHtml(r) }}
+                  />
 
                   <div className="flex justify-end">
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => void copyToClipboard(r)} title="Copiar resposta">
@@ -499,8 +512,8 @@ const RightPanel = ({
         )}
       </ScrollArea>
 
-      <div className="border-t border-border px-3 py-4 bg-background">
-        <div className="flex items-end gap-2 rounded-xl border border-border bg-white p-2">
+      <div className={`border-t border-border px-3 py-4 ${chatSectionBgClass}`}>
+        <div className={`flex items-end gap-2 rounded-xl border border-border ${cardsBgClass} p-2`}>
           <textarea
             rows={2}
             value={prompt}
@@ -518,7 +531,7 @@ const RightPanel = ({
           <Button
             type="button"
             size="icon"
-            className="h-10 w-10 rounded-lg bg-green-300 text-green-900 hover:bg-green-400"
+            className={`h-10 w-10 rounded-lg ${buttonsPrimarySolidBgClass} text-green-900 hover:bg-green-400`}
             onClick={() => void submit()}
             disabled={!canSend}
             title="Enviar"
@@ -532,6 +545,7 @@ const RightPanel = ({
 };
 
 export default RightPanel;
+
 
 
 

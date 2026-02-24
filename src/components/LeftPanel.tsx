@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { primaryActionButtonClass, sectionActionButtonClass } from "@/styles/buttonStyles";
+import { aiAppsSectionBgClass, cardsBgClass, panelsTopMenuBarBgClass, uploadDocBgClass } from "@/styles/backgroundColors";
 
 interface LeftPanelProps {
   stats: TextStats;
@@ -68,7 +69,7 @@ const LeftPanel = ({
         throw new Error("Formato nao suportado. Use DOCX ou PDF.");
       }
       await onWordFileUpload(file);
-      toast.success(ext === "pdf" ? "PDF convertido para DOCX e aberto no editor." : "Documento aberto no editor.");
+      //toast.success(ext === "pdf" ? "PDF convertido para DOCX e aberto no editor." : "Documento aberto no editor.");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erro ao importar arquivo.");
       setFileName("");
@@ -94,7 +95,7 @@ const LeftPanel = ({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border bg-[hsl(var(--panel-header))] px-4 py-4">
+      <div className={`border-b border-border ${panelsTopMenuBarBgClass} px-4 py-4`}>
         <h1 className="text-sm font-semibold text-foreground">Parapreceptor • Ghost Writer Editor</h1>
       </div>
 
@@ -128,7 +129,7 @@ const LeftPanel = ({
                 onDrop={handleDrop}
                 onDragOver={(e) => e.preventDefault()}
                 onClick={() => fileRef.current?.click()}
-                className="cursor-pointer rounded-lg border-2 border-dashed border-border bg-sky-50 p-2 text-center hover:bg-muted/30"
+                className={`cursor-pointer rounded-lg border-2 border-dashed border-border ${uploadDocBgClass} p-2 text-center hover:bg-muted/30`}
               >
                 {importing ? (
                   <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-muted-foreground" />
@@ -214,8 +215,13 @@ const LeftPanel = ({
           </div>
 
           <Separator className="my-1" />
-            </>
+            </>          
           )}
+
+
+    {/*<Separator className="my-1" />*/}
+
+
 
           <div className="space-y-2.5">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ferramentas IA</Label>
@@ -302,7 +308,7 @@ const LeftPanel = ({
         </div>
       </div>
       
-      <div className="space-y-3 border-t border-border bg-[hsl(var(--panel-header))] px-4 py-3">
+      <div className={`space-y-3 border-t border-border ${aiAppsSectionBgClass} px-4 py-3`}>
 
 
         <div className="space-y-2.5">
@@ -312,11 +318,11 @@ const LeftPanel = ({
           <div className="space-y-1.5">
             <Button
               variant="ghost"
-              className={`${sectionActionButtonClass} group flex items-center justify-between rounded-xl border border-orange-200 bg-white px-4 py-2 text-blue-600 shadow-sm transition-all duration-200 hover:!bg-white hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-[0_10px_24px_-14px_rgba(0,0,0,0.45),0_3px_8px_-4px_rgba(0,0,0,0.25)]`}
+              className={`${sectionActionButtonClass} group flex items-center justify-between rounded-xl border border-orange-200 ${cardsBgClass} px-4 py-2 text-blue-600 shadow-sm transition-all duration-200 hover:!bg-white hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-[0_10px_24px_-14px_rgba(0,0,0,0.45),0_3px_8px_-4px_rgba(0,0,0,0.25)]`}
               onClick={() => void onRunRandomPensata()}
               disabled={actionDisabled}
             >
-              <img src="/LO.png" alt="LO" className="h-16 w-16 shrink-0 object-contain bg-white" />
+              <img src="/LO.png" alt="LO" className={`h-16 w-16 shrink-0 object-contain ${cardsBgClass}`} />
               <span className="min-w-0 flex-1 text-left">
                 <span className="text-sm font-semibold tracking-wide text-orange-600 shadow-lg">Pensata do Dia</span>
                 <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Bibliomancia Digital</p>
@@ -329,7 +335,7 @@ const LeftPanel = ({
             href="https://cons-ia.org/"
             target="_blank"
             rel="noopener noreferrer"
-            className="group block rounded-xl border border-orange-200 bg-white px-4 py-2 text-blue-600 shadow-sm transition-all duration-200 hover:bg-white hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-[0_10px_24px_-14px_rgba(0,0,0,0.45),0_3px_8px_-4px_rgba(0,0,0,0.25)]"
+            className={`group block rounded-xl border border-orange-200 ${cardsBgClass} px-4 py-2 text-blue-600 shadow-sm transition-all duration-200 hover:bg-white hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-[0_10px_24px_-14px_rgba(0,0,0,0.45),0_3px_8px_-4px_rgba(0,0,0,0.25)]`}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-3">
@@ -350,7 +356,7 @@ const LeftPanel = ({
             href="https://www.dropbox.com/scl/fo/qh87067rpgc7ndjpv50eb/AGWrUeEVDyDZRlOWqDNcJ00?rlkey=jw6lkzp9fkugkamcx500z0k9g&st=owkldr8v&dl=0"
             target="_blank"
             rel="noopener noreferrer"
-            className="group block rounded-xl border border-orange-200 bg-white px-4 py-2 text-blue-600 shadow-sm transition-all duration-200 hover:bg-white hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-[0_10px_24px_-14px_rgba(0,0,0,0.45),0_3px_8px_-4px_rgba(0,0,0,0.25)]"
+            className={`group block rounded-xl border border-orange-200 ${cardsBgClass} px-4 py-2 text-blue-600 shadow-sm transition-all duration-200 hover:bg-white hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-[0_10px_24px_-14px_rgba(0,0,0,0.45),0_3px_8px_-4px_rgba(0,0,0,0.25)]`}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-3">
@@ -369,7 +375,7 @@ const LeftPanel = ({
             href="https://consciencioteca.onrender.com/"
             target="_blank"
             rel="noopener noreferrer"
-            className="group block rounded-xl border border-orange-200 bg-white px-4 py-2 text-blue-600 shadow-sm transition-all duration-200 hover:bg-white hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-[0_10px_24px_-14px_rgba(0,0,0,0.45),0_3px_8px_-4px_rgba(0,0,0,0.25)]"
+            className={`group block rounded-xl border border-orange-200 ${cardsBgClass} px-4 py-2 text-blue-600 shadow-sm transition-all duration-200 hover:bg-white hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-[0_10px_24px_-14px_rgba(0,0,0,0.45),0_3px_8px_-4px_rgba(0,0,0,0.25)]`}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-3">
@@ -392,3 +398,4 @@ const LeftPanel = ({
 };
 
 export default LeftPanel;
+
