@@ -1229,9 +1229,25 @@ def api_ai_execute(payload: ExecuteLLMRequest) -> dict[str, Any]:
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Falha na execucao LLM: {exc}")
 
+    raw = result.get("raw") if isinstance(result, dict) else {}
+    raw = raw if isinstance(raw, dict) else {}
+    usage = raw.get("usage") if isinstance(raw.get("usage"), dict) else {}
+    meta = {
+        "id": raw.get("id"),
+        "model": raw.get("model") or payload.model,
+        "status": raw.get("status"),
+        "created_at": raw.get("created_at"),
+        "temperature_requested": payload.temperature,
+        "max_output_tokens_requested": payload.maxOutputTokens,
+        "gpt5_verbosity_requested": payload.gpt5Verbosity,
+        "gpt5_effort_requested": payload.gpt5Effort,
+        "usage": usage,
+        "rag_references": result.get("references", []),
+        "rag_chunks_count": len(result.get("chunks", [])),
+    }
     if payload.returnChunksOnly:
-        return {"chunks": result.get("chunks", [])}
-    return {"content": result.get("content", ""), "chunks": result.get("chunks", [])}
+        return {"chunks": result.get("chunks", []), "meta": meta}
+    return {"content": result.get("content", ""), "chunks": result.get("chunks", []), "meta": meta}
 
 
 @app.get("/")

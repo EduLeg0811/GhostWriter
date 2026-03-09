@@ -32,14 +32,36 @@ def _is_gpt5_family(model: str) -> bool:
     return m.startswith("gpt-5")
 
 
+def _extract_reference_label(item: dict[str, Any], store_id: str) -> str:
+    attrs = item.get("attributes") if isinstance(item.get("attributes"), dict) else {}
+    attrs = attrs if isinstance(attrs, dict) else {}
+    candidates = [
+        item.get("filename"),
+        item.get("file_name"),
+        item.get("title"),
+        attrs.get("filename"),
+        attrs.get("file_name"),
+        attrs.get("title"),
+        attrs.get("document_name"),
+        attrs.get("source"),
+        attrs.get("book"),
+    ]
+    for candidate in candidates:
+        text = str(candidate or "").strip()
+        if text:
+            return text
+    return f"vector_store:{store_id}"
+
+
 def search_vector_stores(
     api_key: str,
     vector_store_ids: list[str],
     query: str,
     max_num_results: int = 5,
     timeout: int = 60,
-) -> list[str]:
+) -> tuple[list[str], list[str]]:
     chunks: list[str] = []
+    references: list[str] = []
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
@@ -68,7 +90,10 @@ def search_vector_stores(
             text = "\n".join((c.get("text") or "") for c in item.get("content", []))
             if text:
                 chunks.append(text)
-    return chunks
+                ref_label = _extract_reference_label(item if isinstance(item, dict) else {}, sid)
+                references.append(ref_label)
+    deduped_references = list(dict.fromkeys(references))
+    return chunks, deduped_references
 
 
 def execute_llm_request(
@@ -101,6 +126,7 @@ def execute_llm_request(
             input_messages.insert(0, {"role": "system", "content": base_system})
 
     chunks: list[str] = []
+    rag_references: list[str] = []
     clean_store_ids = [s.strip() for s in (vector_store_ids or []) if str(s or "").strip()]
     if clean_store_ids:
         query = (rag_query or "").strip()
@@ -112,7 +138,7 @@ def execute_llm_request(
                     break
             query = last_user
         if query:
-            chunks = search_vector_stores(
+            chunks, rag_references = search_vector_stores(
                 api_key=api_key,
                 vector_store_ids=clean_store_ids,
                 query=query,
@@ -155,5 +181,6 @@ def execute_llm_request(
     return {
         "content": _extract_response_text(payload),
         "chunks": chunks,
+        "references": rag_references,
         "raw": payload,
     }

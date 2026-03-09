@@ -66,7 +66,7 @@ const InsertRefBookPanel = ({
           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Páginas (Opcional)</Label>
           <p className="text-xs text-muted-foreground">Separe por vírgula ou ponto-e-vírgula.</p>
           <Textarea
-            className="min-h-10 rounded-md border border-input bg-white px-3 py-1 text-xs leading-relaxed text-foreground"
+            className="min-h-10 rounded-md border border-input bg-white px-3 py-1 text-xs leading-1 text-foreground"
             rows={2}
             value={refBookPages}
             onChange={(e) => onRefBookPagesChange(e.target.value)}

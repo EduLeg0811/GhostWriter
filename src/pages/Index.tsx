@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { BookOpen, FileText, Languages, ListOrdered, Loader2, Menu, PenLine, Repeat2, Search, X } from "lucide-react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
+import { AlignLeft, BookOpen, Braces, FileText, Hash, Languages, ListOrdered, Loader2, Menu, PenLine, RefreshCw, Repeat2, RotateCcw, Search, Sparkles, Type, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
 import LeftPanel from "@/components/LeftPanel";
 import RightPanel, { AIResponse } from "@/components/RightPanel";
 import HtmlEditor from "@/components/HtmlEditor";
@@ -18,6 +19,7 @@ import type { Macro2SpacingMode } from "@/components/Macro2ManualNumberingPanel"
 import AiActionParametersPanel from "@/components/AiActionParametersPanel";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useTextStats } from "@/hooks/useTextStats";
 import {
   createBlankDocOnServer,
@@ -40,7 +42,7 @@ import {
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 import { buildDocxBlobFromHtml } from "@/lib/docx-export";
 import { cleanupConvertedPdfHeaderHtml, parseDocxArrayBuffer, warmupDocxParser } from "@/lib/file-parser";
-import { buttonsPrimaryBgClass, cardsBgClass, panelsBgClass, panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
+import { buttonsPrimaryBgClass, cardsBgClass, panelsBgClass, panelsTopMenuBarBgClass, uploadDocBgClass } from "@/styles/backgroundColors";
 import { markdownToEditorHtml, normalizeHistoryContentToMarkdown, plainTextToEditorHtml } from "@/lib/markdown";
 import {
   executeLLM,
@@ -74,13 +76,14 @@ type MacroActionId = "macro1" | "macro2";
 type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7" | "app8" | "app9" | "app10" | "app11";
 type AppPanelScope = "bibliografia" | "busca" | "verbetografia";
 type AiActionId = "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate";
-type ParameterPanelSection = "actions" | "macros" | "apps";
+type ParameterPanelSection = "document" | "actions" | "apps" | "settings";
 type ParameterPanelTarget =
+  | { section: "document"; id: MacroActionId | null }
   | { section: "actions"; id: AiActionId | null }
-  | { section: "macros"; id: MacroActionId | null }
   | { section: "apps"; id: AppActionId | null }
+  | { section: "settings"; id: null }
   | null;
-type MobilePanelId = "left" | "center" | "right" | "editor";
+type MobilePanelId = "left" | "center" | "right" | "editor" | "json";
 
 const ACTION_PANEL_BUTTONS: AiActionId[] = ["define", "synonyms", "epigraph", "pensatas", "rewrite", "summarize", "translate"];
 const APP_PANEL_BUTTONS_BY_SCOPE: Record<AppPanelScope, AppActionId[]> = {
@@ -116,29 +119,39 @@ const MACRO_PANEL_ICONS: Record<MacroActionId, typeof BookOpen> = {
   macro2: ListOrdered,
 };
 
+
+// Defaults visuais do painel de LOGS LLM.
+const LLM_LOG_FONT_MIN = 0.5;
+const LLM_LOG_FONT_MAX = 1.0;
+const LLM_LOG_FONT_STEP = 0.05;
+const DEFAULT_LOG_FONT_SIZE_PX = 9;
+const DEFAULT_LOG_LINE_HEIGHT_RATIO = 1.1;
+// Câmbio base (USD -> BRL) para estimativa de custo.
+const DEFAULT_DOLLAR_TOKEN = 5.5;
+
 const parameterAppMeta: Record<AppActionId, { title: string; description: string }> = {
-  app1: { title: "Bibliografia de Livros", description: "Monta Bibliografia de livros de Waldo Vieira." },
-  app2: { title: "Bibliografia de Verbetes", description: "Monta Listagem ou Bibliografia de verbetes." },
-  app3: { title: "Bibliografia Autores", description: "Busca bibliografia de livros e artigos de autores." },
-  app4: { title: "Busca em Livros", description: "Busca palavras ou termos nas fontes." },
-  app5: { title: "Busca em Verbetes", description: "Busca palavras ou termos nas fontes." },
-  app6: { title: "Bibliografia Externa", description: "Busca referencias bibliográficas na internet." },
+  app1: { title: "Bibliografia de Livros", description: "Monta Bibliografia das obras de Waldo Vieira." },
+  app2: { title: "Bibliografia de Verbetes", description: "Monta Bibliografia de verbetes." },
+  app3: { title: "Bibliografia Autores", description: "Monta bibliografia de autores diversos." },
+  app4: { title: "Busca em Livros", description: "Busca termos nos livros de Waldo Vieira." },
+  app5: { title: "Busca em Verbetes", description: "Busca termos nos verbetes em geral." },
+  app6: { title: "Bibliografia Externa", description: "Busca referÃªncias externas na internet." },
   app7: { title: "Tabela Automatizada", description: "Abre tabela no Word e no editor HTML." },
-  app8: { title: "Definologia", description: "Gera Definologia do verbete via LLM." },
-  app9: { title: "Sinonimologia", description: "Gera Sinonimologia do verbete via LLM." },
-  app10: { title: "Fatologia", description: "Gera Fatologia do verbete via LLM." },
-  app11: { title: "Frase Enfática", description: "Gera Frase Enfática do verbete via LLM." },
+  app8: { title: "Definologia", description: "Gera Definologia do verbete." },
+  app9: { title: "Sinonimologia", description: "Gera Sinonimologia do verbete." },
+  app10: { title: "Fatologia", description: "Gera Fatologia do verbete." },
+  app11: { title: "Frase EnfÃ¡tica", description: "Gera Frase EnfÃ¡tica do verbete." },
 };
 const parameterMacroMeta: Record<MacroActionId, { title: string; description: string }> = {
-  macro1: { title: "Highlight", description: "Destaca termos no documento (highlight em cores)." },
-  macro2: { title: "Numerar lista", description: "Aplica numeração manual à lista de itens." },
+  macro1: { title: "Highlight", description: "Destaca termos no documento." },
+  macro2: { title: "Numerar lista", description: "Aplica numeraÃ§Ã£o manual Ã  lista de itens." },
 };
 const parameterActionMeta: Record<AiActionId, { title: string; description: string }> = {
-  define: { title: "Definir", description: "Definologia conscienciológica." },
-  synonyms: { title: "Sinonímia", description: "Sinonimologia." },
-  epigraph: { title: "Epígrafe", description: "Sugere epígrafe." },
+  define: { title: "Definir", description: "Definologia conscienciolÃ³gica." },
+  synonyms: { title: "SinonÃ­mia", description: "Sinonimologia." },
+  epigraph: { title: "EpÃ­grafe", description: "Sugere epÃ­grafe." },
   rewrite: { title: "Reescrever", description: "Melhora clareza e fluidez." },
-  summarize: { title: "Resumir", description: "Síntese concisa." },
+  summarize: { title: "Resumir", description: "SÃ­ntese concisa." },
   pensatas: { title: "Pensatas LO", description: "Pensatas afins." },
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
 };
@@ -146,7 +159,7 @@ const sidePanelClass = panelsBgClass;
 const PANEL_SIZES = {
   left: { default: 10, min: 10, max: 20 },
   parameter: { default: 12, min: 12, max: 20 },
-  editor: { min: 20 },
+  editor: { default: 50, min: 20, max: 70 },
   right: { default: 50, min: 20, max: 70 },
 } as const;
 const MACRO1_HIGHLIGHT_COLORS = [
@@ -174,9 +187,10 @@ const TRANSLATE_LANGUAGE_OPTIONS = [
 // Ajuste aqui para alterar facilmente o default no frontend.
 const DEFAULT_BOOK_SEARCH_MAX_RESULTS = 10;
 
-const PDF_HEADER_SIGNATURE_RE = /enciclop(?:Ã©|é|e)dia\s+da\s+conscienciologia/i;
+const PDF_HEADER_SIGNATURE_RE = /enciclop(?:ÃƒÂ©|Ã©|e)dia\s+da\s+conscienciologia/i;
 
 const CHAT_EDITOR_CONTEXT_MAX_CHARS = 10000;
+
 
 const Index = () => {
   const [responses, setResponses] = useState<AIResponse[]>([]);
@@ -218,7 +232,7 @@ const Index = () => {
   const [biblioExternaExtra, setBiblioExternaExtra] = useState("");
   const [isRunningBiblioExterna, setIsRunningBiblioExterna] = useState(false);
   const [lexicalBooks, setLexicalBooks] = useState<string[]>([]);
-  const [selectedLexicalBook, setSelectedLexicalBook] = useState<string>("");
+  const [selectedLexicalBook, setSelectedLexicalBook] = useState<string>("LO");
   const [lexicalTerm, setLexicalTerm] = useState("");
   const [lexicalMaxResults, setLexicalMaxResults] = useState(DEFAULT_BOOK_SEARCH_MAX_RESULTS);
   const [isRunningLexicalSearch, setIsRunningLexicalSearch] = useState(false);
@@ -243,14 +257,36 @@ const Index = () => {
   const [macro1PredictedMatches, setMacro1PredictedMatches] = useState<number | null>(null);
   const [isCountingMacro1Matches, setIsCountingMacro1Matches] = useState(false);
   const [macro2SpacingMode, setMacro2SpacingMode] = useState<Macro2SpacingMode>("nbsp_double");
+  const [llmModel, setLlmModel] = useState(CHAT_MODEL);
+  const [llmTemperature, setLlmTemperature] = useState(CHAT_TEMPERATURE);
+  const [llmMaxOutputTokens, setLlmMaxOutputTokens] = useState<number | "">(CHAT_MAX_OUTPUT_TOKENS ?? "");
+  const [llmVerbosity, setLlmVerbosity] = useState(CHAT_GPT5_VERBOSITY ?? "");
+  const [llmEffort, setLlmEffort] = useState(CHAT_GPT5_EFFORT ?? "");
+  const [llmSystemPrompt, setLlmSystemPrompt] = useState(CHAT_SYSTEM_PROMPT ?? "");
+  const [isJsonLogPanelOpen, setIsJsonLogPanelOpen] = useState(false);
+  const [llmLogs, setLlmLogs] = useState<Array<{ id: string; at: string; request: unknown; response?: unknown; error?: string }>>([]);
+  const LLM_LOG_FONT_DEFAULT = Number((DEFAULT_LOG_FONT_SIZE_PX / 11).toFixed(2));
+  const [llmLogFontScale, setLlmLogFontScale] = useState(LLM_LOG_FONT_DEFAULT);
   const [isMobileView, setIsMobileView] = useState(false);
   const [activeMobilePanel, setActiveMobilePanel] = useState<MobilePanelId>("left");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isImportingDocument, setIsImportingDocument] = useState(false);
+  const [selectedImportFileName, setSelectedImportFileName] = useState("");
   const saveTimerRef = useRef<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const htmlEditorControlApiRef = useRef<HtmlEditorControlApi | null>(null);
+  const llmConfigRef = useRef({
+    model: CHAT_MODEL,
+    temperature: CHAT_TEMPERATURE,
+    maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS as number | undefined,
+    gpt5Verbosity: CHAT_GPT5_VERBOSITY as string | undefined,
+    gpt5Effort: CHAT_GPT5_EFFORT as string | undefined,
+    systemPrompt: CHAT_SYSTEM_PROMPT as string | undefined,
+  });
   const currentFileIdRef = useRef("");
   const macro1CountRequestIdRef = useRef(0);
   const previousHasEditorPanelRef = useRef(false);
+  
 
   const stats = useTextStats(
     documentText || actionText,
@@ -269,6 +305,17 @@ const Index = () => {
   useEffect(() => {
     currentFileIdRef.current = currentFileId;
   }, [currentFileId]);
+
+  useEffect(() => {
+    llmConfigRef.current = {
+      model: llmModel,
+      temperature: llmTemperature,
+      maxOutputTokens: llmMaxOutputTokens === "" ? undefined : llmMaxOutputTokens,
+      gpt5Verbosity: llmVerbosity || undefined,
+      gpt5Effort: llmEffort || undefined,
+      systemPrompt: llmSystemPrompt || undefined,
+    };
+  }, [llmEffort, llmMaxOutputTokens, llmModel, llmSystemPrompt, llmTemperature, llmVerbosity]);
 
   useEffect(() => {
     refreshHealth();
@@ -400,6 +447,30 @@ const Index = () => {
     }
   }, [refreshDocumentText]);
 
+  const handleDocumentPanelFile = useCallback(async (file: File | undefined) => {
+    if (!file) return;
+    setIsImportingDocument(true);
+    setSelectedImportFileName(file.name);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "";
+      if (!["docx", "pdf"].includes(ext)) {
+        throw new Error("Formato nao suportado. Use DOCX ou PDF.");
+      }
+      await handleWordFileUpload(file);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Erro ao importar arquivo.");
+      setSelectedImportFileName("");
+    } finally {
+      setIsImportingDocument(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }, [handleWordFileUpload]);
+
+  const handleDocumentPanelDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault();
+    void handleDocumentPanelFile(e.dataTransfer.files?.[0]);
+  };
+
   const handleCreateBlankDocument = useCallback(async (): Promise<void> => {
     setIsOpeningDocument(true);
     try {
@@ -485,6 +556,57 @@ const Index = () => {
     setResponses((prev) => [{ id: crypto.randomUUID(), type, query, content, timestamp: new Date() }, ...prev]);
   };
 
+  const executeLLMWithLog = useCallback(async (payload: Parameters<typeof executeLLM>[0]) => {
+    const currentConfig = llmConfigRef.current;
+    const normalizeVerbosity = (value: string | undefined): "low" | "medium" | "high" | undefined => {
+      if (!value) return undefined;
+      const normalized = value.trim().toLowerCase();
+      if (normalized === "low" || normalized === "medium" || normalized === "high") return normalized;
+      return undefined;
+    };
+    const normalizeEffort = (value: string | undefined): "none" | "low" | "medium" | "high" | undefined => {
+      if (!value) return undefined;
+      const normalized = value.trim().toLowerCase();
+      if (normalized === "none" || normalized === "low" || normalized === "medium" || normalized === "high") return normalized;
+      return undefined;
+    };
+    const mergedPayload: Parameters<typeof executeLLM>[0] = {
+      ...payload,
+      model: currentConfig.model,
+      temperature: currentConfig.temperature,
+      maxOutputTokens: currentConfig.maxOutputTokens,
+      gpt5Verbosity: normalizeVerbosity(currentConfig.gpt5Verbosity),
+      gpt5Effort: normalizeEffort(currentConfig.gpt5Effort),
+      systemPrompt: currentConfig.systemPrompt,
+    };
+    const id = crypto.randomUUID();
+    const at = new Date().toISOString();
+    setLlmLogs([{ id, at, request: mergedPayload }]);
+    try {
+      const response = await executeLLM(mergedPayload);
+      setLlmLogs((prev) => {
+        if (!prev[0] || prev[0].id !== id) return prev;
+        return [{ ...prev[0], response }];
+      });
+      return response;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setLlmLogs((prev) => {
+        if (!prev[0] || prev[0].id !== id) return prev;
+        return [{ ...prev[0], error: message }];
+      });
+      throw err;
+    }
+  }, []);
+
+  const handleCleanLlmConversation = useCallback(() => {
+    // A integração atual usa chamadas stateless; limpar o histórico local reinicia o contexto.
+    setChatHistory([]);
+    setResponses([]);
+    setLlmLogs([]);
+    toast.success("Nova sessão iniciada (contexto limpo).");
+  }, []);
+
   const insertRefBook = useCallback(async (book: string) => {
     const data = await insertRefBookMacro(book);
     return data.result;
@@ -496,7 +618,12 @@ const Index = () => {
   }, []);
 
   const handleActionMacros = useCallback(async (type: MacroActionId) => {
-    setParameterPanelTarget({ section: "macros", id: type });
+    setParameterPanelTarget((prev) => {
+      if (prev?.section === "document" && prev.id === type) {
+        return { section: "document", id: null };
+      }
+      return { section: "document", id: type };
+    });
     if (type === "macro1") {
       const input = actionText.trim();
       if (!macro1Term.trim() && input) setMacro1Term(input);
@@ -796,11 +923,13 @@ const Index = () => {
       const data = await listLexicalBooksApp();
       const books = data.result.books?.length ? data.result.books : [];
       setLexicalBooks(books);
-      if (!books.includes(selectedLexicalBook)) setSelectedLexicalBook(books[0] || "");
+      if (!books.includes(selectedLexicalBook)) {
+        setSelectedLexicalBook(books.includes("LO") ? "LO" : (books[0] || ""));
+      }
       return books;
     } catch (err: unknown) {
       setLexicalBooks([]);
-      setSelectedLexicalBook("");
+      setSelectedLexicalBook("LO");
       const msg = err instanceof Error ? err.message : "Falha ao carregar livros para Book Search.";
       toast.error(msg);
       return [];
@@ -876,7 +1005,7 @@ const Index = () => {
     const title = verbetografiaTitle.trim();
     const specialty = verbetografiaSpecialty.trim();
     if (!title) {
-      toast.error("Informe o título do verbete.");
+      toast.error("Informe o tÃ­tulo do verbete.");
       return;
     }
     if (!specialty) {
@@ -891,11 +1020,11 @@ const Index = () => {
       const normalizedEditorText = (latestEditorText || "").trim();
       const editorContextTruncated = normalizedEditorText.length > CHAT_EDITOR_CONTEXT_MAX_CHARS;
       const editorPlainTextContext = normalizedEditorText.slice(0, CHAT_EDITOR_CONTEXT_MAX_CHARS);
-      const query = `Escreva uma Definologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
+      const query = `Escreva uma Definologia do tema do verbete com tÃ­tulo: ${title} e especialidade: ${specialty}.`;
       const messages = buildVerbeteDefinologiaPrompt(query, editorPlainTextContext, editorContextTruncated);
       const chatStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
       const result = (
-        await executeLLM({
+        await executeLLMWithLog({
           messages,
           model: CHAT_MODEL,
           temperature: CHAT_TEMPERATURE,
@@ -908,11 +1037,11 @@ const Index = () => {
         })
       ).content.trim();
       const finalContent = result || "Sem conteudo retornado pela IA.";
-      addResponse("app_verbete_definologia", `Título: ${title} | Especialidade: ${specialty}`, finalContent);
+      addResponse("app_verbete_definologia", `TÃ­tulo: ${title} | Especialidade: ${specialty}`, finalContent);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Definologia.";
       toast.error(msg);
-      addResponse("app_verbete_definologia", `Título: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Definologia: ${msg}`);
+      addResponse("app_verbete_definologia", `TÃ­tulo: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Definologia: ${msg}`);
     } finally {
       setIsRunningVerbeteDefinologia(false);
     }
@@ -926,7 +1055,7 @@ const Index = () => {
     const title = verbetografiaTitle.trim();
     const specialty = verbetografiaSpecialty.trim();
     if (!title) {
-      toast.error("Informe o título do verbete.");
+      toast.error("Informe o tÃ­tulo do verbete.");
       return;
     }
     if (!specialty) {
@@ -941,11 +1070,11 @@ const Index = () => {
       const normalizedEditorText = (latestEditorText || "").trim();
       const editorContextTruncated = normalizedEditorText.length > CHAT_EDITOR_CONTEXT_MAX_CHARS;
       const editorPlainTextContext = normalizedEditorText.slice(0, CHAT_EDITOR_CONTEXT_MAX_CHARS);
-      const query = `Escreva uma Frase Enfática do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
+      const query = `Escreva uma Frase EnfÃ¡tica do tema do verbete com tÃ­tulo: ${title} e especialidade: ${specialty}.`;
       const messages = buildVerbeteFraseEnfaticaPrompt(query, editorPlainTextContext, editorContextTruncated);
       const chatStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
       const result = (
-        await executeLLM({
+        await executeLLMWithLog({
           messages,
           model: CHAT_MODEL,
           temperature: CHAT_TEMPERATURE,
@@ -958,11 +1087,11 @@ const Index = () => {
         })
       ).content.trim();
       const finalContent = result || "Sem conteudo retornado pela IA.";
-      addResponse("app_verbete_frase_enfatica", `Título: ${title} | Especialidade: ${specialty}`, finalContent);
+      addResponse("app_verbete_frase_enfatica", `TÃ­tulo: ${title} | Especialidade: ${specialty}`, finalContent);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Falha ao executar Frase Enfática.";
+      const msg = err instanceof Error ? err.message : "Falha ao executar Frase EnfÃ¡tica.";
       toast.error(msg);
-      addResponse("app_verbete_frase_enfatica", `Título: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Frase Enfática: ${msg}`);
+      addResponse("app_verbete_frase_enfatica", `TÃ­tulo: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Frase EnfÃ¡tica: ${msg}`);
     } finally {
       setIsRunningVerbeteFraseEnfatica(false);
     }
@@ -976,7 +1105,7 @@ const Index = () => {
     const title = verbetografiaTitle.trim();
     const specialty = verbetografiaSpecialty.trim();
     if (!title) {
-      toast.error("Informe o título do verbete.");
+      toast.error("Informe o tÃ­tulo do verbete.");
       return;
     }
     if (!specialty) {
@@ -991,11 +1120,11 @@ const Index = () => {
       const normalizedEditorText = (latestEditorText || "").trim();
       const editorContextTruncated = normalizedEditorText.length > CHAT_EDITOR_CONTEXT_MAX_CHARS;
       const editorPlainTextContext = normalizedEditorText.slice(0, CHAT_EDITOR_CONTEXT_MAX_CHARS);
-      const query = `Escreva uma Sinonimologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
+      const query = `Escreva uma Sinonimologia do tema do verbete com tÃ­tulo: ${title} e especialidade: ${specialty}.`;
       const messages = buildVerbeteSinonimologiaPrompt(query, editorPlainTextContext, editorContextTruncated);
       const chatStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
       const result = (
-        await executeLLM({
+        await executeLLMWithLog({
           messages,
           model: CHAT_MODEL,
           temperature: CHAT_TEMPERATURE,
@@ -1008,11 +1137,11 @@ const Index = () => {
         })
       ).content.trim();
       const finalContent = result || "Sem conteudo retornado pela IA.";
-      addResponse("app_verbete_sinonimologia", `Título: ${title} | Especialidade: ${specialty}`, finalContent);
+      addResponse("app_verbete_sinonimologia", `TÃ­tulo: ${title} | Especialidade: ${specialty}`, finalContent);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Sinonimologia.";
       toast.error(msg);
-      addResponse("app_verbete_sinonimologia", `Título: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Sinonimologia: ${msg}`);
+      addResponse("app_verbete_sinonimologia", `TÃ­tulo: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Sinonimologia: ${msg}`);
     } finally {
       setIsRunningVerbeteSinonimologia(false);
     }
@@ -1026,7 +1155,7 @@ const Index = () => {
     const title = verbetografiaTitle.trim();
     const specialty = verbetografiaSpecialty.trim();
     if (!title) {
-      toast.error("Informe o título do verbete.");
+      toast.error("Informe o tÃ­tulo do verbete.");
       return;
     }
     if (!specialty) {
@@ -1041,11 +1170,11 @@ const Index = () => {
       const normalizedEditorText = (latestEditorText || "").trim();
       const editorContextTruncated = normalizedEditorText.length > CHAT_EDITOR_CONTEXT_MAX_CHARS;
       const editorPlainTextContext = normalizedEditorText.slice(0, CHAT_EDITOR_CONTEXT_MAX_CHARS);
-      const query = `Escreva uma Fatologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
+      const query = `Escreva uma Fatologia do tema do verbete com tÃ­tulo: ${title} e especialidade: ${specialty}.`;
       const messages = buildVerbeteFatologiaPrompt(query, editorPlainTextContext, editorContextTruncated);
       const chatStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
       const result = (
-        await executeLLM({
+        await executeLLMWithLog({
           messages,
           model: CHAT_MODEL,
           temperature: CHAT_TEMPERATURE,
@@ -1058,11 +1187,11 @@ const Index = () => {
         })
       ).content.trim();
       const finalContent = result || "Sem conteudo retornado pela IA.";
-      addResponse("app_verbete_fatologia", `Título: ${title} | Especialidade: ${specialty}`, finalContent);
+      addResponse("app_verbete_fatologia", `TÃ­tulo: ${title} | Especialidade: ${specialty}`, finalContent);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Fatologia.";
       toast.error(msg);
-      addResponse("app_verbete_fatologia", `Título: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Fatologia: ${msg}`);
+      addResponse("app_verbete_fatologia", `TÃ­tulo: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Fatologia: ${msg}`);
     } finally {
       setIsRunningVerbeteFatologia(false);
     }
@@ -1110,7 +1239,7 @@ const Index = () => {
             : sourceBook === "DAC"
               ? `(**${sourceBookLabel}**; *${sourceTitle}*; ${argumentoPart})`
               : `(**${sourceBookLabel}**; *${sourceTitle}*)`;
-          return `**${idx + 1}.\u00A0\u00A0**${titlePrefix}${body} ${sourceRef}`;
+          return `**${idx + 1}.\u00A0\u00A0**${titlePrefix}${body}<br/>${sourceRef}`;
         })
         .join("\n\n");
       const shownInfo = totalFound > maxResults ? ` | Exibidos: ${maxResults}` : "";
@@ -1167,7 +1296,7 @@ const Index = () => {
           const datePart = rowDate || "s/data";
           const definologiaPart = `**Definologia.** ${rowText || ""}`.trim();
           const linkPart = rowLink ? `[PDF](${rowLink})` : "";
-          const headerLine = `**${idx + 1}.\u00A0\u00A0** **${titlePart}** (*${areaPart}*) ● *${authorPart}* ● ${numberPart} ● ${datePart}`;
+          const headerLine = `**${idx + 1}.\u00A0\u00A0** **${titlePart}** (*${areaPart}*) â— *${authorPart}* â— ${numberPart} â— ${datePart}`;
           return `${headerLine}\n${definologiaPart}\n${linkPart}`;
         })
         .join("\n\n");
@@ -1208,8 +1337,8 @@ const Index = () => {
       const header = `Livro: ${source} | Paragrafo: ${number}${total > 0 ? `/${total}` : ""}`;
       const pensata = paragraph || "Paragrafo nao encontrado.";
       const analysisMessages = buildPensataAnalysisPrompt(pensata);
-      const analysis = (await executeLLM({ messages: analysisMessages })).content.trim();
-      const content = analysis ? `${pensata}\n\n*Análise IA:*\n${analysis}` : pensata;
+      const analysis = (await executeLLMWithLog({ messages: analysisMessages })).content.trim();
+      const content = analysis ? `${pensata}\n\n**AnÃ¡lise IA:** ${analysis}` : pensata;
       addResponse("app_random_pensata", header, content);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Pensata do Dia.";
@@ -1241,7 +1370,7 @@ const Index = () => {
       setIsLoading(true);
       try {
         const chunks = (
-          await executeLLM({
+          await executeLLMWithLog({
             messages: [{ role: "user", content: text }],
             vectorStoreIds: [LLM_VECTOR_STORE_LO],
             ragQuery: text,
@@ -1271,7 +1400,7 @@ const Index = () => {
         const storeIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
         if (storeIds.length > 0) {
           const allChunks = (
-            await executeLLM({
+            await executeLLMWithLog({
               messages: [{ role: "user", content: text }],
               vectorStoreIds: storeIds,
               ragQuery: text,
@@ -1287,7 +1416,7 @@ const Index = () => {
           throw new Error("Configure VITE_OPENAI_VECTOR_STORE_TRANSLATE_RAG.");
         }
         const chunks = (
-          await executeLLM({
+          await executeLLMWithLog({
             messages: [{ role: "user", content: text }],
             vectorStoreIds: [LLM_VECTOR_STORE_TRANSLATE_RAG],
             ragQuery: text,
@@ -1308,7 +1437,7 @@ const Index = () => {
       };
 
       const messages = promptMap[type](text);
-      const result = (await executeLLM({ messages })).content;
+      const result = (await executeLLMWithLog({ messages })).content;
       addResponse(type, text.slice(0, 80), result);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erro na chamada a IA.");
@@ -1337,7 +1466,7 @@ const Index = () => {
       const messages = buildChatPrompt(actionText, message, chatHistory, editorPlainTextContext, editorContextTruncated);
       const chatStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
       const result = (
-        await executeLLM({
+        await executeLLMWithLog({
           messages,
           model: CHAT_MODEL,
           temperature: CHAT_TEMPERATURE,
@@ -1438,23 +1567,72 @@ const Index = () => {
     isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningVerbeteSearch || isRunningVerbetografiaOpenTable || isRunningVerbeteDefinologia || isRunningVerbeteFraseEnfatica || isRunningVerbeteSinonimologia || isRunningVerbeteFatologia;
   const hasEditorPanel = Boolean(currentFileId) || isOpeningDocument;
   const hasCenterPanel = Boolean(parameterPanelTarget);
+  const hasJsonPanel = isJsonLogPanelOpen;
   const layoutResetKey = hasEditorPanel ? "layout-with-editor" : "layout-without-editor";
   const mobilePanelOptions: Array<{ id: MobilePanelId; label: string; disabled?: boolean }> = [
+    { id: "json", label: "Json", disabled: !hasJsonPanel },
     { id: "left", label: "Painel" },
     { id: "center", label: "Parametros", disabled: !hasCenterPanel },
     { id: "right", label: "Chat" },
     { id: "editor", label: "Editor", disabled: !hasEditorPanel },
   ];
+  const showJsonPanel = hasJsonPanel && (!isMobileView || activeMobilePanel === "json");
   const showLeftPanel = !isMobileView || activeMobilePanel === "left";
   const showCenterPanel = hasCenterPanel && (!isMobileView || activeMobilePanel === "center");
   const showRightPanel = !isMobileView || activeMobilePanel === "right";
   const showEditorPanel = hasEditorPanel && (!isMobileView || activeMobilePanel === "editor");
   const showHandleAfterLeft = showLeftPanel && (showCenterPanel || showRightPanel || showEditorPanel);
   const showHandleAfterCenter = showCenterPanel && (showRightPanel || showEditorPanel);
-  const showHandleAfterRight = showRightPanel && showEditorPanel;
+  const showHandleAfterRight = showRightPanel && (showJsonPanel || showEditorPanel);
+  const showHandleAfterJson = showJsonPanel && showEditorPanel;
+  const llmLogFontStyle = { fontSize: `${llmLogFontScale}em`, lineHeight: DEFAULT_LOG_LINE_HEIGHT_RATIO };
+  const latestLlmLog = llmLogs[0];
+  const latestLlmMeta = (latestLlmLog?.response && typeof latestLlmLog.response === "object" && "meta" in (latestLlmLog.response as Record<string, unknown>))
+    ? ((latestLlmLog.response as { meta?: Record<string, unknown> }).meta ?? {})
+    : {};
+  const latestUsage = (latestLlmMeta.usage && typeof latestLlmMeta.usage === "object")
+    ? (latestLlmMeta.usage as Record<string, unknown>)
+    : {};
+  const latestRagReferences = Array.isArray(latestLlmMeta.rag_references)
+    ? (latestLlmMeta.rag_references as unknown[]).map((ref) => String(ref || "").trim()).filter(Boolean)
+    : [];
+  const latestRagChunksCount = Number(latestLlmMeta.rag_chunks_count ?? 0) || 0;
+  const inputTokens = Number(latestUsage.input_tokens ?? latestUsage.prompt_tokens ?? 0) || 0;
+  const cachedInputTokens = Number((latestUsage.input_token_details as { cached_tokens?: number } | undefined)?.cached_tokens ?? 0) || 0;
+  const nonCachedInputTokens = Math.max(0, inputTokens - cachedInputTokens);
+  const outputTokens = Number(latestUsage.output_tokens ?? latestUsage.completion_tokens ?? 0) || 0;
+  const totalTokens = Number(latestUsage.total_tokens ?? inputTokens + outputTokens) || 0;
+  const reasoningTokens = Number((latestUsage.output_token_details as { reasoning_tokens?: number } | undefined)?.reasoning_tokens ?? 0) || 0;
+  const usdToBrl = DEFAULT_DOLLAR_TOKEN;
+  const effectiveModel = String(latestLlmMeta.model ?? llmModel ?? "");
+  const normalizedModel = effectiveModel.toLowerCase();
+  const isGpt54 = normalizedModel.startsWith("gpt-5.4");
+  const modelPricingUsdPer1M: Record<string, { input: number; cached_input: number; output: number }> = {
+    "gpt-5.4-under-272k": { input: 2.5, cached_input: 0.25, output: 15.0 },
+    "gpt-5.4-over-272k": { input: 5.0, cached_input: 0.5, output: 22.5 },
+    "gpt-5.2": { input: 1.75, cached_input: 0.175, output: 14.0 },
+    "gpt-5-mini": { input: 0.25, cached_input: 0.025, output: 2.0 },
+    "gpt-4.1-mini": { input: 0.4, cached_input: 0.1, output: 1.6 },
+  };
+  const matchedPricingKey = isGpt54
+    ? (inputTokens > 272_000 ? "gpt-5.4-over-272k" : "gpt-5.4-under-272k")
+    : (Object.keys(modelPricingUsdPer1M).find((key) => normalizedModel.startsWith(key)) ?? "");
+  const matchedPricing = matchedPricingKey ? modelPricingUsdPer1M[matchedPricingKey] : null;
+  const estimatedUsd = matchedPricing
+    ? (
+        (nonCachedInputTokens * matchedPricing.input) +
+        (cachedInputTokens * matchedPricing.cached_input) +
+        (outputTokens * matchedPricing.output)
+      ) / 1_000_000
+    : null;
+  const estimatedBrl = estimatedUsd != null ? estimatedUsd * usdToBrl : null;
 
   useEffect(() => {
     if (!isMobileView) return;
+    if (activeMobilePanel === "json" && !hasJsonPanel) {
+      setActiveMobilePanel("left");
+      return;
+    }
     if (activeMobilePanel === "center" && !hasCenterPanel) {
       setActiveMobilePanel(hasEditorPanel ? "editor" : "left");
       return;
@@ -1462,7 +1640,7 @@ const Index = () => {
     if (activeMobilePanel === "editor" && !hasEditorPanel) {
       setActiveMobilePanel("left");
     }
-  }, [activeMobilePanel, hasCenterPanel, hasEditorPanel, isMobileView]);
+  }, [activeMobilePanel, hasCenterPanel, hasEditorPanel, hasJsonPanel, isMobileView]);
 
   useEffect(() => {
     if (!isMobileView) {
@@ -1525,16 +1703,11 @@ const Index = () => {
             className="border-r border-border bg-card"
           >
             <LeftPanel
-              stats={stats}
-              onWordFileUpload={handleWordFileUpload}
-              onCreateBlankDocument={handleCreateBlankDocument}
               onOpenParameterSection={handleOpenParameterSection}
               onRunRandomPensata={handleRunRandomPensata}
               onOpenBookSearch={handleOpenBookSearchFromLeft}
               onOpenVerbetografia={handleOpenVerbetografiaFromLeft}
               isLoading={isLoading}
-              hasDocumentOpen={Boolean(currentFileId)}
-              onRefreshStats={() => void handleRefreshStats()}
             />
           </ResizablePanel>
         )}
@@ -1565,8 +1738,9 @@ const Index = () => {
                       </Button>
                     </div>
 
-                    <div className="border-b border-border p-3">
-                      <div className="grid grid-cols-1 gap-2">
+                    {parameterPanelTarget.section !== "document" && parameterPanelTarget.section !== "settings" && (
+                      <div className="border-b border-border p-3">
+                        <div className="grid grid-cols-1 gap-2">
                         {parameterPanelTarget.section === "actions" &&
                           ACTION_PANEL_BUTTONS.map((id) => (
                           (() => {
@@ -1604,7 +1778,7 @@ const Index = () => {
                               <>
                                 <Separator className="my-4" />
                                 <p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                  Seções do Verbete
+                                  SeÃ§Ãµes do Verbete
                                 </p>
                               </>
                             ) : null}
@@ -1625,31 +1799,312 @@ const Index = () => {
                           })()
                         ))}
 
-                        {parameterPanelTarget.section === "macros" && MACRO_PANEL_BUTTONS.map((id) => (
-                          (() => {
-                            const Icon = MACRO_PANEL_ICONS[id];
-                            return (
-                          <Button
-                            key={id}
-                            variant="ghost"
-                            className={sectionActionButtonClass}
-                            onClick={() => void handleActionMacros(id)}
-                            disabled={isLoading || !currentFileId}
-                          >
-                            <Icon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
-                            <span className="min-w-0 flex-1 text-left">
-                              <span className="block break-words text-sm font-medium text-foreground">{parameterMacroMeta[id].title}</span>
-                              <span className="block break-words text-xs text-muted-foreground">{parameterMacroMeta[id].description}</span>
-                            </span>
-                          </Button>
-                            );
-                          })()
-                        ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="min-h-0 flex-1">
-                      {parameterPanelTarget.section === "actions" && parameterPanelTarget.id ? (
+                      {parameterPanelTarget.section === "document" ? (
+                        <div className="h-full overflow-y-auto p-3">
+                          <div className="space-y-3">
+                            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">ParÃ¢metros Documento</Label>
+
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className={`${sectionActionButtonClass} ${uploadDocBgClass} hover:bg-muted/30`}
+                              onClick={() => void handleCreateBlankDocument()}
+                              disabled={isLoading || isOpeningDocument || isImportingDocument}
+                            >
+                              <FileText className="mr-2 h-4 w-4" />
+                              <span>Novo Documento em Branco</span>
+                            </Button>
+
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept=".docx,.pdf"
+                              className="hidden"
+                              onChange={(e) => void handleDocumentPanelFile(e.target.files?.[0])}
+                            />
+
+                            {!selectedImportFileName ? (
+                              <div
+                                onDrop={handleDocumentPanelDrop}
+                                onDragOver={(e) => e.preventDefault()}
+                                onClick={() => fileInputRef.current?.click()}
+                                className={`cursor-pointer rounded-lg border-2 border-dashed border-border ${uploadDocBgClass} p-3 text-center hover:bg-muted/30`}
+                              >
+                                {isImportingDocument ? (
+                                  <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-muted-foreground" />
+                                ) : (
+                                  <Upload className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
+                                )}
+                                <span className="text-sm text-foreground">Arraste ou selecione</span>
+                                <span className="mt-1 block text-xs text-muted-foreground">DOCX ou PDF</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2">
+                                <FileText className="h-4 w-4 shrink-0 text-primary" />
+                                <span className="truncate text-sm text-foreground">{selectedImportFileName}</span>
+                                <button
+                                  type="button"
+                                  className="ml-auto text-muted-foreground hover:text-destructive"
+                                  onClick={() => setSelectedImportFileName("")}
+                                  aria-label="Remover arquivo"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            )}
+
+                            <Separator className="my-1" />
+
+                            <div className="space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">EstatÃ­sticas</Label>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => void handleRefreshStats()} title="Atualizar">
+                                  <RefreshCw className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                {[
+                                  { icon: FileText, label: "PÃ¡ginas", value: stats.pages },
+                                  { icon: AlignLeft, label: "ParÃ¡grafos", value: stats.paragraphs },
+                                  { icon: Type, label: "Palavras", value: stats.words },
+                                  { icon: Hash, label: "Caracteres", value: stats.characters },
+                                  { icon: Sparkles, label: "Logias", value: stats.logiaWords },
+                                  { icon: BookOpen, label: "Sesquipedais", value: stats.sesquipedal },
+                                ].map(({ icon: Icon, label, value }) => (
+                                  <div key={label} className="rounded-md bg-muted/50 px-2.5 py-1.5">
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                      <Icon className="h-3.5 w-3.5" />
+                                      {label}
+                                    </div>
+                                    <div className="text-sm font-semibold text-[hsl(var(--stat-value))]">{value}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <Separator className="my-1" />
+
+                            <div className="space-y-2">
+                              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Editor de Texto</Label>
+                              <Button
+                                variant="ghost"
+                                className={sectionActionButtonClass}
+                                onClick={() => void handleActionMacros("macro1")}
+                                disabled={isLoading || !currentFileId}
+                              >
+                                <BookOpen className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
+                                <span className="min-w-0 flex-1 text-left">
+                                  <span className="block break-words text-sm font-medium text-foreground">{parameterMacroMeta.macro1.title}</span>
+                                  <span className="block break-words text-xs text-muted-foreground">{parameterMacroMeta.macro1.description}</span>
+                                </span>
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                className={sectionActionButtonClass}
+                                onClick={() => void handleActionMacros("macro2")}
+                                disabled={isLoading || !currentFileId}
+                              >
+                                <ListOrdered className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
+                                <span className="min-w-0 flex-1 text-left">
+                                  <span className="block break-words text-sm font-medium text-foreground">{parameterMacroMeta.macro2.title}</span>
+                                  <span className="block break-words text-xs text-muted-foreground">{parameterMacroMeta.macro2.description}</span>
+                                </span>
+                              </Button>
+                            </div>
+
+                            {parameterPanelTarget.id && <Separator className="my-1" />}
+
+                            {parameterPanelTarget.id === "macro1" ? (
+                              <Macro1HighlightPanel
+                                title={parameterMacroMeta.macro1.title}
+                                description={parameterMacroMeta.macro1.description}
+                                term={macro1Term}
+                                onTermChange={setMacro1Term}
+                                colorOptions={MACRO1_HIGHLIGHT_COLORS.map((item) => ({ ...item }))}
+                                selectedColorId={macro1ColorId}
+                                onSelectColor={(value) => setMacro1ColorId(value as (typeof MACRO1_HIGHLIGHT_COLORS)[number]["id"])}
+                                onRunHighlight={() => void handleRunMacro1Highlight()}
+                                onRunClear={() => void handleClearMacro1Highlight()}
+                                isRunning={isLoading}
+                                predictedMatches={macro1PredictedMatches}
+                                isCountingMatches={isCountingMacro1Matches}
+                                hasDocumentOpen={Boolean(currentFileId)}
+                                showPanelChrome={false}
+                              />
+                            ) : null}
+
+                            {parameterPanelTarget.id === "macro2" ? (
+                              <Macro2ManualNumberingPanel
+                                title={parameterMacroMeta.macro2.title}
+                                description={parameterMacroMeta.macro2.description}
+                                spacingMode={macro2SpacingMode}
+                                onSpacingModeChange={setMacro2SpacingMode}
+                                isRunning={isLoading}
+                                onRun={() => void handleRunMacro2ManualNumbering()}
+                                showPanelChrome={false}
+                              />
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : parameterPanelTarget.section === "settings" ? (
+                        <div className="h-full overflow-y-auto p-3">
+                          <div className="space-y-3">
+                            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações LLM</Label>
+                            <div className="space-y-2">
+                              <Label className="text-xs text-muted-foreground">Modelo</Label>
+                              <select
+                                value={llmModel}
+                                onChange={(e) => setLlmModel(e.target.value)}
+                                className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground outline-none"
+                              >
+                                <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+                                <option value="gpt-5-mini">gpt-5-mini</option>
+                                <option value="gpt-5.2">gpt-5.2</option>
+                                <option value="gpt-5.4">gpt-5.4</option>
+                              </select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs text-muted-foreground">Temperatura</Label>
+                              <Input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                max="2"
+                                value={llmTemperature}
+                                onChange={(e) => setLlmTemperature(Number(e.target.value))}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs text-muted-foreground">Max Output Tokens</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={llmMaxOutputTokens}
+                                onChange={(e) => setLlmMaxOutputTokens(e.target.value ? Number(e.target.value) : "")}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs text-muted-foreground">GPT-5 Verbosity</Label>
+                              <Input value={llmVerbosity} onChange={(e) => setLlmVerbosity(e.target.value)} placeholder="low | medium | high" className="h-8 text-xs" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs text-muted-foreground">GPT-5 Effort</Label>
+                              <Input value={llmEffort} onChange={(e) => setLlmEffort(e.target.value)} placeholder="minimal | low | medium | high" className="h-8 text-xs" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs text-muted-foreground">System Prompt</Label>
+                              <textarea
+                                value={llmSystemPrompt}
+                                onChange={(e) => setLlmSystemPrompt(e.target.value)}
+                                rows={6}
+                                className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground outline-none"
+                              />
+                            </div>
+
+                            <Separator className="my-1" />
+
+                            <Button
+                              variant="ghost"
+                              className={sectionActionButtonClass}
+                              onClick={handleCleanLlmConversation}
+                            >
+                              <RotateCcw className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                              <span className="min-w-0 flex-1 text-left">
+                                <span className="block break-words text-sm font-medium text-foreground">Clean</span>
+                                <span className="block break-words text-xs text-muted-foreground">Inicia nova conversa sem contexto anterior</span>
+                              </span>
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              className={sectionActionButtonClass}
+                              onClick={() => {
+                                setIsJsonLogPanelOpen((prev) => !prev);
+                                if (isMobileView) setActiveMobilePanel("json");
+                              }}
+                            >
+                              <Braces className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                              <span className="min-w-0 flex-1 text-left">
+                                <span className="block break-words text-sm font-medium text-foreground">Json</span>
+                                <span className="block break-words text-xs text-muted-foreground">Logs de request/response da LLM</span>
+                              </span>
+                            </Button>
+
+                            <div className="rounded-md border border-border bg-muted/40 p-3">
+                              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Resumo da última chamada LLM</p>
+                              <div className="space-y-1.5 text-xs leading-snug">
+                                <div className="rounded bg-background/70 px-2 py-1">
+                                  <span className="font-semibold text-blue-600">Modelo:</span>{" "}
+                                  <span className="font-medium text-foreground">{effectiveModel || "-"}</span>
+                                </div>
+                                <div className="rounded bg-background/70 px-2 py-1">
+                                  <span className="font-semibold text-blue-600">Status:</span>{" "}
+                                  <span className="font-medium text-foreground">{String(latestLlmMeta.status ?? "-")}</span>
+                                </div>
+                                <div className="rounded bg-background/70 px-2 py-1">
+                                  <span className="font-semibold text-blue-600">Temperatura:</span>{" "}
+                                  <span className="font-medium text-foreground">{String(latestLlmMeta.temperature_requested ?? llmTemperature)}</span>
+                                </div>
+                                <div className="rounded bg-background/70 px-2 py-1">
+                                  <span className="font-semibold text-blue-600">Max tokens:</span>{" "}
+                                  <span className="font-medium text-foreground">{String(latestLlmMeta.max_output_tokens_requested ?? (llmMaxOutputTokens === "" ? "-" : llmMaxOutputTokens))}</span>
+                                </div>
+                                <div className="rounded bg-background/70 px-2 py-1">
+                                  <span className="font-semibold text-blue-600">Input tokens:</span>{" "}
+                                  <span className="font-medium text-foreground">{inputTokens || 0}</span>
+                                </div>
+                                <div className="rounded bg-background/70 px-2 py-1">
+                                  <span className="font-semibold text-blue-600">Cached input tokens:</span>{" "}
+                                  <span className="font-medium text-foreground">{cachedInputTokens || 0}</span>
+                                </div>
+                                <div className="rounded bg-background/70 px-2 py-1">
+                                  <span className="font-semibold text-blue-600">Output tokens:</span>{" "}
+                                  <span className="font-medium text-foreground">{outputTokens || 0}</span>
+                                </div>
+                                <div className="rounded bg-background/70 px-2 py-1">
+                                  <span className="font-semibold text-blue-600">Total tokens:</span>{" "}
+                                  <span className="font-medium text-foreground">{totalTokens || 0}</span>
+                                </div>
+                                <div className="rounded bg-background/70 px-2 py-1">
+                                  <span className="font-semibold text-blue-600">Reasoning tokens:</span>{" "}
+                                  <span className="font-medium text-foreground">{reasoningTokens || 0}</span>
+                                </div>
+                                <div className="rounded bg-background/70 px-2 py-1">
+                                  <span className="font-semibold text-blue-600">Chunks RAG usados:</span>{" "}
+                                  <span className="font-medium text-foreground">{latestRagChunksCount}</span>
+                                </div>
+                                <div className="rounded bg-background/70 px-2 py-1">
+                                  <span className="font-semibold text-blue-600">Referências RAG:</span>{" "}
+                                  {latestRagReferences.length > 0 ? (
+                                    <span className="font-medium text-foreground">{latestRagReferences.join(" | ")}</span>
+                                  ) : (
+                                    <span className="font-medium text-muted-foreground">não informado</span>
+                                  )}
+                                </div>
+                                <div className="rounded bg-background/70 px-2 py-1">
+                                  <span className="font-semibold text-blue-600">Custo estimado:</span>{" "}
+                                  <span className="font-medium text-foreground">
+                                    {estimatedBrl != null
+                                      ? `R$ ${estimatedBrl.toFixed(4)} (≈ US$ ${estimatedUsd?.toFixed(6)})`
+                                      : "indisponível (modelo sem tabela local de preço)"}
+                                  </span>
+                                </div>
+                              </div>
+                              {/* <p className="mt-2 text-[11px] text-muted-foreground">
+                                Estimativa de custo baseada em tabela local e câmbio fixo (US$1 = R$ {usdToBrl.toFixed(2)}).
+                              </p> */}
+                            </div>
+                          </div>
+                        </div>
+                      ) : parameterPanelTarget.section === "actions" && parameterPanelTarget.id ? (
                         <AiActionParametersPanel
                           title={parameterActionMeta[parameterPanelTarget.id].title}
                           description={parameterActionMeta[parameterPanelTarget.id].description}
@@ -1663,33 +2118,6 @@ const Index = () => {
                           languageOptions={TRANSLATE_LANGUAGE_OPTIONS.map((option) => ({ ...option }))}
                           selectedLanguage={translateLanguage}
                           onSelectedLanguageChange={(value) => setTranslateLanguage(value as (typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"])}
-                          showPanelChrome={false}
-                        />
-                      ) : parameterPanelTarget.section === "macros" && parameterPanelTarget.id === "macro1" ? (
-                        <Macro1HighlightPanel
-                          title={parameterMacroMeta.macro1.title}
-                          description={parameterMacroMeta.macro1.description}
-                          term={macro1Term}
-                          onTermChange={setMacro1Term}
-                          colorOptions={MACRO1_HIGHLIGHT_COLORS.map((item) => ({ ...item }))}
-                          selectedColorId={macro1ColorId}
-                          onSelectColor={(value) => setMacro1ColorId(value as (typeof MACRO1_HIGHLIGHT_COLORS)[number]["id"])}
-                          onRunHighlight={() => void handleRunMacro1Highlight()}
-                          onRunClear={() => void handleClearMacro1Highlight()}
-                          isRunning={isLoading}
-                          predictedMatches={macro1PredictedMatches}
-                          isCountingMatches={isCountingMacro1Matches}
-                          hasDocumentOpen={Boolean(currentFileId)}
-                          showPanelChrome={false}
-                        />
-                      ) : parameterPanelTarget.section === "macros" && parameterPanelTarget.id === "macro2" ? (
-                        <Macro2ManualNumberingPanel
-                          title={parameterMacroMeta.macro2.title}
-                          description={parameterMacroMeta.macro2.description}
-                          spacingMode={macro2SpacingMode}
-                          onSpacingModeChange={setMacro2SpacingMode}
-                          isRunning={isLoading}
-                          onRun={() => void handleRunMacro2ManualNumbering()}
                           showPanelChrome={false}
                         />
                       ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app1" ? (
@@ -1810,7 +2238,7 @@ const Index = () => {
                               : parameterPanelTarget.id === "app8"
                                 ? "Gerar Definologia"
                                 : parameterPanelTarget.id === "app11"
-                                  ? "Gerar Frase Enfática"
+                                  ? "Gerar Frase EnfÃ¡tica"
                                 : parameterPanelTarget.id === "app9"
                                   ? "Gerar Sinonimologia"
                                   : "Gerar Fatologia"
@@ -1821,7 +2249,7 @@ const Index = () => {
                               : parameterPanelTarget.id === "app8"
                                 ? "Gerando Definologia"
                                 : parameterPanelTarget.id === "app11"
-                                  ? "Gerando Frase Enfática"
+                                  ? "Gerando Frase EnfÃ¡tica"
                                 : parameterPanelTarget.id === "app9"
                                   ? "Gerando Sinonimologia"
                                   : "Gerando Fatologia"
@@ -1887,11 +2315,112 @@ const Index = () => {
 
         {showHandleAfterRight && <ResizableHandle withHandle />}
 
+        {showJsonPanel && (
+          <>
+            <ResizablePanel
+              id="json-log-panel"
+              order={hasCenterPanel ? 4 : 3}
+              defaultSize={PANEL_SIZES.editor.default}
+              minSize={PANEL_SIZES.editor.min}
+              maxSize={PANEL_SIZES.editor.max}
+              className={`border-l border-border ${sidePanelClass}`}
+            >
+              <div className="flex h-full flex-col">
+                <div className={`flex items-center justify-between border-b border-border ${panelsTopMenuBarBgClass} px-4 py-3`}>
+                  <h2 className="text-sm font-semibold text-foreground">LLM JSON Logs</h2>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-[11px] font-semibold"
+                      onClick={() => setLlmLogFontScale((prev) => Math.max(LLM_LOG_FONT_MIN, Number((prev - LLM_LOG_FONT_STEP).toFixed(2))))}
+                      title="Diminuir fonte dos logs"
+                      disabled={llmLogFontScale <= LLM_LOG_FONT_MIN}
+                    >
+                      A-
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-[11px] font-semibold"
+                      onClick={() => setLlmLogFontScale((prev) => Math.min(LLM_LOG_FONT_MAX, Number((prev + LLM_LOG_FONT_STEP).toFixed(2))))}
+                      title="Aumentar fonte dos logs"
+                      disabled={llmLogFontScale >= LLM_LOG_FONT_MAX}
+                    >
+                      A+
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => setLlmLogFontScale(LLM_LOG_FONT_DEFAULT)}
+                      title="Resetar fonte dos logs"
+                      disabled={llmLogFontScale === LLM_LOG_FONT_DEFAULT}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => setLlmLogs([])}
+                      title="Limpar logs"
+                    >
+                      Limpar
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => setIsJsonLogPanelOpen(false)}
+                      title="Fechar logs"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="scrollbar-thin flex-1 overflow-y-auto p-3">
+                  <div className="space-y-3">
+                    {llmLogs.length === 0 ? (
+                      <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+                        Sem logs ainda.
+                      </div>
+                    ) : (
+                      llmLogs.map((entry) => (
+                        <div key={entry.id} className="space-y-2 rounded-md border border-border bg-muted/30 p-3" style={llmLogFontStyle}>
+                          <p className="text-[11px] font-semibold text-muted-foreground" style={llmLogFontStyle}>{entry.at}</p>
+                          <div>
+                            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground" style={llmLogFontStyle}>Request</p>
+                            <pre className="whitespace-pre-wrap break-words rounded bg-background p-2 text-[11px] text-foreground" style={llmLogFontStyle}>{JSON.stringify(entry.request, null, 2)}</pre>
+                          </div>
+                          {entry.response ? (
+                            <div>
+                              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground" style={llmLogFontStyle}>Response</p>
+                              <pre className="whitespace-pre-wrap break-words rounded bg-background p-2 text-[11px] text-foreground" style={llmLogFontStyle}>{JSON.stringify(entry.response, null, 2)}</pre>
+                            </div>
+                          ) : null}
+                          {entry.error ? (
+                            <div>
+                              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-destructive" style={llmLogFontStyle}>Error</p>
+                              <pre className="whitespace-pre-wrap break-words rounded bg-background p-2 text-[11px] text-destructive" style={llmLogFontStyle}>{entry.error}</pre>
+                            </div>
+                          ) : null}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </ResizablePanel>
+            {showHandleAfterJson && <ResizableHandle withHandle />}
+          </>
+        )}
+
         {showEditorPanel && (
           <>
             <ResizablePanel
               id="editor-panel"
-              order={hasCenterPanel ? 4 : 3}
+              order={hasCenterPanel ? (showJsonPanel ? 5 : 4) : (showJsonPanel ? 4 : 3)}
               minSize={PANEL_SIZES.editor.min}
             >
               <main className={`relative h-full min-w-0 ${panelsBgClass}`}>
@@ -1927,6 +2456,7 @@ const Index = () => {
 };
 
 export default Index;
+
 
 
 

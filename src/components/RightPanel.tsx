@@ -246,6 +246,8 @@ const RightPanel = ({
     return root.innerHTML;
   };
 
+
+  // Ajusta a fonte das Referencias na busca de livros
   const styleBookSearchSourceRefHtml = (html: string): string => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
@@ -253,13 +255,13 @@ const RightPanel = ({
     if (!root) return html;
 
     const blocks = Array.from(root.querySelectorAll("p, li"));
-    const sourceRefPattern = /(\(<strong>[^<]+<\/strong>;[\s\S]*\))\s*$/;
+    const sourceRefPattern = /(<strong>[^<]+<\/strong>;[\s\S]*)\s*$/;
 
     for (const block of blocks) {
       const current = block.innerHTML || "";
       const next = current.replace(
         sourceRefPattern,
-        '<span style="font-size:0.85em;color:#909090;">$1</span>',
+        '<span style="color:#909090;">$1</span>',
       );
       if (next !== current) block.innerHTML = next;
     }

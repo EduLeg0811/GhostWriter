@@ -52,6 +52,19 @@ export interface ExecuteLLMParams {
 export interface ExecuteLLMResult {
   content: string;
   chunks: string[];
+  meta?: {
+    id?: string;
+    model?: string;
+    status?: string;
+    created_at?: number | string;
+    temperature_requested?: number;
+    max_output_tokens_requested?: number | null;
+    gpt5_verbosity_requested?: string | null;
+    gpt5_effort_requested?: string | null;
+    usage?: Record<string, unknown>;
+    rag_references?: string[];
+    rag_chunks_count?: number;
+  };
 }
 
 export async function executeLLM(params: ExecuteLLMParams): Promise<ExecuteLLMResult> {
@@ -80,7 +93,7 @@ export async function executeLLM(params: ExecuteLLMParams): Promise<ExecuteLLMRe
   }
 
   const data = await res.json();
-  return { content: data.content ?? "", chunks: data.chunks ?? [] };
+  return { content: data.content ?? "", chunks: data.chunks ?? [], meta: data.meta ?? undefined };
 }
 
 export function buildDefinePrompt(text: string, ragContext?: string): ChatMessage[] {

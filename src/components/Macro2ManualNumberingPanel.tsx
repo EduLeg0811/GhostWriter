@@ -3,6 +3,7 @@ import { Label } from "@/components/ui/label";
 import { ListOrdered, Loader2, X } from "lucide-react";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
+import { Separator } from "@/components/ui/separator";
 
 export type Macro2SpacingMode = "normal_single" | "normal_double" | "nbsp_single" | "nbsp_double";
 
@@ -28,7 +29,11 @@ const Macro2ManualNumberingPanel = ({
   showPanelChrome = true,
 }: Macro2ManualNumberingPanelProps) => {
   const content = (
+
+
+
     <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
+
       <div className="space-y-5">
         <div className="space-y-1">
           <p className="text-sm font-semibold text-foreground">{title}</p>

@@ -95,7 +95,7 @@ const AiActionParametersPanel = ({
             <select
               value={selectedLanguage}
               onChange={(e) => onSelectedLanguageChange?.(e.target.value)}
-              className="h-9 w-full rounded-md border border-border bg-white px-3 text-xs outline-none focus:border-primary"
+              className="h-8 w-full rounded-md border border-border bg-white px-3 text-xs outline-none focus:border-primary"
             >
               {languageOptions.map((option) => (
                 <option key={option.value} value={option.value}>

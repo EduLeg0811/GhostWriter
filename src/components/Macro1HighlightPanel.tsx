@@ -59,24 +59,31 @@ const Macro1HighlightPanel = ({
           <p className="text-xs text-muted-foreground">{description}</p>
         </div>
 
-        <Separator />
+        {/*<Separator />*/}
 
-        <div className="space-y-2">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Termo</Label>
-          <Input
-            value={term}
-            onChange={(e) => onTermChange(e.target.value)}
-            placeholder="Digite o termo para destacar"
-            className="h-9 bg-white text-xs placeholder:text-xs md:text-xs"
-          />
-          <p className="text-xs text-muted-foreground">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <Label className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Termo
+            </Label>
+
+            <Input
+              value={term}
+              onChange={(e) => onTermChange(e.target.value)}
+              placeholder="Digite o termo para destacar"
+              className="h-8 text-xs md:text-xs bg-white"
+            />
+          </div>
+          
+
+          <p className="mt-4 text-xs text-muted-foreground">
             {!term.trim()
-              ? "Informe um termo para ver a previa."
+              ? ""
               : !hasDocumentOpen
-                ? "Abra um documento para ver a contagem."
+                ? ""
                 : isCountingMatches
-                  ? "Calculando ocorrencias..."
-                  : `Ocorrencias encontradas: ${predictedMatches ?? 0}`}
+                  ? "Calculando ocorrências..."
+                  : `Ocorrências encontradas: ${predictedMatches ?? 0}`}
           </p>
         </div>
 
@@ -105,7 +112,7 @@ const Macro1HighlightPanel = ({
           <Button
             variant="secondary"
             size="sm"
-            className="h-9 w-full rounded-lg border px-3 text-sm font-medium text-black shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-8 w-full rounded-lg border px-3 text-sm font-medium text-black shadow-sm transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
             style={{ backgroundColor: selectedHighlightColor, borderColor: selectedHighlightColor }}
             onClick={onRunHighlight}
             disabled={!canRun}
@@ -135,7 +142,11 @@ const Macro1HighlightPanel = ({
           </Button>
         </div>
       </div>
+      <br />
+
     </div>
+
+    
   );
 
   if (!showPanelChrome) return content;
@@ -154,4 +165,5 @@ const Macro1HighlightPanel = ({
 };
 
 export default Macro1HighlightPanel;
+
 
