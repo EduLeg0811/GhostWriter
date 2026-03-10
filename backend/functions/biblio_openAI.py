@@ -33,6 +33,195 @@ class Bibliografia:
 # SERVIÇO PRINCIPAL
 # ============================================================
 
+
+SYSTEM_PROMPT_TEXTO_LIVRE = """
+
+Você é um assistente especializado em reconstrução de referências bibliográficas acadêmicas.
+Sua função é identificar e reconstruir referências completas a partir de uma string bibliográfica livre fornecida pelo usuário.
+
+A string de entrada pode conter:
+- apenas parte do título
+- nome parcial do autor
+- sobrenome incompleto
+- ano aproximado
+- erros de digitação
+- ordem aleatória de elementos
+
+Identificação da obra: 
+- Utilize raciocínio bibliográfico para identificar a obra mais provável.
+
+Caso existam múltiplas correspondências plausíveis:
+- retorne no máximo 3 referências
+- ordenadas da maior para a menor probabilidade de correspondência.
+
+Normalização da saída
+A saída deve sempre seguir EXATAMENTE o formato:
+- **Sobrenome**, Nome; ***Título da obra***; informações adicionais separadas por ";"; ano.
+- Não inclua explicações, comentários ou texto adicional.  
+- Retorne apenas as referências formatadas.
+
+Exemplo
+Entrada:
+Tocci Digital Systems Principles 2011
+Saída:
+**Tocci**, Ronald J.; ***Digital Systems: Principles and Applications***; livro; brochura; 912 p.; 11ª ed.; Pearson; Upper Saddle River, NJ; 2011.
+""".strip()
+
+
+
+
+
+
+
+
+
+
+
+SYSTEM_PROMPT_TEXTO_LIVRE_Backup = """
+Você é um assistente especializado em identificação bibliográfica e reconstrução de referências completas a partir de strings livres, incompletas ou desordenadas.
+Receberá uma string bibliográfica não estruturada. Essa string pode conter qualquer combinação de informações, como: nome de autor, parte do título, ano, editora, cidade, páginas, idioma, tipo de obra ou outros fragmentos textuais. A ordem dos elementos pode estar incorreta, incompleta ou conter erros de digitação.
+Seu objetivo é identificar a obra mais provável e reconstruir sua referência bibliográfica.
+
+Procedimento geral
+
+1. Interpretação da string
+
+Analise a string recebida e extraia possíveis pistas bibliográficas, como:
+- autor(es)
+- título ou parte do título
+- ano
+- editora
+- cidade
+- páginas
+- idioma
+- tipo de obra
+
+Ignore palavras irrelevantes ou ruído textual.
+
+2. Identificação da obra
+
+Utilize as pistas extraídas para localizar a obra mais provável em bases bibliográficas reconhecidas, por exemplo:
+- catálogos editoriais
+- Google Books
+- WorldCat
+- CrossRef
+- bases acadêmicas
+- bibliotecas universitárias
+- IMDb (para filmes)
+
+3. Critério mínimo de identificação
+
+Identifique uma obra apenas quando houver evidência suficiente, como:
+
+- coincidência de autor + parte significativa do título
+ou
+- coincidência de título + ano aproximado
+ou
+- coincidência de autor + editora ou contexto temático
+
+Se a correspondência for baseada apenas em fragmentos muito genéricos, não identifique.
+
+Nesse caso responda exatamente:
+
+NÃO IDENTIFICADO
+
+4. Desambiguação
+
+Se múltiplas obras possíveis forem encontradas, aplique os seguintes critérios de prioridade:
+
+1. maior correspondência de título
+2. coincidência de autor
+3. proximidade do ano
+4. coincidência de editora
+5. relevância bibliográfica da obra
+
+Se ainda houver ambiguidade significativa, responda:
+
+NÃO IDENTIFICADO
+
+5. Número de resultados
+
+Se apenas uma obra corresponder claramente, retorne apenas essa referência.
+
+Se houver múltiplas correspondências plausíveis, retorne no máximo três referências prováveis.
+
+As referências devem ser apresentadas em ordem decrescente de confiança (da mais provável para a menos provável).
+
+6. Determinação do tipo de obra
+
+Classifique a obra como um dos seguintes tipos documentais:
+
+livro; artigo científico; capítulo de livro; site; página web; filme; tese; dissertação; relatório; outro tipo documental.
+
+7. Completação dos dados
+
+Quando disponíveis, inclua:
+
+- tipo de encadernação (brochura, capa dura etc.)
+- número total de páginas
+- número da edição
+- editora
+- cidade
+- estado ou país
+- ano de publicação
+
+Não invente dados inexistentes.
+
+Se algum dado não puder ser confirmado, omita completamente o campo correspondente e também o delimitador associado no formato final.
+
+Não utilize placeholders, colchetes, traços ou expressões como “desconhecido” ou “não informado”.
+
+Normalização dos autores
+
+Formate cada autor no padrão:
+
+**Sobrenome**, Nome
+
+Exemplo:
+
+**Azevedo**, Eduardo
+
+Em caso de múltiplos autores, liste-os na ordem canônica da obra e separe cada autor por "; ".
+
+Normalização do título
+
+O título deve ser reproduzido exatamente como publicado.
+
+Não traduza o título.
+Não resuma o título.
+Não simplifique o título.
+
+Mantenha subtítulos após dois pontos (:), quando existirem.
+
+Formato obrigatório da resposta
+
+Cada referência deve aparecer em uma linha separada e seguir exatamente esta ordem de campos:
+
+autor(es); título da obra; tipo da obra; tipo de encadernação; número total de páginas; número da edição; editora; cidade, estado ou país; ano; páginas citadas.
+
+Regras obrigatórias do formato final
+
+- A resposta deve conter apenas as referências finais formatadas, sem explicações.
+- Cada referência deve ocupar uma única linha.
+- Os campos presentes devem ser separados por ponto e vírgula seguido de espaço.
+- A ordem dos campos nunca deve ser alterada.
+- Omitir completamente qualquer campo não confirmado, sem deixar delimitadores vazios.
+- O campo de autor deve ser formatado como **Sobrenome**, Nome.
+- Em múltiplos autores, repetir esse formato para cada autor.
+- Apenas o sobrenome deve estar em negrito.
+- O título da obra deve estar em negrito e itálico no formato ***título da obra***.
+- Se o campo páginas citadas estiver presente, utilizar o formato: p. 12, 15, 50-60.
+- Ordenar páginas citadas em ordem crescente.
+
+Exemplo
+
+Entrada:
+Tocci Digital Systems Principles 2011
+
+Saída:
+**Tocci**, Ronald J.; ***Digital Systems: Principles and Applications***; livro; brochura; 912 p.; 11ª ed.; Pearson; Upper Saddle River, NJ; 2011.
+""".strip()
+
 class BibliografiaService:
 
     def __init__(self, api_key: Optional[str] = None):
@@ -56,6 +245,65 @@ class BibliografiaService:
             self.max_llm_enrich = 3
 
         self._llm_cache: Dict[str, dict] = {}  # cache simples em memória (por processo)
+        self._last_llm_log: Dict[str, object] | None = None
+
+
+
+
+
+
+    def identificar_por_texto_livre(self, free_text: str) -> Dict:
+        texto = (free_text or "").strip()
+        if not texto:
+            raise ValueError("Campo 'Texto Livre' vazio.")
+        if not self.api_key:
+            raise ValueError("OPENAI_API_KEY não configurada.")
+
+        try:
+            try:
+                from backend.functions.llm_gateway import execute_llm_request
+            except Exception:
+                from functions.llm_gateway import execute_llm_request
+
+
+            result = execute_llm_request(
+                api_key=self.api_key,
+                model="gpt-5.4",
+                messages=[{"role": "user", "content": texto}],
+                system_prompt=SYSTEM_PROMPT_TEXTO_LIVRE,
+                temperature=0,
+                max_output_tokens=500,
+                gpt5_effort="none",
+                gpt5_verbosity="low",               
+                tools=[{"type": "web_search"}],
+                vector_store_ids=[],
+                timeout=60,
+                previous_response_id=None,
+            )
+            self._last_llm_log = {
+                "request": result.get("request"),
+                "response": result.get("raw"),
+            }
+        except requests.HTTPError as exc:
+            response = exc.response
+            detail = ((response.text if response is not None else "") or "").strip() or str(exc)
+            raise RuntimeError(f"Falha na consulta LLM por Texto Livre: {detail}")
+        except Exception as exc:
+            raise RuntimeError(f"Falha na consulta LLM por Texto Livre: {exc}")
+
+        referencia = str(result.get("content") or "").strip()
+        if not referencia:
+            referencia = "NÃO IDENTIFICADO"
+        return {
+            "referencia": referencia,
+            "matches": [referencia],
+            "max_results": 1,
+            "score": None,
+            "llm_log": self._last_llm_log,
+        }
+
+
+
 
     # ============================================================
     # DETECÇÃO AUTOMÁTICA LIVRO VS ARTIGO
@@ -642,8 +890,13 @@ Regras:
                 system_prompt="",
                 max_output_tokens=1400,
                 tools=[{"type": "web_search"}],
+                vector_store_ids=[],
                 timeout=45,
             )
+            self._last_llm_log = {
+                "request": result.get("request"),
+                "response": result.get("raw"),
+            }
 
             text = str(result.get("content") or "").strip()
             data = self._parse_json_payload(text)
@@ -810,6 +1063,7 @@ Regras:
     # ============================================================
 
     def gerar_com_validacao(self, consulta: str = "", criterios: Optional[Dict[str, str]] = None) -> Dict:
+        self._last_llm_log = None
         criterios = criterios or {}
         consulta = (consulta or "").strip()
 
@@ -945,4 +1199,5 @@ Regras:
             "matches": referencias,
             "max_results": self.max_results,
             "score": self._calcular_score(finais),
+            "llm_log": self._last_llm_log,
         }

@@ -157,8 +157,9 @@ export async function biblioExternaApp(payload: {
   publisher?: string;
   identifier?: string;
   extra?: string;
+  freeText?: string;
   topK?: number;
-}): Promise<{ ok: boolean; result: { query: string; matches: string[]; markdown: string; score?: { score_percentual?: number; classificacao?: string } } }> {
+}): Promise<{ ok: boolean; result: { query: string; matches: string[]; markdown: string; score?: { score_percentual?: number; classificacao?: string }; llmLog?: { request?: unknown; response?: unknown } | null } }> {
   const res = await fetch(apiUrl("/api/apps/biblio-externa"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },

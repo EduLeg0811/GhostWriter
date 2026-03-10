@@ -16,6 +16,7 @@ interface BiblioExternaPanelProps {
   publisher: string;
   identifier: string;
   extra: string;
+  freeText: string;
   onAuthorChange: (value: string) => void;
   onTitleFieldChange: (value: string) => void;
   onYearChange: (value: string) => void;
@@ -23,6 +24,7 @@ interface BiblioExternaPanelProps {
   onPublisherChange: (value: string) => void;
   onIdentifierChange: (value: string) => void;
   onExtraChange: (value: string) => void;
+  onFreeTextChange: (value: string) => void;
   onRun: () => void;
   isRunning: boolean;
   onClose?: () => void;
@@ -39,6 +41,7 @@ const BiblioExternaPanel = ({
   publisher,
   identifier,
   extra,
+  freeText,
   onAuthorChange,
   onTitleFieldChange,
   onYearChange,
@@ -46,12 +49,13 @@ const BiblioExternaPanel = ({
   onPublisherChange,
   onIdentifierChange,
   onExtraChange,
+  onFreeTextChange,
   onRun,
   isRunning,
   onClose,
   showPanelChrome = true,
 }: BiblioExternaPanelProps) => {
-  const canRun = (author.trim() || titleField.trim() || year.trim() || journal.trim() || publisher.trim() || identifier.trim() || extra.trim()) && !isRunning;
+  const canRun = (author.trim() || titleField.trim() || year.trim() || journal.trim() || publisher.trim() || identifier.trim() || extra.trim() || freeText.trim()) && !isRunning;
 
   const content = (
     <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
@@ -97,6 +101,10 @@ const BiblioExternaPanel = ({
           <Label className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Extra</Label>
           <Input value={extra} onChange={(e) => onExtraChange(e.target.value)} className="h-8 text-xs md:text-xs bg-white" />
         </div>
+        <div className="flex items-center gap-2">
+          <Label className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Texto Livre</Label>
+          <Input value={freeText} onChange={(e) => onFreeTextChange(e.target.value)} className="h-8 text-xs md:text-xs bg-white" />
+        </div>
 
         <Button variant="secondary" size="sm" className={primaryActionButtonClass} onClick={onRun} disabled={!canRun}>
           {isRunning ? (
@@ -131,4 +139,3 @@ const BiblioExternaPanel = ({
 };
 
 export default BiblioExternaPanel;
-

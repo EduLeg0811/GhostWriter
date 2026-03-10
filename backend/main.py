@@ -139,6 +139,7 @@ class BiblioExternaRequest(BaseModel):
     publisher: str = ""
     identifier: str = ""
     extra: str = ""
+    freeText: str = ""
     topK: int = 5
 
 
@@ -868,6 +869,7 @@ def api_biblio_externa(payload: BiblioExternaRequest) -> dict[str, Any]:
     publisher = (payload.publisher or "").strip()
     identifier = (payload.identifier or "").strip()
     extra = (payload.extra or "").strip()
+    free_text = (payload.freeText or "").strip()
 
     if not query:
         parts = [
@@ -881,7 +883,7 @@ def api_biblio_externa(payload: BiblioExternaRequest) -> dict[str, Any]:
         ]
         query = " | ".join([p for p in parts if p])
 
-    if not query:
+    if not query and not free_text:
         raise HTTPException(status_code=400, detail="Informe ao menos um campo de busca da bibliografia externa.")
 
     try:
@@ -891,18 +893,34 @@ def api_biblio_externa(payload: BiblioExternaRequest) -> dict[str, Any]:
 
     try:
         service = BibliografiaService(api_key=openai_api_key)
-        result = service.gerar_com_validacao(
-            query,
-            criterios={
-                "author": author,
-                "title": title,
-                "year": year,
-                "journal": journal,
-                "publisher": publisher,
-                "identifier": identifier,
-                "extra": extra,
-            },
-        )
+        if free_text:
+            result = service.identificar_por_texto_livre(free_text)
+            referencia = str(result.get("referencia") or "").strip()
+            if not referencia:
+                referencia = "NÃO IDENTIFICADO"
+            return {
+                "ok": True,
+                "result": {
+                    "query": free_text,
+                    "matches": [referencia],
+                    "markdown": referencia,
+                    "score": None,
+                    "llmLog": result.get("llm_log") if isinstance(result, dict) else None,
+                },
+            }
+        else:
+            result = service.gerar_com_validacao(
+                query,
+                criterios={
+                    "author": author,
+                    "title": title,
+                    "year": year,
+                    "journal": journal,
+                    "publisher": publisher,
+                    "identifier": identifier,
+                    "extra": extra,
+                },
+            )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
@@ -921,10 +939,11 @@ def api_biblio_externa(payload: BiblioExternaRequest) -> dict[str, Any]:
     return {
         "ok": True,
         "result": {
-            "query": query,
+            "query": free_text or query,
             "matches": matches,
             "markdown": markdown,
             "score": score,
+            "llmLog": result.get("llm_log") if isinstance(result, dict) else None,
         },
     }
 

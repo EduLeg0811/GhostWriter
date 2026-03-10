@@ -232,6 +232,7 @@ const Index = () => {
   const [biblioExternaPublisher, setBiblioExternaPublisher] = useState("");
   const [biblioExternaIdentifier, setBiblioExternaIdentifier] = useState("");
   const [biblioExternaExtra, setBiblioExternaExtra] = useState("");
+  const [biblioExternaFreeText, setBiblioExternaFreeText] = useState("");
   const [isRunningBiblioExterna, setIsRunningBiblioExterna] = useState(false);
   const [lexicalBooks, setLexicalBooks] = useState<string[]>([]);
   const [selectedLexicalBook, setSelectedLexicalBook] = useState<string>("LO");
@@ -935,14 +936,29 @@ const Index = () => {
     const publisher = biblioExternaPublisher.trim();
     const identifier = biblioExternaIdentifier.trim();
     const extra = biblioExternaExtra.trim();
-    if (!author && !title && !year && !journal && !publisher && !identifier && !extra) {
+    const freeText = biblioExternaFreeText.trim();
+    if (!author && !title && !year && !journal && !publisher && !identifier && !extra && !freeText) {
       toast.error("Informe ao menos um campo para Bibliografia Externa.");
       return;
     }
 
     setIsRunningBiblioExterna(true);
     try {
-      const data = await biblioExternaApp({ author, title, year, journal, publisher, identifier, extra });
+      const data = freeText
+        ? await biblioExternaApp({ freeText })
+        : await biblioExternaApp({ author, title, year, journal, publisher, identifier, extra });
+      if (data.result.llmLog) {
+        const id = crypto.randomUUID();
+        const at = new Date().toISOString();
+        setLlmLogs([
+          {
+            id,
+            at,
+            request: data.result.llmLog.request ?? {},
+            response: data.result.llmLog.response ?? {},
+          },
+        ]);
+      }
       const markdown = (data.result.markdown || "").trim();
       const scorePercentual = Number(data.result.score?.score_percentual ?? NaN);
       const classificacao = (data.result.score?.classificacao || "").trim();
@@ -951,15 +967,17 @@ const Index = () => {
         : "";
       const content = [scoreLine, markdown].filter(Boolean).join("\n\n");
       if (content) {
-        const queryParts = [
-          author && `autor: ${author}`,
-          title && `titulo: ${title}`,
-          year && `ano: ${year}`,
-          journal && `revista: ${journal}`,
-          publisher && `editora: ${publisher}`,
-          identifier && `doi/isbn: ${identifier}`,
-          extra && `extra: ${extra}`,
-        ].filter(Boolean);
+        const queryParts = freeText
+          ? [`texto livre: ${freeText}`]
+          : [
+              author && `autor: ${author}`,
+              title && `titulo: ${title}`,
+              year && `ano: ${year}`,
+              journal && `revista: ${journal}`,
+              publisher && `editora: ${publisher}`,
+              identifier && `doi/isbn: ${identifier}`,
+              extra && `extra: ${extra}`,
+            ].filter(Boolean);
         addResponse("app_biblio_externa", queryParts.join(" | "), content);
       }
       if (!data.result.matches?.length) {
@@ -971,7 +989,7 @@ const Index = () => {
     } finally {
       setIsRunningBiblioExterna(false);
     }
-  }, [biblioExternaAuthor, biblioExternaExtra, biblioExternaIdentifier, biblioExternaJournal, biblioExternaPublisher, biblioExternaTitle, biblioExternaYear]);
+  }, [biblioExternaAuthor, biblioExternaExtra, biblioExternaFreeText, biblioExternaIdentifier, biblioExternaJournal, biblioExternaPublisher, biblioExternaTitle, biblioExternaYear]);
 
   const ensureLexicalBooksLoaded = useCallback(async () => {
     if (lexicalBooks.length > 0) return lexicalBooks;
@@ -2242,6 +2260,7 @@ const Index = () => {
                           publisher={biblioExternaPublisher}
                           identifier={biblioExternaIdentifier}
                           extra={biblioExternaExtra}
+                          freeText={biblioExternaFreeText}
                           onAuthorChange={setBiblioExternaAuthor}
                           onTitleFieldChange={setBiblioExternaTitle}
                           onYearChange={setBiblioExternaYear}
@@ -2249,6 +2268,7 @@ const Index = () => {
                           onPublisherChange={setBiblioExternaPublisher}
                           onIdentifierChange={setBiblioExternaIdentifier}
                           onExtraChange={setBiblioExternaExtra}
+                          onFreeTextChange={setBiblioExternaFreeText}
                           onRun={() => void handleRunBiblioExterna()}
                           isRunning={isRunningBiblioExterna}
                           showPanelChrome={false}

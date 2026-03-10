@@ -9,11 +9,40 @@ OPENAI_VECTOR_SEARCH_URL = "https://api.openai.com/v1/vector_stores/{vector_stor
 
 
 def _extract_response_text(payload: dict[str, Any]) -> str:
+    chunks: list[str] = []
     for item in payload.get("output", []):
         for block in item.get("content", []):
-            if block.get("type") == "output_text":
-                return str(block.get("text") or "").strip()
-    return str(payload.get("output_text") or "").strip()
+            block_type = str(block.get("type") or "").strip().lower()
+            if block_type in {"output_text", "text"}:
+                text_value = block.get("text")
+                if isinstance(text_value, dict):
+                    text = str(text_value.get("value") or "").strip()
+                else:
+                    text = str(text_value or "").strip()
+                if text:
+                    chunks.append(text)
+        # fallback por item, caso content venha vazio em alguns formatos
+        item_text = item.get("text")
+        if isinstance(item_text, dict):
+            text = str(item_text.get("value") or "").strip()
+            if text:
+                chunks.append(text)
+        elif isinstance(item_text, str):
+            text = item_text.strip()
+            if text:
+                chunks.append(text)
+    if chunks:
+        return "\n".join(chunks).strip()
+    output_text = payload.get("output_text")
+    if isinstance(output_text, list):
+        out_parts = [str(x).strip() for x in output_text if str(x).strip()]
+        if out_parts:
+            return "\n".join(out_parts).strip()
+    if isinstance(output_text, dict):
+        text = str(output_text.get("value") or "").strip()
+        if text:
+            return text
+    return str(output_text or "").strip()
 
 
 def _to_responses_input(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -185,5 +214,6 @@ def execute_llm_request(
         "content": _extract_response_text(payload),
         "chunks": chunks,
         "references": rag_references,
+        "request": request_json,
         "raw": payload,
     }
