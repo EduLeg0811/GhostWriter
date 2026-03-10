@@ -411,7 +411,7 @@ const RightPanel = ({
   return (
     <div className={`flex h-full flex-col ${panelsBgClass}`}>
       <div className={`flex items-center justify-between border-b border-border ${panelsTopMenuBarBgClass} px-4 py-3`}>
-        <h2 className="text-sm font-semibold text-foreground">Histórico({responses.length})</h2>
+        <h2 className="text-sm font-semibold text-foreground">Histórico ({responses.length})</h2>
         <div className="flex flex-1 items-center justify-center">
           {isSending && (
             <div className="inline-flex h-7 items-center gap-2 rounded-full border border-green-200 bg-green-100 px-5 text-sm font-simibold leading-none text-blue-700 ring-0 ring-green-200 shadow-sm">

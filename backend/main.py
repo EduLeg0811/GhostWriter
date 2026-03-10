@@ -101,6 +101,7 @@ for prefix, namespace in DOCX_XML_NAMESPACES.items():
 class ExecuteLLMRequest(BaseModel):
     model: str = "gpt-4.1-mini"
     messages: list[dict[str, Any]]
+    previousResponseId: str | None = None
     systemPrompt: str = ""
     temperature: float = 0.7
     maxOutputTokens: int | None = None
@@ -1211,6 +1212,7 @@ def api_ai_execute(payload: ExecuteLLMRequest) -> dict[str, Any]:
             api_key=openai_api_key,
             model=payload.model,
             messages=payload.messages,
+            previous_response_id=payload.previousResponseId,
             system_prompt=payload.systemPrompt,
             temperature=payload.temperature,
             max_output_tokens=payload.maxOutputTokens,

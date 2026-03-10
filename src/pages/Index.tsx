@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AlignLeft, BookOpen, Braces, FileText, Hash, Languages, ListOrdered, Loader2, Menu, PenLine, RefreshCw, Repeat2, RotateCcw, Search, Sparkles, Type, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
@@ -52,6 +52,7 @@ import {
   CHAT_GPT5_VERBOSITY,
   CHAT_GPT5_EFFORT,
   CHAT_MAX_OUTPUT_TOKENS,
+  CHAT_MAX_NUM_RESULTS,
   CHAT_SYSTEM_PROMPT,
   LLM_VECTOR_STORES,
   LLM_VECTOR_STORE_LO,
@@ -124,6 +125,7 @@ const MACRO_PANEL_ICONS: Record<MacroActionId, typeof BookOpen> = {
 const LLM_LOG_FONT_MIN = 0.5;
 const LLM_LOG_FONT_MAX = 1.0;
 const LLM_LOG_FONT_STEP = 0.05;
+const LLM_SETTINGS_STORAGE_KEY = "llm_settings_v1";
 const DEFAULT_LOG_FONT_SIZE_PX = 9;
 const DEFAULT_LOG_LINE_HEIGHT_RATIO = 1.1;
 // Câmbio base (USD -> BRL) para estimativa de custo.
@@ -135,23 +137,23 @@ const parameterAppMeta: Record<AppActionId, { title: string; description: string
   app3: { title: "Bibliografia Autores", description: "Monta bibliografia de autores diversos." },
   app4: { title: "Busca em Livros", description: "Busca termos nos livros de Waldo Vieira." },
   app5: { title: "Busca em Verbetes", description: "Busca termos nos verbetes em geral." },
-  app6: { title: "Bibliografia Externa", description: "Busca referÃªncias externas na internet." },
+  app6: { title: "Bibliografia Externa", description: "Busca referências externas na internet." },
   app7: { title: "Tabela Automatizada", description: "Abre tabela no Word e no editor HTML." },
   app8: { title: "Definologia", description: "Gera Definologia do verbete." },
   app9: { title: "Sinonimologia", description: "Gera Sinonimologia do verbete." },
   app10: { title: "Fatologia", description: "Gera Fatologia do verbete." },
-  app11: { title: "Frase EnfÃ¡tica", description: "Gera Frase EnfÃ¡tica do verbete." },
+  app11: { title: "Frase Enfática", description: "Gera Frase Enfática do verbete." },
 };
 const parameterMacroMeta: Record<MacroActionId, { title: string; description: string }> = {
   macro1: { title: "Highlight", description: "Destaca termos no documento." },
-  macro2: { title: "Numerar lista", description: "Aplica numeraÃ§Ã£o manual Ã  lista de itens." },
+  macro2: { title: "Numerar lista", description: "Aplica numeração manual à lista de itens." },
 };
 const parameterActionMeta: Record<AiActionId, { title: string; description: string }> = {
-  define: { title: "Definir", description: "Definologia conscienciolÃ³gica." },
-  synonyms: { title: "SinonÃ­mia", description: "Sinonimologia." },
-  epigraph: { title: "EpÃ­grafe", description: "Sugere epÃ­grafe." },
+  define: { title: "Definir", description: "Definologia conscienciológica." },
+  synonyms: { title: "Sinonímia", description: "Sinonimologia." },
+  epigraph: { title: "Epígrafe", description: "Sugere epígrafe." },
   rewrite: { title: "Reescrever", description: "Melhora clareza e fluidez." },
-  summarize: { title: "Resumir", description: "SÃ­ntese concisa." },
+  summarize: { title: "Resumir", description: "Síntese concisa." },
   pensatas: { title: "Pensatas LO", description: "Pensatas afins." },
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
 };
@@ -183,11 +185,11 @@ const TRANSLATE_LANGUAGE_OPTIONS = [
   { value: "Russo", label: "Russo" },
 ] as const;
 
-// Valor padrao para o campo "Maximo de resultados" da Pesquisa em Livros.
+// Valor padrão para o campo "Máximo de resultados" da Pesquisa em Livros.
 // Ajuste aqui para alterar facilmente o default no frontend.
 const DEFAULT_BOOK_SEARCH_MAX_RESULTS = 10;
 
-const PDF_HEADER_SIGNATURE_RE = /enciclop(?:ÃƒÂ©|Ã©|e)dia\s+da\s+conscienciologia/i;
+const PDF_HEADER_SIGNATURE_RE = /enciclop(?:é|e)dia\s+da\s+conscienciologia/i;
 
 const CHAT_EDITOR_CONTEXT_MAX_CHARS = 10000;
 
@@ -259,10 +261,13 @@ const Index = () => {
   const [macro2SpacingMode, setMacro2SpacingMode] = useState<Macro2SpacingMode>("nbsp_double");
   const [llmModel, setLlmModel] = useState(CHAT_MODEL);
   const [llmTemperature, setLlmTemperature] = useState(CHAT_TEMPERATURE);
-  const [llmMaxOutputTokens, setLlmMaxOutputTokens] = useState<number | "">(CHAT_MAX_OUTPUT_TOKENS ?? "");
+  const [llmMaxOutputTokens, setLlmMaxOutputTokens] = useState<number>(CHAT_MAX_OUTPUT_TOKENS ?? 500);
+  const [llmMaxNumResults, setLlmMaxNumResults] = useState<number>(CHAT_MAX_NUM_RESULTS);
+  const [llmEditorContextMaxChars, setLlmEditorContextMaxChars] = useState<number>(CHAT_EDITOR_CONTEXT_MAX_CHARS);
   const [llmVerbosity, setLlmVerbosity] = useState(CHAT_GPT5_VERBOSITY ?? "");
   const [llmEffort, setLlmEffort] = useState(CHAT_GPT5_EFFORT ?? "");
   const [llmSystemPrompt, setLlmSystemPrompt] = useState(CHAT_SYSTEM_PROMPT ?? "");
+  const [chatPreviousResponseId, setChatPreviousResponseId] = useState<string | null>(null);
   const [isJsonLogPanelOpen, setIsJsonLogPanelOpen] = useState(false);
   const [llmLogs, setLlmLogs] = useState<Array<{ id: string; at: string; request: unknown; response?: unknown; error?: string }>>([]);
   const LLM_LOG_FONT_DEFAULT = Number((DEFAULT_LOG_FONT_SIZE_PX / 11).toFixed(2));
@@ -279,6 +284,8 @@ const Index = () => {
     model: CHAT_MODEL,
     temperature: CHAT_TEMPERATURE,
     maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS as number | undefined,
+    maxNumResults: CHAT_MAX_NUM_RESULTS,
+    editorContextMaxChars: CHAT_EDITOR_CONTEXT_MAX_CHARS,
     gpt5Verbosity: CHAT_GPT5_VERBOSITY as string | undefined,
     gpt5Effort: CHAT_GPT5_EFFORT as string | undefined,
     systemPrompt: CHAT_SYSTEM_PROMPT as string | undefined,
@@ -310,12 +317,59 @@ const Index = () => {
     llmConfigRef.current = {
       model: llmModel,
       temperature: llmTemperature,
-      maxOutputTokens: llmMaxOutputTokens === "" ? undefined : llmMaxOutputTokens,
+      maxOutputTokens: llmMaxOutputTokens,
+      maxNumResults: llmMaxNumResults,
+      editorContextMaxChars: llmEditorContextMaxChars,
       gpt5Verbosity: llmVerbosity || undefined,
       gpt5Effort: llmEffort || undefined,
-      systemPrompt: llmSystemPrompt || undefined,
+      systemPrompt: llmSystemPrompt.trim() || CHAT_SYSTEM_PROMPT,
     };
-  }, [llmEffort, llmMaxOutputTokens, llmModel, llmSystemPrompt, llmTemperature, llmVerbosity]);
+  }, [llmEditorContextMaxChars, llmEffort, llmMaxNumResults, llmMaxOutputTokens, llmModel, llmSystemPrompt, llmTemperature, llmVerbosity]);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(LLM_SETTINGS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<{
+        model: string;
+        temperature: number;
+        maxOutputTokens: number;
+        maxNumResults: number;
+        editorContextMaxChars: number;
+        gpt5Verbosity: string;
+        gpt5Effort: string;
+        systemPrompt: string;
+      }>;
+      if (typeof parsed.model === "string" && parsed.model.trim()) setLlmModel(parsed.model.trim());
+      if (typeof parsed.temperature === "number" && Number.isFinite(parsed.temperature)) setLlmTemperature(Math.max(0, Math.min(parsed.temperature, 2)));
+      if (typeof parsed.maxOutputTokens === "number" && Number.isFinite(parsed.maxOutputTokens)) setLlmMaxOutputTokens(Math.max(1, Math.floor(parsed.maxOutputTokens)));
+      if (typeof parsed.maxNumResults === "number" && Number.isFinite(parsed.maxNumResults)) setLlmMaxNumResults(Math.max(1, Math.min(Math.floor(parsed.maxNumResults), 20)));
+      if (typeof parsed.editorContextMaxChars === "number" && Number.isFinite(parsed.editorContextMaxChars)) setLlmEditorContextMaxChars(Math.max(500, Math.floor(parsed.editorContextMaxChars)));
+      if (typeof parsed.gpt5Verbosity === "string") setLlmVerbosity(parsed.gpt5Verbosity);
+      if (typeof parsed.gpt5Effort === "string") setLlmEffort(parsed.gpt5Effort);
+      if (typeof parsed.systemPrompt === "string") setLlmSystemPrompt(parsed.systemPrompt);
+    } catch {
+      // Ignora storage inválido e mantém defaults.
+    }
+  }, []);
+
+  useEffect(() => {
+    const safeTemperature = Number.isFinite(llmTemperature) ? Math.max(0, Math.min(llmTemperature, 2)) : CHAT_TEMPERATURE;
+    const safeMaxOutputTokens = Number.isFinite(llmMaxOutputTokens) ? Math.max(1, Math.floor(llmMaxOutputTokens)) : (CHAT_MAX_OUTPUT_TOKENS ?? 500);
+    const safeMaxNumResults = Number.isFinite(llmMaxNumResults) ? Math.max(1, Math.min(Math.floor(llmMaxNumResults), 20)) : CHAT_MAX_NUM_RESULTS;
+    const safeEditorContextMaxChars = Number.isFinite(llmEditorContextMaxChars) ? Math.max(500, Math.floor(llmEditorContextMaxChars)) : CHAT_EDITOR_CONTEXT_MAX_CHARS;
+    const payload = {
+      model: llmModel,
+      temperature: safeTemperature,
+      maxOutputTokens: safeMaxOutputTokens,
+      maxNumResults: safeMaxNumResults,
+      editorContextMaxChars: safeEditorContextMaxChars,
+      gpt5Verbosity: llmVerbosity,
+      gpt5Effort: llmEffort,
+      systemPrompt: llmSystemPrompt,
+    };
+    window.localStorage.setItem(LLM_SETTINGS_STORAGE_KEY, JSON.stringify(payload));
+  }, [llmEditorContextMaxChars, llmEffort, llmMaxNumResults, llmMaxOutputTokens, llmModel, llmSystemPrompt, llmTemperature, llmVerbosity]);
 
   useEffect(() => {
     refreshHealth();
@@ -575,6 +629,7 @@ const Index = () => {
       model: currentConfig.model,
       temperature: currentConfig.temperature,
       maxOutputTokens: currentConfig.maxOutputTokens,
+      vectorMaxResults: payload.vectorMaxResults ?? currentConfig.maxNumResults,
       gpt5Verbosity: normalizeVerbosity(currentConfig.gpt5Verbosity),
       gpt5Effort: normalizeEffort(currentConfig.gpt5Effort),
       systemPrompt: currentConfig.systemPrompt,
@@ -602,6 +657,7 @@ const Index = () => {
   const handleCleanLlmConversation = useCallback(() => {
     // A integração atual usa chamadas stateless; limpar o histórico local reinicia o contexto.
     setChatHistory([]);
+    setChatPreviousResponseId(null);
     setResponses([]);
     setLlmLogs([]);
     toast.success("Nova sessão iniciada (contexto limpo).");
@@ -1005,7 +1061,7 @@ const Index = () => {
     const title = verbetografiaTitle.trim();
     const specialty = verbetografiaSpecialty.trim();
     if (!title) {
-      toast.error("Informe o tÃ­tulo do verbete.");
+      toast.error("Informe o título do verbete.");
       return;
     }
     if (!specialty) {
@@ -1018,9 +1074,9 @@ const Index = () => {
       const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
       const latestEditorText = editorApi ? await editorApi.getDocumentText() : documentText;
       const normalizedEditorText = (latestEditorText || "").trim();
-      const editorContextTruncated = normalizedEditorText.length > CHAT_EDITOR_CONTEXT_MAX_CHARS;
-      const editorPlainTextContext = normalizedEditorText.slice(0, CHAT_EDITOR_CONTEXT_MAX_CHARS);
-      const query = `Escreva uma Definologia do tema do verbete com tÃ­tulo: ${title} e especialidade: ${specialty}.`;
+      const editorContextTruncated = normalizedEditorText.length > llmEditorContextMaxChars;
+      const editorPlainTextContext = normalizedEditorText.slice(0, llmEditorContextMaxChars);
+      const query = `Escreva uma Definologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
       const messages = buildVerbeteDefinologiaPrompt(query, editorPlainTextContext, editorContextTruncated);
       const chatStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
       const result = (
@@ -1037,15 +1093,15 @@ const Index = () => {
         })
       ).content.trim();
       const finalContent = result || "Sem conteudo retornado pela IA.";
-      addResponse("app_verbete_definologia", `TÃ­tulo: ${title} | Especialidade: ${specialty}`, finalContent);
+      addResponse("app_verbete_definologia", `Título: ${title} | Especialidade: ${specialty}`, finalContent);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Definologia.";
       toast.error(msg);
-      addResponse("app_verbete_definologia", `TÃ­tulo: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Definologia: ${msg}`);
+      addResponse("app_verbete_definologia", `Título: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Definologia: ${msg}`);
     } finally {
       setIsRunningVerbeteDefinologia(false);
     }
-  }, [openAiReady, verbetografiaTitle, verbetografiaSpecialty, htmlEditorControlApi, documentText]);
+  }, [documentText, htmlEditorControlApi, llmEditorContextMaxChars, openAiReady, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunVerbeteFraseEnfatica = useCallback(async () => {
     if (!openAiReady) {
@@ -1055,7 +1111,7 @@ const Index = () => {
     const title = verbetografiaTitle.trim();
     const specialty = verbetografiaSpecialty.trim();
     if (!title) {
-      toast.error("Informe o tÃ­tulo do verbete.");
+      toast.error("Informe o título do verbete.");
       return;
     }
     if (!specialty) {
@@ -1068,9 +1124,9 @@ const Index = () => {
       const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
       const latestEditorText = editorApi ? await editorApi.getDocumentText() : documentText;
       const normalizedEditorText = (latestEditorText || "").trim();
-      const editorContextTruncated = normalizedEditorText.length > CHAT_EDITOR_CONTEXT_MAX_CHARS;
-      const editorPlainTextContext = normalizedEditorText.slice(0, CHAT_EDITOR_CONTEXT_MAX_CHARS);
-      const query = `Escreva uma Frase EnfÃ¡tica do tema do verbete com tÃ­tulo: ${title} e especialidade: ${specialty}.`;
+      const editorContextTruncated = normalizedEditorText.length > llmEditorContextMaxChars;
+      const editorPlainTextContext = normalizedEditorText.slice(0, llmEditorContextMaxChars);
+      const query = `Escreva uma Frase Enfática do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
       const messages = buildVerbeteFraseEnfaticaPrompt(query, editorPlainTextContext, editorContextTruncated);
       const chatStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
       const result = (
@@ -1087,15 +1143,15 @@ const Index = () => {
         })
       ).content.trim();
       const finalContent = result || "Sem conteudo retornado pela IA.";
-      addResponse("app_verbete_frase_enfatica", `TÃ­tulo: ${title} | Especialidade: ${specialty}`, finalContent);
+      addResponse("app_verbete_frase_enfatica", `Título: ${title} | Especialidade: ${specialty}`, finalContent);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Falha ao executar Frase EnfÃ¡tica.";
+      const msg = err instanceof Error ? err.message : "Falha ao executar Frase Enfática.";
       toast.error(msg);
-      addResponse("app_verbete_frase_enfatica", `TÃ­tulo: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Frase EnfÃ¡tica: ${msg}`);
+      addResponse("app_verbete_frase_enfatica", `Título: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Frase Enfática: ${msg}`);
     } finally {
       setIsRunningVerbeteFraseEnfatica(false);
     }
-  }, [openAiReady, verbetografiaTitle, verbetografiaSpecialty, htmlEditorControlApi, documentText]);
+  }, [documentText, htmlEditorControlApi, llmEditorContextMaxChars, openAiReady, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunVerbeteSinonimologia = useCallback(async () => {
     if (!openAiReady) {
@@ -1105,7 +1161,7 @@ const Index = () => {
     const title = verbetografiaTitle.trim();
     const specialty = verbetografiaSpecialty.trim();
     if (!title) {
-      toast.error("Informe o tÃ­tulo do verbete.");
+      toast.error("Informe o título do verbete.");
       return;
     }
     if (!specialty) {
@@ -1118,9 +1174,9 @@ const Index = () => {
       const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
       const latestEditorText = editorApi ? await editorApi.getDocumentText() : documentText;
       const normalizedEditorText = (latestEditorText || "").trim();
-      const editorContextTruncated = normalizedEditorText.length > CHAT_EDITOR_CONTEXT_MAX_CHARS;
-      const editorPlainTextContext = normalizedEditorText.slice(0, CHAT_EDITOR_CONTEXT_MAX_CHARS);
-      const query = `Escreva uma Sinonimologia do tema do verbete com tÃ­tulo: ${title} e especialidade: ${specialty}.`;
+      const editorContextTruncated = normalizedEditorText.length > llmEditorContextMaxChars;
+      const editorPlainTextContext = normalizedEditorText.slice(0, llmEditorContextMaxChars);
+      const query = `Escreva uma Sinonimologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
       const messages = buildVerbeteSinonimologiaPrompt(query, editorPlainTextContext, editorContextTruncated);
       const chatStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
       const result = (
@@ -1137,15 +1193,15 @@ const Index = () => {
         })
       ).content.trim();
       const finalContent = result || "Sem conteudo retornado pela IA.";
-      addResponse("app_verbete_sinonimologia", `TÃ­tulo: ${title} | Especialidade: ${specialty}`, finalContent);
+      addResponse("app_verbete_sinonimologia", `Título: ${title} | Especialidade: ${specialty}`, finalContent);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Sinonimologia.";
       toast.error(msg);
-      addResponse("app_verbete_sinonimologia", `TÃ­tulo: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Sinonimologia: ${msg}`);
+      addResponse("app_verbete_sinonimologia", `Título: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Sinonimologia: ${msg}`);
     } finally {
       setIsRunningVerbeteSinonimologia(false);
     }
-  }, [openAiReady, verbetografiaTitle, verbetografiaSpecialty, htmlEditorControlApi, documentText]);
+  }, [documentText, htmlEditorControlApi, llmEditorContextMaxChars, openAiReady, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunVerbeteFatologia = useCallback(async () => {
     if (!openAiReady) {
@@ -1155,7 +1211,7 @@ const Index = () => {
     const title = verbetografiaTitle.trim();
     const specialty = verbetografiaSpecialty.trim();
     if (!title) {
-      toast.error("Informe o tÃ­tulo do verbete.");
+      toast.error("Informe o título do verbete.");
       return;
     }
     if (!specialty) {
@@ -1168,9 +1224,9 @@ const Index = () => {
       const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
       const latestEditorText = editorApi ? await editorApi.getDocumentText() : documentText;
       const normalizedEditorText = (latestEditorText || "").trim();
-      const editorContextTruncated = normalizedEditorText.length > CHAT_EDITOR_CONTEXT_MAX_CHARS;
-      const editorPlainTextContext = normalizedEditorText.slice(0, CHAT_EDITOR_CONTEXT_MAX_CHARS);
-      const query = `Escreva uma Fatologia do tema do verbete com tÃ­tulo: ${title} e especialidade: ${specialty}.`;
+      const editorContextTruncated = normalizedEditorText.length > llmEditorContextMaxChars;
+      const editorPlainTextContext = normalizedEditorText.slice(0, llmEditorContextMaxChars);
+      const query = `Escreva uma Fatologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
       const messages = buildVerbeteFatologiaPrompt(query, editorPlainTextContext, editorContextTruncated);
       const chatStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
       const result = (
@@ -1187,15 +1243,15 @@ const Index = () => {
         })
       ).content.trim();
       const finalContent = result || "Sem conteudo retornado pela IA.";
-      addResponse("app_verbete_fatologia", `TÃ­tulo: ${title} | Especialidade: ${specialty}`, finalContent);
+      addResponse("app_verbete_fatologia", `Título: ${title} | Especialidade: ${specialty}`, finalContent);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Fatologia.";
       toast.error(msg);
-      addResponse("app_verbete_fatologia", `TÃ­tulo: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Fatologia: ${msg}`);
+      addResponse("app_verbete_fatologia", `Título: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Fatologia: ${msg}`);
     } finally {
       setIsRunningVerbeteFatologia(false);
     }
-  }, [openAiReady, verbetografiaTitle, verbetografiaSpecialty, htmlEditorControlApi, documentText]);
+  }, [documentText, htmlEditorControlApi, llmEditorContextMaxChars, openAiReady, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunLexicalSearch = useCallback(async () => {
     const book = selectedLexicalBook.trim();
@@ -1338,7 +1394,7 @@ const Index = () => {
       const pensata = paragraph || "Paragrafo nao encontrado.";
       const analysisMessages = buildPensataAnalysisPrompt(pensata);
       const analysis = (await executeLLMWithLog({ messages: analysisMessages })).content.trim();
-      const content = analysis ? `${pensata}\n\n**AnÃ¡lise IA:** ${analysis}` : pensata;
+      const content = analysis ? `${pensata}\n\n**Análise IA:** ${analysis}` : pensata;
       addResponse("app_random_pensata", header, content);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Pensata do Dia.";
@@ -1374,7 +1430,6 @@ const Index = () => {
             messages: [{ role: "user", content: text }],
             vectorStoreIds: [LLM_VECTOR_STORE_LO],
             ragQuery: text,
-            vectorMaxResults: 5,
             returnChunksOnly: true,
           })
         ).chunks;
@@ -1404,7 +1459,6 @@ const Index = () => {
               messages: [{ role: "user", content: text }],
               vectorStoreIds: storeIds,
               ragQuery: text,
-              vectorMaxResults: 5,
               returnChunksOnly: true,
             })
           ).chunks;
@@ -1420,7 +1474,6 @@ const Index = () => {
             messages: [{ role: "user", content: text }],
             vectorStoreIds: [LLM_VECTOR_STORE_TRANSLATE_RAG],
             ragQuery: text,
-            vectorMaxResults: 5,
             returnChunksOnly: true,
           })
         ).chunks;
@@ -1460,24 +1513,20 @@ const Index = () => {
         const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
         const latestEditorText = editorApi ? await editorApi.getDocumentText() : documentText;
         const normalizedEditorText = (latestEditorText || "").trim();
-        editorContextTruncated = normalizedEditorText.length > CHAT_EDITOR_CONTEXT_MAX_CHARS;
-        editorPlainTextContext = normalizedEditorText.slice(0, CHAT_EDITOR_CONTEXT_MAX_CHARS);
+        editorContextTruncated = normalizedEditorText.length > llmEditorContextMaxChars;
+        editorPlainTextContext = normalizedEditorText.slice(0, llmEditorContextMaxChars);
       }
-      const messages = buildChatPrompt(actionText, message, chatHistory, editorPlainTextContext, editorContextTruncated);
+      const messages = buildChatPrompt(message, chatHistory, editorPlainTextContext, editorContextTruncated);
       const chatStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
-      const result = (
-        await executeLLMWithLog({
-          messages,
-          model: CHAT_MODEL,
-          temperature: CHAT_TEMPERATURE,
-          gpt5Verbosity: CHAT_GPT5_VERBOSITY,
-          gpt5Effort: CHAT_GPT5_EFFORT,
-          maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS,
-          systemPrompt: CHAT_SYSTEM_PROMPT,
-          vectorStoreIds: chatStoreIds,
-          ragQuery: message,
-        })
-      ).content.trim();
+      const llmResponse = await executeLLMWithLog({
+        messages,
+        previousResponseId: chatPreviousResponseId ?? undefined,
+        vectorStoreIds: chatStoreIds,
+        ragQuery: message,
+      });
+      const result = llmResponse.content.trim();
+      const nextResponseId = llmResponse.meta?.id;
+      if (nextResponseId) setChatPreviousResponseId(nextResponseId);
       const finalContent = result || "Sem conteudo retornado pela IA.";
       setChatHistory((prev) => [...prev, { role: "user", content: message }, { role: "assistant", content: finalContent }]);
       addResponse("chat", message, finalContent);
@@ -1488,7 +1537,7 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [openAiReady, actionText, chatHistory, currentFileId, documentText, htmlEditorControlApi]);
+  }, [chatHistory, chatPreviousResponseId, currentFileId, documentText, htmlEditorControlApi, llmEditorContextMaxChars, openAiReady]);
 
   const handleEditorContentChange = useCallback(({ html, text }: { html: string; text: string }) => {
     setEditorContentHtml(html);
@@ -1778,7 +1827,7 @@ const Index = () => {
                               <>
                                 <Separator className="my-4" />
                                 <p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                  SeÃ§Ãµes do Verbete
+                                  Seções do Verbete
                                 </p>
                               </>
                             ) : null}
@@ -1807,7 +1856,7 @@ const Index = () => {
                       {parameterPanelTarget.section === "document" ? (
                         <div className="h-full overflow-y-auto p-3">
                           <div className="space-y-3">
-                            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">ParÃ¢metros Documento</Label>
+                            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Parâmetros Documento</Label>
 
                             <Button
                               variant="secondary"
@@ -1862,15 +1911,15 @@ const Index = () => {
 
                             <div className="space-y-2.5">
                               <div className="flex items-center justify-between">
-                                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">EstatÃ­sticas</Label>
+                                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Estatísticas</Label>
                                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => void handleRefreshStats()} title="Atualizar">
                                   <RefreshCw className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 {[
-                                  { icon: FileText, label: "PÃ¡ginas", value: stats.pages },
-                                  { icon: AlignLeft, label: "ParÃ¡grafos", value: stats.paragraphs },
+                                  { icon: FileText, label: "Páginas", value: stats.pages },
+                                  { icon: AlignLeft, label: "Parágrafos", value: stats.paragraphs },
                                   { icon: Type, label: "Palavras", value: stats.words },
                                   { icon: Hash, label: "Caracteres", value: stats.characters },
                                   { icon: Sparkles, label: "Logias", value: stats.logiaWords },
@@ -1956,12 +2005,12 @@ const Index = () => {
                         <div className="h-full overflow-y-auto p-3">
                           <div className="space-y-3">
                             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações LLM</Label>
-                            <div className="space-y-2">
-                              <Label className="text-xs text-muted-foreground">Modelo</Label>
+                            <div className="flex items-center gap-2">
+                              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Modelo</Label>
                               <select
                                 value={llmModel}
                                 onChange={(e) => setLlmModel(e.target.value)}
-                                className="h-8 w-full rounded-md border border-input bg-background px-3 text-xs text-foreground outline-none"
+                                className="h-8 w-full rounded-md border border-input bg-background px-3 text-[11px] text-foreground outline-none"
                               >
                                 <option value="gpt-4.1-mini">gpt-4.1-mini</option>
                                 <option value="gpt-5-mini">gpt-5-mini</option>
@@ -1969,8 +2018,8 @@ const Index = () => {
                                 <option value="gpt-5.4">gpt-5.4</option>
                               </select>
                             </div>
-                            <div className="space-y-2">
-                              <Label className="text-xs text-muted-foreground">Temperatura</Label>
+                            <div className="flex items-center gap-2">
+                              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Temperatura</Label>
                               <Input
                                 type="number"
                                 step="0.1"
@@ -1981,31 +2030,55 @@ const Index = () => {
                                 className="h-8 text-xs"
                               />
                             </div>
-                            <div className="space-y-2">
-                              <Label className="text-xs text-muted-foreground">Max Output Tokens</Label>
+                            <div className="flex items-center gap-2">
+                              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Output Tokens</Label>
                               <Input
                                 type="number"
                                 min="1"
                                 value={llmMaxOutputTokens}
-                                onChange={(e) => setLlmMaxOutputTokens(e.target.value ? Number(e.target.value) : "")}
+                                onChange={(e) => setLlmMaxOutputTokens(e.target.value ? Number(e.target.value) : 500)}
                                 className="h-8 text-xs"
                               />
                             </div>
-                            <div className="space-y-2">
-                              <Label className="text-xs text-muted-foreground">GPT-5 Verbosity</Label>
+                            <div className="flex items-center gap-2">
+                              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Num Results</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                max="20"
+                                value={llmMaxNumResults}
+                                onChange={(e) => setLlmMaxNumResults(e.target.value ? Number(e.target.value) : 5)}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Context Max Chars</Label>
+                              <Input
+                                type="number"
+                                min="500"
+                                value={llmEditorContextMaxChars}
+                                onChange={(e) => setLlmEditorContextMaxChars(e.target.value ? Number(e.target.value) : CHAT_EDITOR_CONTEXT_MAX_CHARS)}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Verbosity</Label>
                               <Input value={llmVerbosity} onChange={(e) => setLlmVerbosity(e.target.value)} placeholder="low | medium | high" className="h-8 text-xs" />
                             </div>
-                            <div className="space-y-2">
-                              <Label className="text-xs text-muted-foreground">GPT-5 Effort</Label>
+                            <div className="flex items-center gap-2">
+                              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Effort</Label>
                               <Input value={llmEffort} onChange={(e) => setLlmEffort(e.target.value)} placeholder="minimal | low | medium | high" className="h-8 text-xs" />
                             </div>
+
+
+
                             <div className="space-y-2">
-                              <Label className="text-xs text-muted-foreground">System Prompt</Label>
+                              <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt</Label>
                               <textarea
                                 value={llmSystemPrompt}
                                 onChange={(e) => setLlmSystemPrompt(e.target.value)}
                                 rows={6}
-                                className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground outline-none"
+                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground outline-none resize-none overflow-y-auto"
                               />
                             </div>
 
@@ -2055,7 +2128,7 @@ const Index = () => {
                                 </div>
                                 <div className="rounded bg-background/70 px-2 py-1">
                                   <span className="font-semibold text-blue-600">Max tokens:</span>{" "}
-                                  <span className="font-medium text-foreground">{String(latestLlmMeta.max_output_tokens_requested ?? (llmMaxOutputTokens === "" ? "-" : llmMaxOutputTokens))}</span>
+                                  <span className="font-medium text-foreground">{String(latestLlmMeta.max_output_tokens_requested ?? llmMaxOutputTokens)}</span>
                                 </div>
                                 <div className="rounded bg-background/70 px-2 py-1">
                                   <span className="font-semibold text-blue-600">Input tokens:</span>{" "}
@@ -2238,7 +2311,7 @@ const Index = () => {
                               : parameterPanelTarget.id === "app8"
                                 ? "Gerar Definologia"
                                 : parameterPanelTarget.id === "app11"
-                                  ? "Gerar Frase EnfÃ¡tica"
+                                  ? "Gerar Frase Enfática"
                                 : parameterPanelTarget.id === "app9"
                                   ? "Gerar Sinonimologia"
                                   : "Gerar Fatologia"
@@ -2249,7 +2322,7 @@ const Index = () => {
                               : parameterPanelTarget.id === "app8"
                                 ? "Gerando Definologia"
                                 : parameterPanelTarget.id === "app11"
-                                  ? "Gerando Frase EnfÃ¡tica"
+                                  ? "Gerando Frase Enfática"
                                 : parameterPanelTarget.id === "app9"
                                   ? "Gerando Sinonimologia"
                                   : "Gerando Fatologia"

@@ -101,6 +101,7 @@ def execute_llm_request(
     api_key: str,
     model: str,
     messages: list[dict[str, Any]],
+    previous_response_id: str | None = None,
     system_prompt: str,
     temperature: float | None = None,
     max_output_tokens: int | None = None,
@@ -157,6 +158,8 @@ def execute_llm_request(
         "model": model,
         "input": input_messages,
     }
+    if previous_response_id:
+        request_json["previous_response_id"] = previous_response_id
     if max_output_tokens is not None:
         request_json["max_output_tokens"] = max_output_tokens
     if tools:
