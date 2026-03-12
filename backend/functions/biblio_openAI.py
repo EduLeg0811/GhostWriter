@@ -224,8 +224,23 @@ Saída:
 
 class BibliografiaService:
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        llm_model: Optional[str] = None,
+        llm_temperature: Optional[float] = None,
+        llm_max_output_tokens: Optional[int] = None,
+        llm_gpt5_verbosity: Optional[str] = None,
+        llm_gpt5_effort: Optional[str] = None,
+        llm_system_prompt: Optional[str] = None,
+    ):
         self.api_key = (api_key or os.getenv("OPENAI_API_KEY") or "").strip()
+        self.llm_model = (llm_model or "").strip() or None
+        self.llm_temperature = llm_temperature
+        self.llm_max_output_tokens = llm_max_output_tokens
+        self.llm_gpt5_verbosity = (llm_gpt5_verbosity or "").strip() or None
+        self.llm_gpt5_effort = (llm_gpt5_effort or "").strip() or None
+        self.llm_system_prompt = (llm_system_prompt or "").strip() or None
 
         raw_max = (
             os.getenv("MAX_BILBLIO_RESULTS")
@@ -246,6 +261,12 @@ class BibliografiaService:
 
         self._llm_cache: Dict[str, dict] = {}  # cache simples em memória (por processo)
         self._last_llm_log: Dict[str, object] | None = None
+        self._llm_logs: List[Dict[str, object]] = []
+
+    def _push_llm_log(self, request_payload: object, response_payload: object) -> None:
+        log = {"request": request_payload, "response": response_payload}
+        self._last_llm_log = log
+        self._llm_logs.append(log)
 
 
 
@@ -266,24 +287,22 @@ class BibliografiaService:
                 from functions.llm_gateway import execute_llm_request
 
 
+            final_system_prompt = self.llm_system_prompt or SYSTEM_PROMPT_TEXTO_LIVRE
             result = execute_llm_request(
                 api_key=self.api_key,
-                model="gpt-5.4",
+                model=self.llm_model or "gpt-5.4",
                 messages=[{"role": "user", "content": texto}],
-                system_prompt=SYSTEM_PROMPT_TEXTO_LIVRE,
-                temperature=0,
-                max_output_tokens=500,
-                gpt5_effort="none",
-                gpt5_verbosity="low",               
+                system_prompt=final_system_prompt,
+                temperature=self.llm_temperature if self.llm_temperature is not None else 0,
+                max_output_tokens=self.llm_max_output_tokens if self.llm_max_output_tokens is not None else 500,
+                gpt5_effort=self.llm_gpt5_effort or "none",
+                gpt5_verbosity=self.llm_gpt5_verbosity or "low",
                 tools=[{"type": "web_search"}],
                 vector_store_ids=[],
                 timeout=60,
                 previous_response_id=None,
             )
-            self._last_llm_log = {
-                "request": result.get("request"),
-                "response": result.get("raw"),
-            }
+            self._push_llm_log(result.get("request"), result.get("raw"))
         except requests.HTTPError as exc:
             response = exc.response
             detail = ((response.text if response is not None else "") or "").strip() or str(exc)
@@ -300,6 +319,7 @@ class BibliografiaService:
             "max_results": 1,
             "score": None,
             "llm_log": self._last_llm_log,
+            "llm_logs": self._llm_logs,
         }
 
 
@@ -880,23 +900,24 @@ Regras:
             except Exception:
                 from functions.llm_gateway import execute_llm_request
 
+            final_prompt = prompt if not self.llm_system_prompt else f"{self.llm_system_prompt}\n\n{prompt}"
             result = execute_llm_request(
                 api_key=self.api_key,
-                model="gpt-4.1-mini",
+                model=self.llm_model or "gpt-4.1-mini",
                 messages=[
-                    {"role": "system", "content": prompt},
+                    {"role": "system", "content": final_prompt},
                     {"role": "user", "content": json.dumps({"consulta": consulta, "candidatos": pacote}, ensure_ascii=False)},
                 ],
                 system_prompt="",
-                max_output_tokens=1400,
+                temperature=self.llm_temperature if self.llm_temperature is not None else 0,
+                max_output_tokens=self.llm_max_output_tokens if self.llm_max_output_tokens is not None else 1400,
+                gpt5_effort=self.llm_gpt5_effort,
+                gpt5_verbosity=self.llm_gpt5_verbosity,
                 tools=[{"type": "web_search"}],
                 vector_store_ids=[],
                 timeout=45,
             )
-            self._last_llm_log = {
-                "request": result.get("request"),
-                "response": result.get("raw"),
-            }
+            self._push_llm_log(result.get("request"), result.get("raw"))
 
             text = str(result.get("content") or "").strip()
             data = self._parse_json_payload(text)
@@ -1064,6 +1085,7 @@ Regras:
 
     def gerar_com_validacao(self, consulta: str = "", criterios: Optional[Dict[str, str]] = None) -> Dict:
         self._last_llm_log = None
+        self._llm_logs = []
         criterios = criterios or {}
         consulta = (consulta or "").strip()
 
@@ -1200,4 +1222,5 @@ Regras:
             "max_results": self.max_results,
             "score": self._calcular_score(finais),
             "llm_log": self._last_llm_log,
+            "llm_logs": self._llm_logs,
         }

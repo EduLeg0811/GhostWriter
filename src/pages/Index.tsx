@@ -126,6 +126,36 @@ const LLM_LOG_FONT_MIN = 0.5;
 const LLM_LOG_FONT_MAX = 1.0;
 const LLM_LOG_FONT_STEP = 0.05;
 const LLM_SETTINGS_STORAGE_KEY = "llm_settings_v1";
+const BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY = "biblio_externa_llm_settings_v1";
+const BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT = `Você é um assistente especializado em reconstrução de referências bibliográficas acadêmicas.
+Sua função é identificar e reconstruir referências completas a partir de uma string bibliográfica livre fornecida pelo usuário.
+
+A string de entrada pode conter:
+- apenas parte do título
+- nome parcial do autor
+- sobrenome incompleto
+- ano aproximado
+- erros de digitação
+- ordem aleatória de elementos
+
+Identificação da obra:
+- Utilize raciocínio bibliográfico para identificar a obra mais provável.
+
+Caso existam múltiplas correspondências plausíveis:
+- retorne no máximo 3 referências
+- ordenadas da maior para a menor probabilidade de correspondência.
+
+Normalização da saída
+A saída deve sempre seguir EXATAMENTE o formato:
+- **Sobrenome**, Nome; ***Título da obra***; informações adicionais separadas por ";"; ano.
+- Não inclua explicações, comentários ou texto adicional.
+- Retorne apenas as referências formatadas.
+
+Exemplo
+Entrada:
+Tocci Digital Systems Principles 2011
+Saída:
+**Tocci**, Ronald J.; ***Digital Systems: Principles and Applications***; livro; brochura; 912 p.; 11ª ed.; Pearson; Upper Saddle River, NJ; 2011.`;
 const DEFAULT_LOG_FONT_SIZE_PX = 9;
 const DEFAULT_LOG_LINE_HEIGHT_RATIO = 1.1;
 // Câmbio base (USD -> BRL) para estimativa de custo.
@@ -268,6 +298,14 @@ const Index = () => {
   const [llmVerbosity, setLlmVerbosity] = useState(CHAT_GPT5_VERBOSITY ?? "");
   const [llmEffort, setLlmEffort] = useState(CHAT_GPT5_EFFORT ?? "");
   const [llmSystemPrompt, setLlmSystemPrompt] = useState(CHAT_SYSTEM_PROMPT ?? "");
+  const [isChatConfigOpen, setIsChatConfigOpen] = useState(false);
+  const [isBiblioExternaConfigOpen, setIsBiblioExternaConfigOpen] = useState(false);
+  const [biblioExternaLlmModel, setBiblioExternaLlmModel] = useState("gpt-5.4");
+  const [biblioExternaLlmTemperature, setBiblioExternaLlmTemperature] = useState<number>(0);
+  const [biblioExternaLlmMaxOutputTokens, setBiblioExternaLlmMaxOutputTokens] = useState<number>(500);
+  const [biblioExternaLlmVerbosity, setBiblioExternaLlmVerbosity] = useState("low");
+  const [biblioExternaLlmEffort, setBiblioExternaLlmEffort] = useState("none");
+  const [biblioExternaLlmSystemPrompt, setBiblioExternaLlmSystemPrompt] = useState(BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT);
   const [chatPreviousResponseId, setChatPreviousResponseId] = useState<string | null>(null);
   const [isJsonLogPanelOpen, setIsJsonLogPanelOpen] = useState(false);
   const [llmLogs, setLlmLogs] = useState<Array<{ id: string; at: string; request: unknown; response?: unknown; error?: string }>>([]);
@@ -371,6 +409,45 @@ const Index = () => {
     };
     window.localStorage.setItem(LLM_SETTINGS_STORAGE_KEY, JSON.stringify(payload));
   }, [llmEditorContextMaxChars, llmEffort, llmMaxNumResults, llmMaxOutputTokens, llmModel, llmSystemPrompt, llmTemperature, llmVerbosity]);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<{
+        model: string;
+        temperature: number;
+        maxOutputTokens: number;
+        gpt5Verbosity: string;
+        gpt5Effort: string;
+        systemPrompt: string;
+      }>;
+      if (typeof parsed.model === "string" && parsed.model.trim()) setBiblioExternaLlmModel(parsed.model.trim());
+      if (typeof parsed.temperature === "number" && Number.isFinite(parsed.temperature)) setBiblioExternaLlmTemperature(Math.max(0, Math.min(parsed.temperature, 2)));
+      if (typeof parsed.maxOutputTokens === "number" && Number.isFinite(parsed.maxOutputTokens)) setBiblioExternaLlmMaxOutputTokens(Math.max(1, Math.floor(parsed.maxOutputTokens)));
+      if (typeof parsed.gpt5Verbosity === "string") setBiblioExternaLlmVerbosity(parsed.gpt5Verbosity);
+      if (typeof parsed.gpt5Effort === "string") setBiblioExternaLlmEffort(parsed.gpt5Effort);
+      if (typeof parsed.systemPrompt === "string" && parsed.systemPrompt.trim()) {
+        setBiblioExternaLlmSystemPrompt(parsed.systemPrompt);
+      } else {
+        setBiblioExternaLlmSystemPrompt(BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT);
+      }
+    } catch {
+      // Ignora storage inválido.
+    }
+  }, []);
+
+  useEffect(() => {
+    const payload = {
+      model: biblioExternaLlmModel,
+      temperature: Number.isFinite(biblioExternaLlmTemperature) ? Math.max(0, Math.min(biblioExternaLlmTemperature, 2)) : 0,
+      maxOutputTokens: Number.isFinite(biblioExternaLlmMaxOutputTokens) ? Math.max(1, Math.floor(biblioExternaLlmMaxOutputTokens)) : 500,
+      gpt5Verbosity: biblioExternaLlmVerbosity,
+      gpt5Effort: biblioExternaLlmEffort,
+      systemPrompt: biblioExternaLlmSystemPrompt,
+    };
+    window.localStorage.setItem(BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY, JSON.stringify(payload));
+  }, [biblioExternaLlmEffort, biblioExternaLlmMaxOutputTokens, biblioExternaLlmModel, biblioExternaLlmSystemPrompt, biblioExternaLlmTemperature, biblioExternaLlmVerbosity]);
 
   useEffect(() => {
     refreshHealth();
@@ -637,20 +714,14 @@ const Index = () => {
     };
     const id = crypto.randomUUID();
     const at = new Date().toISOString();
-    setLlmLogs([{ id, at, request: mergedPayload }]);
+    setLlmLogs((prev) => [{ id, at, request: mergedPayload }, ...prev]);
     try {
       const response = await executeLLM(mergedPayload);
-      setLlmLogs((prev) => {
-        if (!prev[0] || prev[0].id !== id) return prev;
-        return [{ ...prev[0], response }];
-      });
+      setLlmLogs((prev) => prev.map((entry) => (entry.id === id ? { ...entry, response } : entry)));
       return response;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      setLlmLogs((prev) => {
-        if (!prev[0] || prev[0].id !== id) return prev;
-        return [{ ...prev[0], error: message }];
-      });
+      setLlmLogs((prev) => prev.map((entry) => (entry.id === id ? { ...entry, error: message } : entry)));
       throw err;
     }
   }, []);
@@ -945,18 +1016,45 @@ const Index = () => {
     setIsRunningBiblioExterna(true);
     try {
       const data = freeText
-        ? await biblioExternaApp({ freeText })
-        : await biblioExternaApp({ author, title, year, journal, publisher, identifier, extra });
-      if (data.result.llmLog) {
-        const id = crypto.randomUUID();
+        ? await biblioExternaApp({
+            freeText,
+            llmModel: biblioExternaLlmModel,
+            llmTemperature: biblioExternaLlmTemperature,
+            llmMaxOutputTokens: biblioExternaLlmMaxOutputTokens,
+            llmGpt5Verbosity: biblioExternaLlmVerbosity,
+            llmGpt5Effort: biblioExternaLlmEffort,
+            llmSystemPrompt: biblioExternaLlmSystemPrompt.trim() || undefined,
+          })
+        : await biblioExternaApp({
+            author,
+            title,
+            year,
+            journal,
+            publisher,
+            identifier,
+            extra,
+            llmModel: biblioExternaLlmModel,
+            llmTemperature: biblioExternaLlmTemperature,
+            llmMaxOutputTokens: biblioExternaLlmMaxOutputTokens,
+            llmGpt5Verbosity: biblioExternaLlmVerbosity,
+            llmGpt5Effort: biblioExternaLlmEffort,
+            llmSystemPrompt: biblioExternaLlmSystemPrompt.trim() || undefined,
+          });
+      const incomingLogs = Array.isArray(data.result.llmLogs)
+        ? data.result.llmLogs
+        : (data.result.llmLog ? [data.result.llmLog] : []);
+      if (incomingLogs.length > 0) {
         const at = new Date().toISOString();
-        setLlmLogs([
-          {
-            id,
-            at,
-            request: data.result.llmLog.request ?? {},
-            response: data.result.llmLog.response ?? {},
-          },
+        setLlmLogs((prev) => [
+          ...incomingLogs
+            .map((entry) => ({
+              id: crypto.randomUUID(),
+              at,
+              request: entry?.request ?? {},
+              response: entry?.response ?? {},
+            }))
+            .reverse(),
+          ...prev,
         ]);
       }
       const markdown = (data.result.markdown || "").trim();
@@ -989,7 +1087,7 @@ const Index = () => {
     } finally {
       setIsRunningBiblioExterna(false);
     }
-  }, [biblioExternaAuthor, biblioExternaExtra, biblioExternaFreeText, biblioExternaIdentifier, biblioExternaJournal, biblioExternaPublisher, biblioExternaTitle, biblioExternaYear]);
+  }, [biblioExternaAuthor, biblioExternaExtra, biblioExternaFreeText, biblioExternaIdentifier, biblioExternaJournal, biblioExternaLlmEffort, biblioExternaLlmMaxOutputTokens, biblioExternaLlmModel, biblioExternaLlmSystemPrompt, biblioExternaLlmTemperature, biblioExternaLlmVerbosity, biblioExternaPublisher, biblioExternaTitle, biblioExternaYear]);
 
   const ensureLexicalBooksLoaded = useCallback(async () => {
     if (lexicalBooks.length > 0) return lexicalBooks;
@@ -1370,7 +1468,7 @@ const Index = () => {
           const datePart = rowDate || "s/data";
           const definologiaPart = `**Definologia.** ${rowText || ""}`.trim();
           const linkPart = rowLink ? `[PDF](${rowLink})` : "";
-          const headerLine = `**${idx + 1}.\u00A0\u00A0** **${titlePart}** (*${areaPart}*) â— *${authorPart}* â— ${numberPart} â— ${datePart}`;
+          const headerLine = `**${idx + 1}.\u00A0\u00A0** **${titlePart}** (*${areaPart}*) — *${authorPart}* — ${numberPart} — ${datePart}`;
           return `${headerLine}\n${definologiaPart}\n${linkPart}`;
         })
         .join("\n\n");
@@ -1657,23 +1755,63 @@ const Index = () => {
   const latestLlmMeta = (latestLlmLog?.response && typeof latestLlmLog.response === "object" && "meta" in (latestLlmLog.response as Record<string, unknown>))
     ? ((latestLlmLog.response as { meta?: Record<string, unknown> }).meta ?? {})
     : {};
-  const latestUsage = (latestLlmMeta.usage && typeof latestLlmMeta.usage === "object")
-    ? (latestLlmMeta.usage as Record<string, unknown>)
-    : {};
+  const usageFromMeta = (meta: Record<string, unknown>) => (
+    meta.usage && typeof meta.usage === "object"
+      ? (meta.usage as Record<string, unknown>)
+      : {}
+  );
+  const inputTokensFromUsage = (usage: Record<string, unknown>) => Number(usage.input_tokens ?? usage.prompt_tokens ?? 0) || 0;
+  const cachedInputTokensFromUsage = (usage: Record<string, unknown>) => Number((usage.input_token_details as { cached_tokens?: number } | undefined)?.cached_tokens ?? 0) || 0;
+  const outputTokensFromUsage = (usage: Record<string, unknown>) => Number(usage.output_tokens ?? usage.completion_tokens ?? 0) || 0;
+  const totalTokensFromUsage = (usage: Record<string, unknown>) => {
+    const input = inputTokensFromUsage(usage);
+    const output = outputTokensFromUsage(usage);
+    return Number(usage.total_tokens ?? input + output) || 0;
+  };
+  const reasoningTokensFromUsage = (usage: Record<string, unknown>) => Number((usage.output_token_details as { reasoning_tokens?: number } | undefined)?.reasoning_tokens ?? 0) || 0;
+  const latestUsage = usageFromMeta(latestLlmMeta);
+  const latestInputTokens = inputTokensFromUsage(latestUsage);
+  const latestCachedInputTokens = cachedInputTokensFromUsage(latestUsage);
+  const latestOutputTokens = outputTokensFromUsage(latestUsage);
+  const latestTotalTokens = totalTokensFromUsage(latestUsage);
+  const latestReasoningTokens = reasoningTokensFromUsage(latestUsage);
+  const latestRagChunks = Number(latestLlmMeta.rag_chunks_count ?? 0) || 0;
   const latestRagReferences = Array.isArray(latestLlmMeta.rag_references)
     ? (latestLlmMeta.rag_references as unknown[]).map((ref) => String(ref || "").trim()).filter(Boolean)
     : [];
-  const latestRagChunksCount = Number(latestLlmMeta.rag_chunks_count ?? 0) || 0;
-  const inputTokens = Number(latestUsage.input_tokens ?? latestUsage.prompt_tokens ?? 0) || 0;
-  const cachedInputTokens = Number((latestUsage.input_token_details as { cached_tokens?: number } | undefined)?.cached_tokens ?? 0) || 0;
-  const nonCachedInputTokens = Math.max(0, inputTokens - cachedInputTokens);
-  const outputTokens = Number(latestUsage.output_tokens ?? latestUsage.completion_tokens ?? 0) || 0;
-  const totalTokens = Number(latestUsage.total_tokens ?? inputTokens + outputTokens) || 0;
-  const reasoningTokens = Number((latestUsage.output_token_details as { reasoning_tokens?: number } | undefined)?.reasoning_tokens ?? 0) || 0;
+
+  let inputTokens = 0;
+  let cachedInputTokens = 0;
+  let outputTokens = 0;
+  let totalTokens = 0;
+  let reasoningTokens = 0;
+  let latestRagChunksTotal = 0;
+  const ragReferenceSet = new Set<string>();
+  let successfulCallsCount = 0;
+  let errorCallsCount = 0;
+
+  for (const log of llmLogs) {
+    if (log.error) errorCallsCount += 1;
+    if (!log.response || typeof log.response !== "object" || !("meta" in (log.response as Record<string, unknown>))) continue;
+    successfulCallsCount += 1;
+    const meta = ((log.response as { meta?: Record<string, unknown> }).meta ?? {});
+    const usage = usageFromMeta(meta);
+    inputTokens += inputTokensFromUsage(usage);
+    cachedInputTokens += cachedInputTokensFromUsage(usage);
+    outputTokens += outputTokensFromUsage(usage);
+    totalTokens += totalTokensFromUsage(usage);
+    reasoningTokens += reasoningTokensFromUsage(usage);
+    latestRagChunksTotal += Number(meta.rag_chunks_count ?? 0) || 0;
+    if (Array.isArray(meta.rag_references)) {
+      for (const ref of meta.rag_references) {
+        const normalized = String(ref || "").trim();
+        if (normalized) ragReferenceSet.add(normalized);
+      }
+    }
+  }
+  const latestRagReferencesAllCalls = Array.from(ragReferenceSet);
   const usdToBrl = DEFAULT_DOLLAR_TOKEN;
   const effectiveModel = String(latestLlmMeta.model ?? llmModel ?? "");
-  const normalizedModel = effectiveModel.toLowerCase();
-  const isGpt54 = normalizedModel.startsWith("gpt-5.4");
   const modelPricingUsdPer1M: Record<string, { input: number; cached_input: number; output: number }> = {
     "gpt-5.4-under-272k": { input: 2.5, cached_input: 0.25, output: 15.0 },
     "gpt-5.4-over-272k": { input: 5.0, cached_input: 0.5, output: 22.5 },
@@ -1681,18 +1819,46 @@ const Index = () => {
     "gpt-5-mini": { input: 0.25, cached_input: 0.025, output: 2.0 },
     "gpt-4.1-mini": { input: 0.4, cached_input: 0.1, output: 1.6 },
   };
-  const matchedPricingKey = isGpt54
-    ? (inputTokens > 272_000 ? "gpt-5.4-over-272k" : "gpt-5.4-under-272k")
-    : (Object.keys(modelPricingUsdPer1M).find((key) => normalizedModel.startsWith(key)) ?? "");
-  const matchedPricing = matchedPricingKey ? modelPricingUsdPer1M[matchedPricingKey] : null;
-  const estimatedUsd = matchedPricing
-    ? (
-        (nonCachedInputTokens * matchedPricing.input) +
-        (cachedInputTokens * matchedPricing.cached_input) +
-        (outputTokens * matchedPricing.output)
-      ) / 1_000_000
-    : null;
+  const pricingForModelAndInput = (model: string, modelInputTokens: number) => {
+    const normalizedModel = model.toLowerCase();
+    const isGpt54 = normalizedModel.startsWith("gpt-5.4");
+    const matchedPricingKey = isGpt54
+      ? (modelInputTokens > 272_000 ? "gpt-5.4-over-272k" : "gpt-5.4-under-272k")
+      : (Object.keys(modelPricingUsdPer1M).find((key) => normalizedModel.startsWith(key)) ?? "");
+    return matchedPricingKey ? modelPricingUsdPer1M[matchedPricingKey] : null;
+  };
+
+  const estimateUsdFromMeta = (meta: Record<string, unknown>) => {
+    const usage = usageFromMeta(meta);
+    const model = String(meta.model ?? "").trim();
+    if (!model) return null;
+    const localInput = inputTokensFromUsage(usage);
+    const localCachedInput = cachedInputTokensFromUsage(usage);
+    const localOutput = outputTokensFromUsage(usage);
+    const localNonCachedInput = Math.max(0, localInput - localCachedInput);
+    const pricing = pricingForModelAndInput(model, localInput);
+    if (!pricing) return null;
+    return (
+      (localNonCachedInput * pricing.input) +
+      (localCachedInput * pricing.cached_input) +
+      (localOutput * pricing.output)
+    ) / 1_000_000;
+  };
+
+  let estimatedUsdAccumulator = 0;
+  let estimatedUsdAvailableCount = 0;
+  for (const log of llmLogs) {
+    if (!log.response || typeof log.response !== "object" || !("meta" in (log.response as Record<string, unknown>))) continue;
+    const meta = ((log.response as { meta?: Record<string, unknown> }).meta ?? {});
+    const estimated = estimateUsdFromMeta(meta);
+    if (estimated == null) continue;
+    estimatedUsdAccumulator += estimated;
+    estimatedUsdAvailableCount += 1;
+  }
+  const estimatedUsd = estimatedUsdAvailableCount > 0 ? estimatedUsdAccumulator : null;
   const estimatedBrl = estimatedUsd != null ? estimatedUsd * usdToBrl : null;
+  const latestEstimatedUsd = estimateUsdFromMeta(latestLlmMeta);
+  const latestEstimatedBrl = latestEstimatedUsd != null ? latestEstimatedUsd * usdToBrl : null;
 
   useEffect(() => {
     if (!isMobileView) return;
@@ -2022,7 +2188,24 @@ const Index = () => {
                       ) : parameterPanelTarget.section === "settings" ? (
                         <div className="h-full overflow-y-auto p-3">
                           <div className="space-y-3">
-                            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações LLM</Label>
+                            <Button
+                              variant="ghost"
+                              className={sectionActionButtonClass}
+                              onClick={() => setIsChatConfigOpen((prev) => !prev)}
+                            >
+                              <Sparkles className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                              <span className="min-w-0 flex-1 text-left">
+                                <span className="block break-words text-sm font-medium text-foreground">Config Chat</span>
+                                <span className="block break-words text-xs text-muted-foreground">
+                                  {isChatConfigOpen ? "Ocultar configurações LLM" : "Mostrar configurações LLM"}
+                                </span>
+                              </span>
+                            </Button>
+
+                            {isChatConfigOpen ? (
+                              <>
+                              <div><br /></div>
+                                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações LLM</Label>
                             <div className="flex items-center gap-2">
                               <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Modelo</Label>
                               <select
@@ -2101,27 +2284,115 @@ const Index = () => {
                             </div>
 
                             <Separator className="my-1" />
+                              </>
+                            ) : null}
 
                             <Button
                               variant="ghost"
                               className={sectionActionButtonClass}
-                              onClick={handleCleanLlmConversation}
+                              onClick={() => setIsBiblioExternaConfigOpen((prev) => !prev)}
                             >
-                              <RotateCcw className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                              <Sparkles className="mr-2 h-4 w-4 shrink-0 text-primary" />
                               <span className="min-w-0 flex-1 text-left">
-                                <span className="block break-words text-sm font-medium text-foreground">Clean</span>
-                                <span className="block break-words text-xs text-muted-foreground">Inicia nova conversa sem contexto anterior</span>
+                                <span className="block break-words text-sm font-medium text-foreground">Config Biblio Externa</span>
+                                <span className="block break-words text-xs text-muted-foreground">
+                                  {isBiblioExternaConfigOpen ? "Ocultar configurações LLM" : "Mostrar configurações LLM"}
+                                </span>
                               </span>
                             </Button>
 
+                            {isBiblioExternaConfigOpen ? (
+                              <>
+                                <div><br /></div>
+                                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações LLM</Label>
+                                <div className="flex items-center gap-2">
+                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Modelo</Label>
+                                  <select
+                                    value={biblioExternaLlmModel}
+                                    onChange={(e) => setBiblioExternaLlmModel(e.target.value)}
+                                    className="h-8 w-full rounded-md border border-input bg-background px-3 text-[11px] text-foreground outline-none"
+                                  >
+                                    <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+                                    <option value="gpt-5-mini">gpt-5-mini</option>
+                                    <option value="gpt-5.2">gpt-5.2</option>
+                                    <option value="gpt-5.4">gpt-5.4</option>
+                                  </select>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Temperatura</Label>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    max="2"
+                                    value={biblioExternaLlmTemperature}
+                                    onChange={(e) => setBiblioExternaLlmTemperature(Number(e.target.value))}
+                                    className="h-8 text-xs"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Output Tokens</Label>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    value={biblioExternaLlmMaxOutputTokens}
+                                    onChange={(e) => setBiblioExternaLlmMaxOutputTokens(e.target.value ? Number(e.target.value) : 500)}
+                                    className="h-8 text-xs"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Verbosity</Label>
+                                  <Input value={biblioExternaLlmVerbosity} onChange={(e) => setBiblioExternaLlmVerbosity(e.target.value)} placeholder="low | medium | high" className="h-8 text-xs" />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Effort</Label>
+                                  <Input value={biblioExternaLlmEffort} onChange={(e) => setBiblioExternaLlmEffort(e.target.value)} placeholder="none | low | medium | high" className="h-8 text-xs" />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt</Label>
+                                  <textarea
+                                    value={biblioExternaLlmSystemPrompt}
+                                    onChange={(e) => setBiblioExternaLlmSystemPrompt(e.target.value)}
+                                    rows={4}
+                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground outline-none resize-none overflow-y-auto"
+                                  />
+                                </div>
+                              </>
+                            ) : null}
+
+                            {isChatConfigOpen ? (
+                              <>
+                                <Separator className="my-1" />
+
+                                <Button
+                                  variant="ghost"
+                                  className={sectionActionButtonClass}
+                                  onClick={handleCleanLlmConversation}
+                                >
+                                  <RotateCcw className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                                  <span className="min-w-0 flex-1 text-left">
+                                    <span className="block break-words text-sm font-medium text-foreground">Clean</span>
+                                    <span className="block break-words text-xs text-muted-foreground">Inicia nova conversa sem contexto anterior</span>
+                                  </span>
+                                </Button>
+
+                                <Separator className="my-1" />
+                                 <div className="h-2" />
+                                 
+                              </>
+                            ) : null}
+
+                           
                             <Button
                               variant="ghost"
-                              className={sectionActionButtonClass}
+                              className={`${sectionActionButtonClass} mt-2`}
                               onClick={() => {
                                 setIsJsonLogPanelOpen((prev) => !prev);
                                 if (isMobileView) setActiveMobilePanel("json");
                               }}
                             >
+
+                              <div> <br /></div>
                               <Braces className="mr-2 h-4 w-4 shrink-0 text-primary" />
                               <span className="min-w-0 flex-1 text-left">
                                 <span className="block break-words text-sm font-medium text-foreground">Json</span>
@@ -2129,70 +2400,6 @@ const Index = () => {
                               </span>
                             </Button>
 
-                            <div className="rounded-md border border-border bg-muted/40 p-3">
-                              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Resumo da última chamada LLM</p>
-                              <div className="space-y-1.5 text-xs leading-snug">
-                                <div className="rounded bg-background/70 px-2 py-1">
-                                  <span className="font-semibold text-blue-600">Modelo:</span>{" "}
-                                  <span className="font-medium text-foreground">{effectiveModel || "-"}</span>
-                                </div>
-                                <div className="rounded bg-background/70 px-2 py-1">
-                                  <span className="font-semibold text-blue-600">Status:</span>{" "}
-                                  <span className="font-medium text-foreground">{String(latestLlmMeta.status ?? "-")}</span>
-                                </div>
-                                <div className="rounded bg-background/70 px-2 py-1">
-                                  <span className="font-semibold text-blue-600">Temperatura:</span>{" "}
-                                  <span className="font-medium text-foreground">{String(latestLlmMeta.temperature_requested ?? llmTemperature)}</span>
-                                </div>
-                                <div className="rounded bg-background/70 px-2 py-1">
-                                  <span className="font-semibold text-blue-600">Max tokens:</span>{" "}
-                                  <span className="font-medium text-foreground">{String(latestLlmMeta.max_output_tokens_requested ?? llmMaxOutputTokens)}</span>
-                                </div>
-                                <div className="rounded bg-background/70 px-2 py-1">
-                                  <span className="font-semibold text-blue-600">Input tokens:</span>{" "}
-                                  <span className="font-medium text-foreground">{inputTokens || 0}</span>
-                                </div>
-                                <div className="rounded bg-background/70 px-2 py-1">
-                                  <span className="font-semibold text-blue-600">Cached input tokens:</span>{" "}
-                                  <span className="font-medium text-foreground">{cachedInputTokens || 0}</span>
-                                </div>
-                                <div className="rounded bg-background/70 px-2 py-1">
-                                  <span className="font-semibold text-blue-600">Output tokens:</span>{" "}
-                                  <span className="font-medium text-foreground">{outputTokens || 0}</span>
-                                </div>
-                                <div className="rounded bg-background/70 px-2 py-1">
-                                  <span className="font-semibold text-blue-600">Total tokens:</span>{" "}
-                                  <span className="font-medium text-foreground">{totalTokens || 0}</span>
-                                </div>
-                                <div className="rounded bg-background/70 px-2 py-1">
-                                  <span className="font-semibold text-blue-600">Reasoning tokens:</span>{" "}
-                                  <span className="font-medium text-foreground">{reasoningTokens || 0}</span>
-                                </div>
-                                <div className="rounded bg-background/70 px-2 py-1">
-                                  <span className="font-semibold text-blue-600">Chunks RAG usados:</span>{" "}
-                                  <span className="font-medium text-foreground">{latestRagChunksCount}</span>
-                                </div>
-                                <div className="rounded bg-background/70 px-2 py-1">
-                                  <span className="font-semibold text-blue-600">Referências RAG:</span>{" "}
-                                  {latestRagReferences.length > 0 ? (
-                                    <span className="font-medium text-foreground">{latestRagReferences.join(" | ")}</span>
-                                  ) : (
-                                    <span className="font-medium text-muted-foreground">não informado</span>
-                                  )}
-                                </div>
-                                <div className="rounded bg-background/70 px-2 py-1">
-                                  <span className="font-semibold text-blue-600">Custo estimado:</span>{" "}
-                                  <span className="font-medium text-foreground">
-                                    {estimatedBrl != null
-                                      ? `R$ ${estimatedBrl.toFixed(4)} (≈ US$ ${estimatedUsd?.toFixed(6)})`
-                                      : "indisponível (modelo sem tabela local de preço)"}
-                                  </span>
-                                </div>
-                              </div>
-                              {/* <p className="mt-2 text-[11px] text-muted-foreground">
-                                Estimativa de custo baseada em tabela local e câmbio fixo (US$1 = R$ {usdToBrl.toFixed(2)}).
-                              </p> */}
-                            </div>
                           </div>
                         </div>
                       ) : parameterPanelTarget.section === "actions" && parameterPanelTarget.id ? (
@@ -2418,7 +2625,7 @@ const Index = () => {
               maxSize={PANEL_SIZES.editor.max}
               className={`border-l border-border ${sidePanelClass}`}
             >
-              <div className="flex h-full flex-col">
+              <div className="flex h-full flex-col bg-muted/40">
                 <div className={`flex items-center justify-between border-b border-border ${panelsTopMenuBarBgClass} px-4 py-3`}>
                   <h2 className="text-sm font-semibold text-foreground">LLM JSON Logs</h2>
                   <div className="flex items-center gap-2">
@@ -2484,23 +2691,138 @@ const Index = () => {
                           <p className="text-[11px] font-semibold text-muted-foreground" style={llmLogFontStyle}>{entry.at}</p>
                           <div>
                             <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground" style={llmLogFontStyle}>Request</p>
-                            <pre className="whitespace-pre-wrap break-words rounded bg-background p-2 text-[11px] text-foreground" style={llmLogFontStyle}>{JSON.stringify(entry.request, null, 2)}</pre>
+                            <pre className="whitespace-pre-wrap break-words rounded bg-white p-2 text-[11px] text-foreground" style={llmLogFontStyle}>{JSON.stringify(entry.request, null, 2)}</pre>
                           </div>
                           {entry.response ? (
                             <div>
                               <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground" style={llmLogFontStyle}>Response</p>
-                              <pre className="whitespace-pre-wrap break-words rounded bg-background p-2 text-[11px] text-foreground" style={llmLogFontStyle}>{JSON.stringify(entry.response, null, 2)}</pre>
+                              <pre className="whitespace-pre-wrap break-words rounded bg-white p-2 text-[11px] text-foreground" style={llmLogFontStyle}>{JSON.stringify(entry.response, null, 2)}</pre>
                             </div>
                           ) : null}
                           {entry.error ? (
                             <div>
                               <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-destructive" style={llmLogFontStyle}>Error</p>
-                              <pre className="whitespace-pre-wrap break-words rounded bg-background p-2 text-[11px] text-destructive" style={llmLogFontStyle}>{entry.error}</pre>
+                              <pre className="whitespace-pre-wrap break-words rounded bg-white p-2 text-[11px] text-destructive" style={llmLogFontStyle}>{entry.error}</pre>
                             </div>
                           ) : null}
                         </div>
                       ))
                     )}
+                  </div>
+                </div>
+                <div className="border-t border-border bg-muted/70 p-2.5">
+                  {/*<p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Resumo das chamadas LLM (sessão)</p>*/}
+                  <div className="grid gap-1.5 text-[11px] leading-tight md:grid-cols-2">
+                    <div className="space-y-0.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Ultima chamada</p>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-600">Modelo (ultima):</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{effectiveModel || "-"}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-600">Status (ultima):</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{String(latestLlmMeta.status ?? "-")}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-600">Temperatura (ultima):</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{String(latestLlmMeta.temperature_requested ?? llmTemperature)}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-600">Max tokens (ultima):</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{String(latestLlmMeta.max_output_tokens_requested ?? llmMaxOutputTokens)}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-600">Input tokens:</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{latestInputTokens}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-600">Cached input tokens:</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{latestCachedInputTokens}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-600">Output tokens:</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{latestOutputTokens}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-600">Total tokens:</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{latestTotalTokens}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-600">Reasoning tokens:</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{latestReasoningTokens}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-600">Chunks RAG usados:</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{latestRagChunks}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-600">Referencias RAG:</span>{" "}
+                      {latestRagReferences.length > 0 ? (
+                        <span className="text-[10px] font-medium text-foreground">{latestRagReferences.join(" | ")}</span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-muted-foreground">nao informado</span>
+                      )}
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-600">Custo estimado:</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">
+                        {latestEstimatedBrl != null
+                          ? `R$ ${latestEstimatedBrl.toFixed(4)} (≈ US$ ${latestEstimatedUsd?.toFixed(6)})`
+                          : "indisponivel (modelo sem tabela local de preco)"}
+                      </span>
+                    </div>
+                    </div>
+                    <div className="space-y-0.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-700">Consolidado da sessao</p>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-700">Chamadas:</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{llmLogs.length}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-700">Sucesso/Erro:</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{successfulCallsCount}/{errorCallsCount}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-700">Input tokens (total):</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{inputTokens}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-700">Cached input tokens (total):</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{cachedInputTokens}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-700">Output tokens (total):</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{outputTokens}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-700">Total tokens (total):</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{totalTokens}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-700">Reasoning tokens (total):</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{reasoningTokens}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-700">Chunks RAG usados (total):</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">{latestRagChunksTotal}</span>
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-700">Referencias RAG (todas):</span>{" "}
+                      {latestRagReferencesAllCalls.length > 0 ? (
+                        <span className="text-[10px] font-medium text-foreground">{latestRagReferencesAllCalls.join(" | ")}</span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-muted-foreground">nao informado</span>
+                      )}
+                    </div>
+                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
+                      <span className="text-[10px] font-semibold text-blue-700">Custo estimado (total):</span>{" "}
+                      <span className="text-[10px] font-medium text-foreground">
+                        {estimatedBrl != null
+                          ? `R$ ${estimatedBrl.toFixed(4)} (≈ US$ ${estimatedUsd?.toFixed(6)})`
+                          : "indisponivel (modelo sem tabela local de preco)"}
+                      </span>
+                    </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2549,18 +2871,3 @@ const Index = () => {
 };
 
 export default Index;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

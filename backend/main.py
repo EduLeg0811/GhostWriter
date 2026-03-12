@@ -141,6 +141,12 @@ class BiblioExternaRequest(BaseModel):
     extra: str = ""
     freeText: str = ""
     topK: int = 5
+    llmModel: str | None = None
+    llmTemperature: float | None = None
+    llmMaxOutputTokens: int | None = None
+    llmGpt5Verbosity: str | None = None
+    llmGpt5Effort: str | None = None
+    llmSystemPrompt: str | None = None
 
 
 class LexicalSearchRequest(BaseModel):
@@ -892,7 +898,15 @@ def api_biblio_externa(payload: BiblioExternaRequest) -> dict[str, Any]:
         from functions.biblio_openAI import BibliografiaService
 
     try:
-        service = BibliografiaService(api_key=openai_api_key)
+        service = BibliografiaService(
+            api_key=openai_api_key,
+            llm_model=(payload.llmModel or "").strip() or None,
+            llm_temperature=payload.llmTemperature,
+            llm_max_output_tokens=payload.llmMaxOutputTokens,
+            llm_gpt5_verbosity=(payload.llmGpt5Verbosity or "").strip() or None,
+            llm_gpt5_effort=(payload.llmGpt5Effort or "").strip() or None,
+            llm_system_prompt=(payload.llmSystemPrompt or "").strip() or None,
+        )
         if free_text:
             result = service.identificar_por_texto_livre(free_text)
             referencia = str(result.get("referencia") or "").strip()
@@ -906,6 +920,7 @@ def api_biblio_externa(payload: BiblioExternaRequest) -> dict[str, Any]:
                     "markdown": referencia,
                     "score": None,
                     "llmLog": result.get("llm_log") if isinstance(result, dict) else None,
+                    "llmLogs": result.get("llm_logs") if isinstance(result, dict) else None,
                 },
             }
         else:
@@ -944,6 +959,7 @@ def api_biblio_externa(payload: BiblioExternaRequest) -> dict[str, Any]:
             "markdown": markdown,
             "score": score,
             "llmLog": result.get("llm_log") if isinstance(result, dict) else None,
+            "llmLogs": result.get("llm_logs") if isinstance(result, dict) else None,
         },
     }
 
