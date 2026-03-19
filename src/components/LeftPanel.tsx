@@ -53,23 +53,6 @@ const LeftPanel = ({ onOpenParameterSection, onRunRandomPensata, onOpenBookSearc
                 <span className="block break-words text-xs text-muted-foreground">Novo, abrir e editar documento</span>
               </span>
             </Button>
-            <Button
-              variant="ghost"
-              className={`${sectionActionButtonClass} border-0 shadow-none`}
-              onClick={() => {
-                setActiveActionId("sources");
-                onOpenParameterSection("sources");
-              }}
-              disabled={actionDisabled}
-              title="Fontes"
-              aria-label="Fontes"
-            >
-              <FolderOpen className="mr-2 h-4 w-4 shrink-0 text-primary" />
-              <span className="min-w-0 flex-1 text-left">
-                <span className="block break-words text-sm font-medium text-foreground">Fontes</span>
-                <span className="block break-words text-xs text-muted-foreground">Livros, vector store e arquivos</span>
-              </span>
-            </Button>
           </div>
 
           <Separator className="my-1" />
@@ -128,7 +111,7 @@ const LeftPanel = ({ onOpenParameterSection, onRunRandomPensata, onOpenBookSearc
               <Button variant="ghost" className={`${sectionActionButtonClass} border-0 shadow-none`} onClick={onOpenVerbetografia} disabled={actionDisabled}>
                 <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
                 <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Verbetografia</span>
+                  <span className="block break-words text-sm font-medium text-foreground">Verbetografia IA</span>
                   <span className="block break-words text-xs text-muted-foreground">Tabela automatizada de verbete</span>
                 </span>
               </Button>
@@ -139,6 +122,23 @@ const LeftPanel = ({ onOpenParameterSection, onRunRandomPensata, onOpenBookSearc
 
           <div className="space-y-2.5">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações</Label>
+            <Button
+              variant="ghost"
+              className={`${sectionActionButtonClass} border-0 shadow-none`}
+              onClick={() => {
+                setActiveActionId("sources");
+                onOpenParameterSection("sources");
+              }}
+              disabled={actionDisabled}
+              title="Fontes"
+              aria-label="Fontes"
+            >
+              <FolderOpen className="mr-2 h-4 w-4 shrink-0 text-primary" />
+              <span className="min-w-0 flex-1 text-left">
+                <span className="block break-words text-sm font-medium text-foreground">Fontes</span>
+                <span className="block break-words text-xs text-muted-foreground">Livros, vector store e arquivos</span>
+              </span>
+            </Button>
             <div className="flex items-start gap-2">
               <Button
                 variant="ghost"

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlignLeft, BookOpen, FileText, Hash, Languages, ListOrdered, Loader2, Menu, PenLine, RefreshCw, Repeat2, RotateCcw, Search, Sparkles, Type, Upload, X } from "lucide-react";
+import { AlignLeft, BookOpen, FileText, Hash, Languages, ListOrdered, Loader2, Menu, PenLine, RefreshCw, Repeat2, RotateCcw, Search, Sparkles, Trash2, Type, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
@@ -55,7 +55,6 @@ import {
   CHAT_MAX_OUTPUT_TOKENS,
   CHAT_MAX_NUM_RESULTS,
   CHAT_SYSTEM_PROMPT,
-  LLM_VECTOR_STORES,
   LLM_VECTOR_STORE_LO,
   LLM_VECTOR_STORE_TRANSLATE_RAG,
   buildDefinePrompt,
@@ -70,6 +69,8 @@ import {
   buildVerbeteSinonimologiaPrompt,
   buildVerbeteFatologiaPrompt,
   buildPensataAnalysisPrompt,
+  uploadLlmSourceFiles,
+  type UploadedLlmFile,
 } from "@/lib/openai";
 import { sectionActionButtonClass } from "@/styles/buttonStyles";
 import { BOOK_LABELS, type BookCode } from "@/lib/bookCatalog";
@@ -107,6 +108,7 @@ const BOOK_SOURCE_VECTOR_STORES = [
   { label: "WVBooks", id: "vs_6912908250e4819197e23fe725e04fae" },
   { label: "EduNotes", id: "vs_68f195fdeda08191815ec795ba1f57ba" },
 ] as const;
+const DEFAULT_BOOK_SOURCE_ID = BOOK_SOURCE_VECTOR_STORES.find((item) => item.label.toUpperCase() === "WVBOOKS")?.id ?? "";
 
 const ACTION_PANEL_BUTTONS: AiActionId[] = ["define", "synonyms", "epigraph", "pensatas", "rewrite", "summarize", "translate"];
 const APP_PANEL_BUTTONS_BY_SCOPE: Record<AppPanelScope, AppActionId[]> = {
@@ -331,6 +333,7 @@ const Index = () => {
   const [chatPreviousResponseId, setChatPreviousResponseId] = useState<string | null>(null);
   const [isJsonLogPanelOpen, setIsJsonLogPanelOpen] = useState(false);
   const [llmLogs, setLlmLogs] = useState<Array<{ id: string; at: string; request: unknown; response?: unknown; error?: string }>>([]);
+  const [llmSessionLogs, setLlmSessionLogs] = useState<Array<{ id: string; at: string; request: unknown; response?: unknown; error?: string }>>([]);
   const LLM_LOG_FONT_DEFAULT = Number((DEFAULT_LOG_FONT_SIZE_PX / 11).toFixed(2));
   const [llmLogFontScale, setLlmLogFontScale] = useState(LLM_LOG_FONT_DEFAULT);
   const [isMobileView, setIsMobileView] = useState(false);
@@ -339,7 +342,10 @@ const Index = () => {
   const [isImportingDocument, setIsImportingDocument] = useState(false);
   const [selectedImportFileName, setSelectedImportFileName] = useState("");
   const [sourcesPanelView, setSourcesPanelView] = useState<SourcesPanelView>(null);
-  const [selectedBookSourceIds, setSelectedBookSourceIds] = useState<string[]>([]);
+  const [selectedBookSourceIds, setSelectedBookSourceIds] = useState<string[]>(() => (DEFAULT_BOOK_SOURCE_ID ? [DEFAULT_BOOK_SOURCE_ID] : []));
+  const [uploadedChatFiles, setUploadedChatFiles] = useState<UploadedLlmFile[]>([]);
+  const [isUploadingChatFiles, setIsUploadingChatFiles] = useState(false);
+  const [includeEditorContextInLlm, setIncludeEditorContextInLlm] = useState(true);
   const saveTimerRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const htmlEditorControlApiRef = useRef<HtmlEditorControlApi | null>(null);
@@ -387,8 +393,7 @@ const Index = () => {
   }, [backendStatus]);
 
   const getGlobalVectorStoreIds = useCallback(() => {
-    const envStoreIds = LLM_VECTOR_STORES.split(",").map((s) => s.trim()).filter(Boolean);
-    return [...new Set([...envStoreIds, ...selectedBookSourceIds])];
+    return [...new Set(selectedBookSourceIds.map((id) => id.trim()).filter(Boolean))];
   }, [selectedBookSourceIds]);
 
   useEffect(() => {
@@ -758,13 +763,16 @@ const Index = () => {
     const id = crypto.randomUUID();
     const at = new Date().toISOString();
     setLlmLogs([{ id, at, request: mergedPayload }]);
+    setLlmSessionLogs((prev) => [...prev, { id, at, request: mergedPayload }]);
     try {
       const response = await executeLLM(mergedPayload);
-      setLlmLogs((prev) => prev.map((entry) => (entry.id === id ? { ...entry, response } : entry)));
+      setLlmLogs((prev) => (prev[0]?.id === id ? [{ ...prev[0], response }] : prev));
+      setLlmSessionLogs((prev) => prev.map((entry) => (entry.id === id ? { ...entry, response } : entry)));
       return response;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      setLlmLogs((prev) => prev.map((entry) => (entry.id === id ? { ...entry, error: message } : entry)));
+      setLlmLogs((prev) => (prev[0]?.id === id ? [{ ...prev[0], error: message }] : prev));
+      setLlmSessionLogs((prev) => prev.map((entry) => (entry.id === id ? { ...entry, error: message } : entry)));
       throw err;
     }
   }, []);
@@ -782,12 +790,9 @@ const Index = () => {
 
   const handleOpenParameterSection = useCallback((section: ParameterPanelSection) => {
     setAppPanelScope(section === "apps" ? "bibliografia" : null);
-    if (section !== "sources") setSourcesPanelView(null);
+    if (section === "sources") setSourcesPanelView("books");
+    else setSourcesPanelView(null);
     setParameterPanelTarget({ section, id: null });
-  }, []);
-
-  const handleOpenSourcesBooks = useCallback(() => {
-    setSourcesPanelView("books");
   }, []);
 
   const handleToggleBookSource = useCallback((id: string, checked: boolean) => {
@@ -795,6 +800,30 @@ const Index = () => {
       if (checked) return prev.includes(id) ? prev : [...prev, id];
       return prev.filter((item) => item !== id);
     });
+  }, []);
+
+  const handleUploadSourceFiles = useCallback(async (files: File[]) => {
+    if (files.length === 0) return;
+    setIsUploadingChatFiles(true);
+    try {
+      const uploaded = await uploadLlmSourceFiles(files);
+      setUploadedChatFiles((prev) => {
+        const next = [...prev];
+        for (const file of uploaded) {
+          if (next.some((item) => item.id === file.id)) continue;
+          next.push(file);
+        }
+        return next;
+      });
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Falha ao enviar arquivos para a OpenAI.");
+    } finally {
+      setIsUploadingChatFiles(false);
+    }
+  }, []);
+
+  const handleRemoveUploadedChatFile = useCallback((id: string) => {
+    setUploadedChatFiles((prev) => prev.filter((file) => file.id !== id));
   }, []);
 
   const handleActionMacros = useCallback(async (type: MacroActionId) => {
@@ -1092,18 +1121,20 @@ const Index = () => {
             llmGpt5Effort: biblioExternaLlmEffort,
             llmSystemPrompt: biblioExternaLlmSystemPrompt.trim() || undefined,
           });
-      const incomingLogs = Array.isArray(data.result.llmLogs)
+      const incomingLogs: Array<{ request?: unknown; response?: unknown; error?: unknown }> = Array.isArray(data.result.llmLogs)
         ? data.result.llmLogs
         : (data.result.llmLog ? [data.result.llmLog] : []);
       if (incomingLogs.length > 0) {
-        const at = new Date().toISOString();
         const latestEntry = incomingLogs[incomingLogs.length - 1];
-        setLlmLogs([{
+        const nextLog = {
           id: crypto.randomUUID(),
-          at,
+          at: new Date().toISOString(),
           request: latestEntry?.request ?? {},
           response: latestEntry?.response ?? {},
-        }]);
+          error: typeof latestEntry?.error === "string" ? latestEntry.error : undefined,
+        };
+        setLlmLogs([nextLog]);
+        setLlmSessionLogs((prev) => [...prev, nextLog]);
       }
       const markdown = (data.result.markdown || "").trim();
       const scorePercentual = Number(data.result.score?.score_percentual ?? NaN);
@@ -1241,8 +1272,9 @@ const Index = () => {
       const editorContextTruncated = normalizedEditorText.length > llmEditorContextMaxChars;
       const editorPlainTextContext = normalizedEditorText.slice(0, llmEditorContextMaxChars);
       const query = `Escreva uma Definologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
-      const messages = buildVerbeteDefinologiaPrompt(query, editorPlainTextContext, editorContextTruncated);
+      const messages = buildVerbeteDefinologiaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm);
       const chatStoreIds = getGlobalVectorStoreIds();
+      const chatFileIds = uploadedChatFiles.map((file) => file.id).filter(Boolean);
       const result = (
         await executeLLMWithLog({
           messages,
@@ -1253,7 +1285,7 @@ const Index = () => {
           maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS,
           systemPrompt: "",
           vectorStoreIds: chatStoreIds,
-          ragQuery: query,
+          inputFileIds: chatFileIds,
         })
       ).content.trim();
       const finalContent = result || "Sem conteudo retornado pela IA.";
@@ -1265,7 +1297,7 @@ const Index = () => {
     } finally {
       setIsRunningVerbeteDefinologia(false);
     }
-  }, [backendNotReadyMessage, documentText, getGlobalVectorStoreIds, htmlEditorControlApi, llmEditorContextMaxChars, openAiReady, verbetografiaSpecialty, verbetografiaTitle]);
+  }, [backendNotReadyMessage, documentText, getGlobalVectorStoreIds, htmlEditorControlApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, uploadedChatFiles, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunVerbeteFraseEnfatica = useCallback(async () => {
     if (!openAiReady) {
@@ -1291,8 +1323,9 @@ const Index = () => {
       const editorContextTruncated = normalizedEditorText.length > llmEditorContextMaxChars;
       const editorPlainTextContext = normalizedEditorText.slice(0, llmEditorContextMaxChars);
       const query = `Escreva uma Frase Enfática do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
-      const messages = buildVerbeteFraseEnfaticaPrompt(query, editorPlainTextContext, editorContextTruncated);
+      const messages = buildVerbeteFraseEnfaticaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm);
       const chatStoreIds = getGlobalVectorStoreIds();
+      const chatFileIds = uploadedChatFiles.map((file) => file.id).filter(Boolean);
       const result = (
         await executeLLMWithLog({
           messages,
@@ -1303,7 +1336,7 @@ const Index = () => {
           maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS,
           systemPrompt: "",
           vectorStoreIds: chatStoreIds,
-          ragQuery: query,
+          inputFileIds: chatFileIds,
         })
       ).content.trim();
       const finalContent = result || "Sem conteudo retornado pela IA.";
@@ -1315,7 +1348,7 @@ const Index = () => {
     } finally {
       setIsRunningVerbeteFraseEnfatica(false);
     }
-  }, [backendNotReadyMessage, documentText, htmlEditorControlApi, llmEditorContextMaxChars, openAiReady, verbetografiaSpecialty, verbetografiaTitle]);
+  }, [backendNotReadyMessage, documentText, getGlobalVectorStoreIds, htmlEditorControlApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, uploadedChatFiles, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunVerbeteSinonimologia = useCallback(async () => {
     if (!openAiReady) {
@@ -1341,8 +1374,9 @@ const Index = () => {
       const editorContextTruncated = normalizedEditorText.length > llmEditorContextMaxChars;
       const editorPlainTextContext = normalizedEditorText.slice(0, llmEditorContextMaxChars);
       const query = `Escreva uma Sinonimologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
-      const messages = buildVerbeteSinonimologiaPrompt(query, editorPlainTextContext, editorContextTruncated);
+      const messages = buildVerbeteSinonimologiaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm);
       const chatStoreIds = getGlobalVectorStoreIds();
+      const chatFileIds = uploadedChatFiles.map((file) => file.id).filter(Boolean);
       const result = (
         await executeLLMWithLog({
           messages,
@@ -1353,7 +1387,7 @@ const Index = () => {
           maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS,
           systemPrompt: "",
           vectorStoreIds: chatStoreIds,
-          ragQuery: query,
+          inputFileIds: chatFileIds,
         })
       ).content.trim();
       const finalContent = result || "Sem conteudo retornado pela IA.";
@@ -1365,7 +1399,7 @@ const Index = () => {
     } finally {
       setIsRunningVerbeteSinonimologia(false);
     }
-  }, [backendNotReadyMessage, documentText, getGlobalVectorStoreIds, htmlEditorControlApi, llmEditorContextMaxChars, openAiReady, verbetografiaSpecialty, verbetografiaTitle]);
+  }, [backendNotReadyMessage, documentText, getGlobalVectorStoreIds, htmlEditorControlApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, uploadedChatFiles, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunVerbeteFatologia = useCallback(async () => {
     if (!openAiReady) {
@@ -1391,8 +1425,9 @@ const Index = () => {
       const editorContextTruncated = normalizedEditorText.length > llmEditorContextMaxChars;
       const editorPlainTextContext = normalizedEditorText.slice(0, llmEditorContextMaxChars);
       const query = `Escreva uma Fatologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
-      const messages = buildVerbeteFatologiaPrompt(query, editorPlainTextContext, editorContextTruncated);
+      const messages = buildVerbeteFatologiaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm);
       const chatStoreIds = getGlobalVectorStoreIds();
+      const chatFileIds = uploadedChatFiles.map((file) => file.id).filter(Boolean);
       const result = (
         await executeLLMWithLog({
           messages,
@@ -1403,7 +1438,7 @@ const Index = () => {
           maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS,
           systemPrompt: "",
           vectorStoreIds: chatStoreIds,
-          ragQuery: query,
+          inputFileIds: chatFileIds,
         })
       ).content.trim();
       const finalContent = result || "Sem conteudo retornado pela IA.";
@@ -1415,7 +1450,7 @@ const Index = () => {
     } finally {
       setIsRunningVerbeteFatologia(false);
     }
-  }, [backendNotReadyMessage, documentText, getGlobalVectorStoreIds, htmlEditorControlApi, llmEditorContextMaxChars, openAiReady, verbetografiaSpecialty, verbetografiaTitle]);
+  }, [backendNotReadyMessage, documentText, getGlobalVectorStoreIds, htmlEditorControlApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, uploadedChatFiles, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunLexicalSearch = useCallback(async () => {
     const book = selectedLexicalBook.trim();
@@ -1557,7 +1592,12 @@ const Index = () => {
       const header = `Livro: ${source} | Paragrafo: ${number}${total > 0 ? `/${total}` : ""}`;
       const pensata = paragraph || "Paragrafo nao encontrado.";
       const analysisMessages = buildPensataAnalysisPrompt(pensata);
-      const analysis = (await executeLLMWithLog({ messages: analysisMessages })).content.trim();
+      const analysis = (
+        await executeLLMWithLog({
+          messages: analysisMessages,
+          vectorStoreIds: ["vs_6912908250e4819197e23fe725e04fae"],
+        })
+      ).content.trim();
       const content = analysis ? `${pensata}\n\n**Análise IA:** ${analysis}` : pensata;
       addResponse("app_random_pensata", header, content);
     } catch (err: unknown) {
@@ -1570,6 +1610,7 @@ const Index = () => {
 
   const handleAction = useCallback(async (type: AiActionId) => {
     const text = actionText.trim();
+    const inputFileIds = uploadedChatFiles.map((file) => file.id).filter(Boolean);
 
     if (!text) {
       toast.error("Selecione um trecho no documento ou escreva na caixa de texto.");
@@ -1589,19 +1630,28 @@ const Index = () => {
 
       setIsLoading(true);
       try {
-        const chunks = (
+        const content = (
           await executeLLMWithLog({
-            messages: [{ role: "user", content: text }],
+            messages: [
+              {
+                role: "system",
+                content:
+                  "Voce e um pesquisador de pensatas da Conscienciologia. Use exclusivamente o material recuperado pela busca nos arquivos. Retorne ate 10 pensatas, paragrafos ou trechos curtos realmente relacionados ao tema pedido. Se nao houver material suficiente, diga exatamente: Nenhuma correspondencia encontrada na Vector Store LO.",
+              },
+              {
+                role: "user",
+                content:
+                  `Localize pensatas afins ao termo abaixo e devolva apenas a lista final em Markdown numerado.\n\n` +
+                  `Termo de busca: ${text}`,
+              },
+            ],
             vectorStoreIds: [LLM_VECTOR_STORE_LO],
-            ragQuery: text,
-            returnChunksOnly: true,
+            inputFileIds,
           })
-        ).chunks;
-        if (chunks.length === 0) {
+        ).content.trim();
+        if (!content || content === "Nenhuma correspondencia encontrada na Vector Store LO.") {
           toast.info("Nenhuma correspond\u00eancia encontrada na Vector Store LO.");
         } else {
-          const allParagraphs = chunks.flatMap((c) => c.split(/\n/)).map((p) => p.trim()).filter(Boolean).slice(0, 10);
-          const content = allParagraphs.map((p, i) => `**${i + 1}.** ${p}`).join("\n\n");
           addResponse("pensatas", text.slice(0, 80), content);
         }
       } catch (err: unknown) {
@@ -1614,54 +1664,33 @@ const Index = () => {
 
     setIsLoading(true);
     try {
-      let ragContext: string | undefined;
-      if (type === "define" || type === "synonyms") {
-        const storeIds = getGlobalVectorStoreIds();
-        if (storeIds.length > 0) {
-          const allChunks = (
-            await executeLLMWithLog({
-              messages: [{ role: "user", content: text }],
-              vectorStoreIds: storeIds,
-              ragQuery: text,
-              returnChunksOnly: true,
-            })
-          ).chunks;
-          if (allChunks.length > 0) ragContext = allChunks.join("\n\n---\n\n");
-        }
-      }
-      if (type === "translate") {
-        if (!LLM_VECTOR_STORE_TRANSLATE_RAG) {
-          throw new Error("Configure VITE_OPENAI_VECTOR_STORE_TRANSLATE_RAG.");
-        }
-        const chunks = (
-          await executeLLMWithLog({
-            messages: [{ role: "user", content: text }],
-            vectorStoreIds: [LLM_VECTOR_STORE_TRANSLATE_RAG],
-            ragQuery: text,
-            returnChunksOnly: true,
-          })
-        ).chunks;
-        if (chunks.length > 0) ragContext = chunks.join("\n\n---\n\n");
-      }
-
       const promptMap = {
-        define: (t: string) => buildDefinePrompt(t, ragContext),
-        synonyms: (t: string) => buildSynonymsPrompt(t, ragContext),
-        epigraph: (t: string) => buildEpigraphPrompt(t, ragContext),
+        define: (t: string) => buildDefinePrompt(t),
+        synonyms: (t: string) => buildSynonymsPrompt(t),
+        epigraph: (t: string) => buildEpigraphPrompt(t),
         rewrite: buildRewritePrompt,
         summarize: buildSummarizePrompt,
-        translate: (t: string) => buildTranslatePrompt(t, translateLanguage, ragContext),
+        translate: (t: string) => buildTranslatePrompt(t, translateLanguage),
       };
 
       const messages = promptMap[type](text);
-      const result = (await executeLLMWithLog({ messages })).content;
+      const vectorStoreIds =
+        type === "define" || type === "synonyms"
+          ? getGlobalVectorStoreIds()
+          : type === "translate"
+            ? [LLM_VECTOR_STORE_TRANSLATE_RAG].filter(Boolean)
+            : [];
+      if (type === "translate" && vectorStoreIds.length === 0) {
+        throw new Error("Configure VITE_OPENAI_VECTOR_STORE_TRANSLATE_RAG.");
+      }
+      const result = (await executeLLMWithLog({ messages, vectorStoreIds, inputFileIds })).content;
       addResponse(type, text.slice(0, 80), result);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erro na chamada a IA.");
     } finally {
       setIsLoading(false);
     }
-  }, [actionText, backendNotReadyMessage, getGlobalVectorStoreIds, openAiReady, translateLanguage]);
+  }, [actionText, backendNotReadyMessage, getGlobalVectorStoreIds, openAiReady, translateLanguage, uploadedChatFiles]);
 
   const handleOpenAiActionParameters = useCallback((type: AiActionId) => {
     setParameterPanelTarget({ section: "actions", id: type });
@@ -1683,13 +1712,14 @@ const Index = () => {
         editorContextTruncated = normalizedEditorText.length > llmEditorContextMaxChars;
         editorPlainTextContext = normalizedEditorText.slice(0, llmEditorContextMaxChars);
       }
-      const messages = buildChatPrompt(message, chatHistory, editorPlainTextContext, editorContextTruncated);
+      const messages = buildChatPrompt(message, chatHistory, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm);
       const chatStoreIds = getGlobalVectorStoreIds();
+      const chatFileIds = uploadedChatFiles.map((file) => file.id).filter(Boolean);
       const llmResponse = await executeLLMWithLog({
         messages,
         previousResponseId: chatPreviousResponseId ?? undefined,
         vectorStoreIds: chatStoreIds,
-        ragQuery: message,
+        inputFileIds: chatFileIds,
       });
       const result = llmResponse.content.trim();
       const nextResponseId = llmResponse.meta?.id;
@@ -1704,7 +1734,7 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [backendNotReadyMessage, chatHistory, chatPreviousResponseId, currentFileId, documentText, getGlobalVectorStoreIds, htmlEditorControlApi, llmEditorContextMaxChars, openAiReady]);
+  }, [backendNotReadyMessage, chatHistory, chatPreviousResponseId, currentFileId, documentText, getGlobalVectorStoreIds, htmlEditorControlApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, uploadedChatFiles]);
 
   const handleEditorContentChange = useCallback(({ html, text }: { html: string; text: string }) => {
     setEditorContentHtml(html);
@@ -1826,7 +1856,6 @@ const Index = () => {
   const latestOutputTokens = outputTokensFromUsage(latestUsage);
   const latestTotalTokens = totalTokensFromUsage(latestUsage);
   const latestReasoningTokens = reasoningTokensFromUsage(latestUsage);
-  const latestRagChunks = Number(latestLlmMeta.rag_chunks_count ?? 0) || 0;
   const latestRagReferences = Array.isArray(latestLlmMeta.rag_references)
     ? (latestLlmMeta.rag_references as unknown[]).map((ref) => String(ref || "").trim()).filter(Boolean)
     : [];
@@ -1836,12 +1865,11 @@ const Index = () => {
   let outputTokens = 0;
   let totalTokens = 0;
   let reasoningTokens = 0;
-  let latestRagChunksTotal = 0;
   const ragReferenceSet = new Set<string>();
   let successfulCallsCount = 0;
   let errorCallsCount = 0;
 
-  for (const log of llmLogs) {
+  for (const log of llmSessionLogs) {
     if (log.error) errorCallsCount += 1;
     if (!log.response || typeof log.response !== "object" || !("meta" in (log.response as Record<string, unknown>))) continue;
     successfulCallsCount += 1;
@@ -1852,7 +1880,6 @@ const Index = () => {
     outputTokens += outputTokensFromUsage(usage);
     totalTokens += totalTokensFromUsage(usage);
     reasoningTokens += reasoningTokensFromUsage(usage);
-    latestRagChunksTotal += Number(meta.rag_chunks_count ?? 0) || 0;
     if (Array.isArray(meta.rag_references)) {
       for (const ref of meta.rag_references) {
         const normalized = String(ref || "").trim();
@@ -1898,7 +1925,7 @@ const Index = () => {
 
   let estimatedUsdAccumulator = 0;
   let estimatedUsdAvailableCount = 0;
-  for (const log of llmLogs) {
+  for (const log of llmSessionLogs) {
     if (!log.response || typeof log.response !== "object" || !("meta" in (log.response as Record<string, unknown>))) continue;
     const meta = ((log.response as { meta?: Record<string, unknown> }).meta ?? {});
     const estimated = estimateUsdFromMeta(meta);
@@ -2243,13 +2270,16 @@ const Index = () => {
                         </div>
                       ) : parameterPanelTarget.section === "sources" ? (
                         <SourcesPanel
-                          onSelectBooks={handleOpenSourcesBooks}
-                          onSelectVectorStore={() => {}}
-                          onUploadFiles={() => {}}
-                          activeView={sourcesPanelView}
+                          onUploadFiles={(files) => void handleUploadSourceFiles(files)}
                           bookSources={BOOK_SOURCE_VECTOR_STORES.map((item) => ({ ...item }))}
                           selectedBookSourceIds={selectedBookSourceIds}
                           onToggleBookSource={handleToggleBookSource}
+                          uploadedFiles={uploadedChatFiles}
+                          onRemoveUploadedFile={handleRemoveUploadedChatFile}
+                          isUploadingFiles={isUploadingChatFiles}
+                          includeEditorContext={includeEditorContextInLlm}
+                          onToggleIncludeEditorContext={setIncludeEditorContextInLlm}
+                          hasOpenDocument={Boolean(currentFileId)}
                         />
                       ) : parameterPanelTarget.section === "settings" ? (
                         <div className="h-full overflow-y-auto p-3">
@@ -2669,7 +2699,7 @@ const Index = () => {
             >
               <div className="flex h-full flex-col bg-muted/40">
                 <div className={`flex items-center justify-between border-b border-border ${panelsTopMenuBarBgClass} px-4 py-3`}>
-                  <h2 className="text-sm font-semibold text-foreground">LLM JSON Logs</h2>
+                  <h2 className="text-sm font-semibold text-foreground">LLM Logs</h2>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="ghost"
@@ -2703,12 +2733,15 @@ const Index = () => {
                     </Button>
                     <Button
                       variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
-                      onClick={() => setLlmLogs([])}
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => {
+                        setLlmLogs([]);
+                        setLlmSessionLogs([]);
+                      }}
                       title="Limpar logs"
                     >
-                      Limpar
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       variant="ghost"
@@ -2794,10 +2827,6 @@ const Index = () => {
                       <span className="text-[10px] font-medium text-foreground">{latestReasoningTokens}</span>
                     </div>
                     <div className="rounded border border-border bg-white px-1.5 py-0.5">
-                      <span className="text-[10px] font-semibold text-blue-600">Chunks RAG usados:</span>{" "}
-                      <span className="text-[10px] font-medium text-foreground">{latestRagChunks}</span>
-                    </div>
-                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
                       <span className="text-[10px] font-semibold text-blue-600">Referencias RAG:</span>{" "}
                       {latestRagReferences.length > 0 ? (
                         <span className="text-[10px] font-medium text-foreground">{latestRagReferences.join(" | ")}</span>
@@ -2818,7 +2847,7 @@ const Index = () => {
                     <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-700">Consolidado da sessao</p>
                     <div className="rounded border border-border bg-white px-1.5 py-0.5">
                       <span className="text-[10px] font-semibold text-blue-700">Chamadas:</span>{" "}
-                      <span className="text-[10px] font-medium text-foreground">{llmLogs.length}</span>
+                      <span className="text-[10px] font-medium text-foreground">{llmSessionLogs.length}</span>
                     </div>
                     <div className="rounded border border-border bg-white px-1.5 py-0.5">
                       <span className="text-[10px] font-semibold text-blue-700">Sucesso/Erro:</span>{" "}
@@ -2843,10 +2872,6 @@ const Index = () => {
                     <div className="rounded border border-border bg-white px-1.5 py-0.5">
                       <span className="text-[10px] font-semibold text-blue-700">Reasoning tokens (total):</span>{" "}
                       <span className="text-[10px] font-medium text-foreground">{reasoningTokens}</span>
-                    </div>
-                    <div className="rounded border border-border bg-white px-1.5 py-0.5">
-                      <span className="text-[10px] font-semibold text-blue-700">Chunks RAG usados (total):</span>{" "}
-                      <span className="text-[10px] font-medium text-foreground">{latestRagChunksTotal}</span>
                     </div>
                     <div className="rounded border border-border bg-white px-1.5 py-0.5">
                       <span className="text-[10px] font-semibold text-blue-700">Referencias RAG (todas):</span>{" "}
@@ -2888,6 +2913,7 @@ const Index = () => {
                   onContentChange={handleEditorContentChange}
                   onExportDocx={() => void handleExportDocx()}
                   isExportingDocx={isExportingDocx}
+                  showLlmContextIndicator={Boolean(currentFileId) && includeEditorContextInLlm}
                   onCloseEditor={() => {
                     setCurrentFileId("");
                     setCurrentFileName("");

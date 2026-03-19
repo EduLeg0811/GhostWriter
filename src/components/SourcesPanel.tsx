@@ -1,32 +1,54 @@
+import { useRef } from "react";
 import { CheckedState } from "@radix-ui/react-checkbox";
-import { BookOpen, Database, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { sectionActionButtonClass } from "@/styles/buttonStyles";
-
-type SourcesPanelView = "books" | "vector-store" | "upload" | null;
+import type { UploadedLlmFile } from "@/lib/openai";
 
 interface SourcesPanelProps {
-  onSelectBooks: () => void;
-  onSelectVectorStore: () => void;
-  onUploadFiles: () => void;
-  activeView: SourcesPanelView;
+  onUploadFiles: (files: File[]) => void;
   bookSources: Array<{ id: string; label: string }>;
   selectedBookSourceIds: string[];
   onToggleBookSource: (id: string, checked: boolean) => void;
+  uploadedFiles: UploadedLlmFile[];
+  onRemoveUploadedFile: (id: string) => void;
+  isUploadingFiles?: boolean;
+  includeEditorContext: boolean;
+  onToggleIncludeEditorContext: (checked: boolean) => void;
+  hasOpenDocument: boolean;
 }
 
 const SourcesPanel = ({
-  onSelectBooks,
-  onSelectVectorStore,
   onUploadFiles,
-  activeView,
   bookSources,
   selectedBookSourceIds,
   onToggleBookSource,
+  uploadedFiles,
+  onRemoveUploadedFile,
+  isUploadingFiles = false,
+  includeEditorContext,
+  onToggleIncludeEditorContext,
+  hasOpenDocument,
 }: SourcesPanelProps) => {
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const sourceBooks = bookSources.filter((source) => source.label.startsWith("Source"));
+  const vectorStores = bookSources.filter((source) => !source.label.startsWith("Source"));
+
+  const renderSourceItem = (source: { id: string; label: string }) => {
+    const checked = selectedBookSourceIds.includes(source.id);
+    return (
+      <label key={source.id} className="flex cursor-pointer items-start gap-2 px-1 py-1">
+        <Checkbox checked={checked} onCheckedChange={(value: CheckedState) => onToggleBookSource(source.id, value === true)} />
+        <span className="min-w-0 flex-1 text-left">
+          <span className="block break-words text-xs font-medium text-foreground">{source.label}</span>
+        </span>
+      </label>
+    );
+  };
+
   return (
     <div className="h-full overflow-y-auto p-3">
       <div className="flex h-full flex-col space-y-3">
@@ -37,52 +59,125 @@ const SourcesPanel = ({
 
         <Separator />
 
-        <div className="space-y-2">
-          <Button variant="ghost" className={sectionActionButtonClass} onClick={onSelectBooks}>
-            <BookOpen className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
-            <span className="min-w-0 flex-1 text-left">
-              <span className="block break-words text-sm font-medium text-foreground">Selecionar Livros</span>
-            </span>
-          </Button>
-
-          <Button variant="ghost" className={sectionActionButtonClass} onClick={onSelectVectorStore}>
-            <Database className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
-            <span className="min-w-0 flex-1 text-left">
-              <span className="block break-words text-sm font-medium text-foreground">Selecionar Vector Store</span>
-            </span>
-          </Button>
-
-          <Button variant="ghost" className={sectionActionButtonClass} onClick={onUploadFiles}>
-            <Upload className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
-            <span className="min-w-0 flex-1 text-left">
-              <span className="block break-words text-sm font-medium text-foreground">Upload Arquivos</span>
-            </span>
-          </Button>
-        </div>
-
-        <Separator />
-
         <div className="min-h-0 flex-1 space-y-3" aria-label="Dados-Fontes">
-          {activeView === "books" ? (
-            <>
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dados-Fontes</Label>
-              <div className="space-y-2">
-                {bookSources.map((source) => {
-                  const checked = selectedBookSourceIds.includes(source.id);
-                  return (
-                    <label key={source.id} className="flex cursor-pointer items-start gap-2 px-1 py-1">
-                      <Checkbox checked={checked} onCheckedChange={(value: CheckedState) => onToggleBookSource(source.id, value === true)} />
-                      <span className="min-w-0 flex-1 text-left">
-                        <span className="block break-words text-xs font-medium text-foreground">{source.label}</span>
-                      </span>
-                    </label>
-                  );
-                })}
+          <>
+            {/*<Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dados-Fontes</Label>*/}
+            <div className="space-y-2">
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Livros e Tratados</p>
+                <div className="space-y-1">
+                  {sourceBooks.map(renderSourceItem)}
+                </div>
               </div>
-              <Separator className="my-3" />
-              <div className="min-h-0 flex-1" />
-            </>
-          ) : null}
+
+              <div className="py-3">
+                <Separator />
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vector Stores</p>
+                <div className="space-y-1">
+                  {vectorStores.map(renderSourceItem)}
+                </div>
+              </div>
+
+              <div className="py-3">
+                <Separator />
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Arquivos Anexados</p>
+                <Button
+                  variant="ghost"
+                  className={sectionActionButtonClass}
+                  onClick={() => {
+                    uploadInputRef.current?.click();
+                  }}
+                >
+                  <Upload className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
+                  <span className="min-w-0 flex-1 text-left">
+                    <span className="block break-words text-sm font-medium text-foreground">Upload Arquivos</span>
+                  </span>
+                </Button>
+                <input
+                  ref={uploadInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onClick={(event) => {
+                    event.currentTarget.value = "";
+                  }}
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files ?? []);
+                    if (files.length > 0) onUploadFiles(files);
+                  }}
+                />
+                {isUploadingFiles ? (
+                  <div className="rounded border border-border bg-white px-2 py-2 text-xs text-muted-foreground">
+                    Enviando arquivos para a OpenAI...
+                  </div>
+                ) : null}
+                {uploadedFiles.length > 0 ? (
+                  <div className="space-y-2">
+                    {uploadedFiles.map((file) => (
+                      <div key={file.id} className="rounded border border-border bg-white px-2 py-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="break-words text-xs font-medium text-foreground">{file.filename}</p>
+                            <p className="text-[11px] text-muted-foreground">{file.bytes} bytes</p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-[11px]"
+                            onClick={() => onRemoveUploadedFile(file.id)}
+                          >
+                            Remover
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded border border-dashed border-border bg-white px-2 py-2 text-xs text-muted-foreground">
+                    Nenhum arquivo anexado
+                  </div>
+                )}
+              </div>
+
+              <div className="py-3">
+                <Separator />
+              </div>
+
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Documento de Trabalho</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!hasOpenDocument) return;
+                    onToggleIncludeEditorContext(!includeEditorContext);
+                  }}
+                  disabled={!hasOpenDocument}
+                  className="w-full text-left disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span className="block min-w-0">
+                    <span className="flex items-center justify-between gap-3">
+                      <span className="block break-words text-sm font-medium text-foreground">Enviar o texto para a LLM</span>
+                      <Checkbox checked={includeEditorContext && hasOpenDocument} aria-label="Enviar o texto para a LLM" />
+                    </span>
+                    <span className="mt-1 block break-words text-xs text-muted-foreground">
+                      {hasOpenDocument ? "Envia o texto aberto no editor HTML como contexto adicional." : "Disponivel apenas com arquivo aberto no editor HTML."}
+                    </span>
+                  </span>
+                </button>
+              </div>
+            </div>
+            <div className="py-2">
+              <Separator />
+            </div>
+            <div className="min-h-0 flex-1" />
+          </>
         </div>
       </div>
     </div>

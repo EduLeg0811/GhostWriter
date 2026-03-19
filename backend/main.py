@@ -108,9 +108,8 @@ class ExecuteLLMRequest(BaseModel):
     gpt5Effort: str | None = None
     tools: list[dict[str, Any]] | None = None
     vectorStoreIds: list[str] = []
-    ragQuery: str = ""
+    inputFileIds: list[str] = []
     vectorMaxResults: int = 5
-    returnChunksOnly: bool = False
 
 
 class InsertRefBookRequest(BaseModel):
@@ -1147,6 +1146,42 @@ async def api_files_upload(file: UploadFile = File(...)) -> dict[str, Any]:
     return metadata
 
 
+@app.post("/api/ai/files/upload")
+async def api_ai_files_upload(files: list[UploadFile] = File(...)) -> dict[str, Any]:
+    require_openai_key()
+    openai_api_key = get_openai_api_key()
+    uploaded_files: list[dict[str, Any]] = []
+    headers = {"Authorization": f"Bearer {openai_api_key}"}
+
+    for upload in files:
+        content = await upload.read()
+        filename = Path(upload.filename or "arquivo").name or "arquivo"
+        mime_type = upload.content_type or "application/octet-stream"
+        upstream = requests.post(
+            "https://api.openai.com/v1/files",
+            headers=headers,
+            data={"purpose": "user_data"},
+            files={"file": (filename, content, mime_type)},
+            timeout=120,
+        )
+        try:
+            upstream.raise_for_status()
+        except requests.HTTPError as exc:
+            detail = (upstream.text or "").strip() or str(exc)
+            raise HTTPException(status_code=upstream.status_code, detail=detail) from exc
+
+        data = upstream.json()
+        uploaded_files.append({
+            "id": data.get("id"),
+            "filename": data.get("filename") or filename,
+            "bytes": data.get("bytes") or len(content),
+            "purpose": data.get("purpose") or "user_data",
+            "mimeType": mime_type,
+        })
+
+    return {"files": uploaded_files}
+
+
 @app.post("/api/files/create-blank")
 def api_files_create_blank(payload: CreateBlankFileRequest) -> dict[str, Any]:
     run_storage_gc()
@@ -1260,7 +1295,7 @@ def api_ai_execute(payload: ExecuteLLMRequest) -> dict[str, Any]:
             gpt5_effort=payload.gpt5Effort,
             tools=payload.tools,
             vector_store_ids=payload.vectorStoreIds,
-            rag_query=payload.ragQuery,
+            input_file_ids=payload.inputFileIds,
             vector_max_results=max(1, min(int(payload.vectorMaxResults or 5), 20)),
         )
     except requests.HTTPError as exc:
@@ -1285,11 +1320,8 @@ def api_ai_execute(payload: ExecuteLLMRequest) -> dict[str, Any]:
         "gpt5_effort_requested": payload.gpt5Effort,
         "usage": usage,
         "rag_references": result.get("references", []),
-        "rag_chunks_count": len(result.get("chunks", [])),
     }
-    if payload.returnChunksOnly:
-        return {"chunks": result.get("chunks", []), "meta": meta}
-    return {"content": result.get("content", ""), "chunks": result.get("chunks", []), "meta": meta}
+    return {"content": result.get("content", ""), "meta": meta}
 
 
 @app.get("/")

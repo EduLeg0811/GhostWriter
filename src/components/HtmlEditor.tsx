@@ -4,7 +4,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import { Color, FontFamily, FontSize, LineHeight, TextStyle } from "@tiptap/extension-text-style";
 import StarterKit from "@tiptap/starter-kit";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { Bold, Download, Highlighter, Italic, List, ListOrdered, Undo2, X } from "lucide-react";
+import { Bold, Download, Highlighter, Italic, List, ListOrdered, Paperclip, RotateCcw, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
@@ -17,6 +17,7 @@ interface HtmlEditorProps {
   onCloseEditor?: () => void;
   onExportDocx?: () => void;
   isExportingDocx?: boolean;
+  showLlmContextIndicator?: boolean;
 }
 
 const HtmlEditor = ({
@@ -27,6 +28,7 @@ const HtmlEditor = ({
   onCloseEditor,
   onExportDocx,
   isExportingDocx = false,
+  showLlmContextIndicator = false,
 }: HtmlEditorProps) => {
   const controlApiRef = useRef<HtmlEditorControlApi | null>(null);
   const onControlApiReadyRef = useRef<HtmlEditorProps["onControlApiReady"]>(onControlApiReady);
@@ -146,16 +148,16 @@ const HtmlEditor = ({
       }
     >
       <div className={`flex flex-wrap items-center gap-1 border-b border-border ${panelsTopMenuBarBgClass} px-4 py-2.5`}>
-        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => editor.chain().focus().toggleBold().run()}>
+        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" title="Negrito" onClick={() => editor.chain().focus().toggleBold().run()}>
           <Bold className="h-4 w-4" />
         </Button>
-        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => editor.chain().focus().toggleItalic().run()}>
+        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" title="Italico" onClick={() => editor.chain().focus().toggleItalic().run()}>
           <Italic className="h-4 w-4" />
         </Button>
-        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => editor.chain().focus().toggleBulletList().run()}>
+        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" title="Lista com marcadores" onClick={() => editor.chain().focus().toggleBulletList().run()}>
           <List className="h-4 w-4" />
         </Button>
-        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" title="Lista numerada" onClick={() => editor.chain().focus().toggleOrderedList().run()}>
           <ListOrdered className="h-4 w-4" />
         </Button>
         <Button type="button" variant="ghost" className="h-8 px-2 text-xs font-semibold" onClick={decreaseDocumentFontSize} title="Diminuir fonte de todo o documento">
@@ -170,21 +172,33 @@ const HtmlEditor = ({
         <Button type="button" variant="ghost" className="h-8 px-2 text-xs font-semibold" onClick={increaseDocumentLineHeight} title="Aumentar espacamento entre linhas de todo o documento">
           LH+
         </Button>
-        <Button type="button" variant="ghost" className="h-8 px-2 text-xs font-semibold" onClick={resetDocumentTypography} title="Resetar fonte e espacamento para o padrao">
-          Reset
+        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={resetDocumentTypography} title="Resetar fonte e espacamento para o padrao">
+          <RotateCcw className="h-4 w-4" />
         </Button>
         <Button
           type="button"
           size="icon"
           variant="ghost"
           className="h-8 w-8"
+          title="Marca-texto amarelo"
           onClick={() => editor.chain().focus().toggleHighlight({ color: "yellow" }).run()}
         >
           <Highlighter className="h-4 w-4" />
         </Button>
-        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => editor.chain().focus().undo().run()}>
+        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" title="Desfazer" onClick={() => editor.chain().focus().undo().run()}>
           <Undo2 className="h-4 w-4" />
         </Button>
+        {showLlmContextIndicator ? (
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-muted-foreground"
+            title="Texto do editor sera enviado para a LLM como contexto adicional"
+          >
+            <Paperclip className="h-3.5 w-3.5" />
+          </Button>
+        ) : null}
         <Button
           type="button"
           size="icon"

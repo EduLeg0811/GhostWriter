@@ -67,15 +67,21 @@ export interface ExecuteLLMParams {
   gpt5Verbosity?: "low" | "medium" | "high";
   gpt5Effort?: "none" | "low" | "medium" | "high";
   vectorStoreIds?: string[];
-  ragQuery?: string;
+  inputFileIds?: string[];
   vectorMaxResults?: number;
-  returnChunksOnly?: boolean;
   tools?: Array<Record<string, unknown>>;
+}
+
+export interface UploadedLlmFile {
+  id: string;
+  filename: string;
+  bytes: number;
+  purpose: string;
+  mimeType?: string;
 }
 
 export interface ExecuteLLMResult {
   content: string;
-  chunks: string[];
   meta?: {
     id?: string;
     model?: string;
@@ -87,29 +93,32 @@ export interface ExecuteLLMResult {
     gpt5_effort_requested?: string | null;
     usage?: Record<string, unknown>;
     rag_references?: string[];
-    rag_chunks_count?: number;
   };
 }
 
 export async function executeLLM(params: ExecuteLLMParams): Promise<ExecuteLLMResult> {
+  const vectorStoreIds = params.vectorStoreIds?.map((id) => id.trim()).filter(Boolean);
+  const inputFileIds = params.inputFileIds?.map((id) => id.trim()).filter(Boolean);
+  const tools = params.tools?.filter(Boolean);
+  const body: Record<string, unknown> = {
+    model: params.model ?? LLM_DEFAULT_MODEL,
+    messages: params.messages,
+    previousResponseId: params.previousResponseId,
+    systemPrompt: params.systemPrompt ?? LLM_DEFAULT_SYSTEM_PROMPT,
+    temperature: params.temperature ?? LLM_DEFAULT_TEMPERATURE,
+    maxOutputTokens: params.maxOutputTokens,
+    gpt5Verbosity: params.gpt5Verbosity ?? LLM_DEFAULT_GPT5_VERBOSITY,
+    gpt5Effort: params.gpt5Effort ?? LLM_DEFAULT_GPT5_EFFORT,
+    vectorMaxResults: params.vectorMaxResults ?? 5,
+  };
+  if (vectorStoreIds && vectorStoreIds.length > 0) body.vectorStoreIds = vectorStoreIds;
+  if (inputFileIds && inputFileIds.length > 0) body.inputFileIds = inputFileIds;
+  if (tools && tools.length > 0) body.tools = tools;
+
   const res = await fetch(apiUrl("/api/ai/execute"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: params.model ?? LLM_DEFAULT_MODEL,
-      messages: params.messages,
-      previousResponseId: params.previousResponseId,
-      systemPrompt: params.systemPrompt ?? LLM_DEFAULT_SYSTEM_PROMPT,
-      temperature: params.temperature ?? LLM_DEFAULT_TEMPERATURE,
-      maxOutputTokens: params.maxOutputTokens,
-      gpt5Verbosity: params.gpt5Verbosity ?? LLM_DEFAULT_GPT5_VERBOSITY,
-      gpt5Effort: params.gpt5Effort ?? LLM_DEFAULT_GPT5_EFFORT,
-      vectorStoreIds: params.vectorStoreIds ?? [],
-      ragQuery: params.ragQuery ?? "",
-      vectorMaxResults: params.vectorMaxResults ?? 5,
-      returnChunksOnly: Boolean(params.returnChunksOnly),
-      tools: params.tools ?? null,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
@@ -118,7 +127,27 @@ export async function executeLLM(params: ExecuteLLMParams): Promise<ExecuteLLMRe
   }
 
   const data = await res.json();
-  return { content: data.content ?? "", chunks: data.chunks ?? [], meta: data.meta ?? undefined };
+  return { content: data.content ?? "", meta: data.meta ?? undefined };
+}
+
+export async function uploadLlmSourceFiles(files: File[]): Promise<UploadedLlmFile[]> {
+  const formData = new FormData();
+  for (const file of files) {
+    formData.append("files", file);
+  }
+
+  const res = await fetch(apiUrl("/api/ai/files/upload"), {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`OpenAI file upload error (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  return Array.isArray(data.files) ? data.files : [];
 }
 
 export function buildDefinePrompt(text: string, ragContext?: string): ChatMessage[] {
@@ -208,10 +237,11 @@ export function buildChatPrompt(
   history: ChatMessage[],
   editorPlainTextContext?: string,
   editorContextTruncated = false,
+  includeEditorContext = true,
 ): ChatMessage[] {
   const messages: ChatMessage[] = [...history.slice(-2)];
 
-  if (editorPlainTextContext?.trim()) {
+  if (includeEditorContext && editorPlainTextContext?.trim()) {
     const truncTag = editorContextTruncated ? " [TRUNCADO]" : "";
     messages.push({
       role: "user",
@@ -229,6 +259,7 @@ export function buildVerbeteDefinologiaPrompt(
   query: string,
   editorPlainTextContext?: string,
   editorContextTruncated = false,
+  includeEditorContext = true,
 ): ChatMessage[] {
   const messages: ChatMessage[] = [
     {
@@ -249,7 +280,7 @@ export function buildVerbeteDefinologiaPrompt(
     },
   ];
 
-  if (editorPlainTextContext?.trim()) {
+  if (includeEditorContext && editorPlainTextContext?.trim()) {
     const truncTag = editorContextTruncated ? " [TRUNCADO]" : "";
     messages.push({
       role: "user",
@@ -267,6 +298,7 @@ export function buildVerbeteSinonimologiaPrompt(
   query: string,
   editorPlainTextContext?: string,
   editorContextTruncated = false,
+  includeEditorContext = true,
 ): ChatMessage[] {
   const messages: ChatMessage[] = [
     {
@@ -290,7 +322,7 @@ export function buildVerbeteSinonimologiaPrompt(
     },
   ];
 
-  if (editorPlainTextContext?.trim()) {
+  if (includeEditorContext && editorPlainTextContext?.trim()) {
     const truncTag = editorContextTruncated ? " [TRUNCADO]" : "";
     messages.push({
       role: "user",
@@ -308,6 +340,7 @@ export function buildVerbeteFatologiaPrompt(
   query: string,
   editorPlainTextContext?: string,
   editorContextTruncated = false,
+  includeEditorContext = true,
 ): ChatMessage[] {
   const messages: ChatMessage[] = [
     {
@@ -330,7 +363,7 @@ export function buildVerbeteFatologiaPrompt(
     },
   ];
 
-  if (editorPlainTextContext?.trim()) {
+  if (includeEditorContext && editorPlainTextContext?.trim()) {
     const truncTag = editorContextTruncated ? " [TRUNCADO]" : "";
     messages.push({
       role: "user",
@@ -348,6 +381,7 @@ export function buildVerbeteFraseEnfaticaPrompt(
   query: string,
   editorPlainTextContext?: string,
   editorContextTruncated = false,
+  includeEditorContext = true,
 ): ChatMessage[] {
   const messages: ChatMessage[] = [
     {
@@ -365,7 +399,7 @@ export function buildVerbeteFraseEnfaticaPrompt(
     },
   ];
 
-  if (editorPlainTextContext?.trim()) {
+  if (includeEditorContext && editorPlainTextContext?.trim()) {
     const truncTag = editorContextTruncated ? " [TRUNCADO]" : "";
     messages.push({
       role: "user",
@@ -389,7 +423,7 @@ export function buildPensataAnalysisPrompt(pensata: string): ChatMessage[] {
     {
       role: "user",
       content:
-        `Analise a seguinte pensata, segundo a Conscienciologia. Apresente a resposta da analise em apenas 1 paragrafo breve. Forneca tambem um exemplo pratico que ilustra a pensata, tambem em 1 paragrafo curto.\n\nPensata:\n"${pensata}"`,
+        `Analise a seguinte pensata, segundo a Conscienciologia. Apresente a resposta da analise em apenas 1 paragrafo breve. Apresente tambem um **Exemplo** que ilustra a pensata, de modo prático, claro e didático, também em 1 paragrafo curto.\n\nPensata:\n"${pensata}"`,
     },
   ];
 }
