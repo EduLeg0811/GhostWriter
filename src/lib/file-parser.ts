@@ -57,6 +57,7 @@ function isStandaloneEncyclopediaHeaderLine(value: string): boolean {
 function isStandalonePageNumberLine(value: string): boolean {
   const compact = (value || "")
     .replace(/\u00a0/g, " ")
+    // eslint-disable-next-line no-useless-escape
     .replace(/[\s\-\–\—\.,;:()\[\]{}\/\\|]+/g, "")
     .trim();
   return /^[0-9]{1,4}$/.test(compact);

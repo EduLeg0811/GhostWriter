@@ -636,7 +636,7 @@ const Index = () => {
     } finally {
       setOpenedDocumentVersion((v) => v + 1);
     }
-  }, []);
+  }, [currentFileConvertedFromPdf]);
   const refreshDocumentPageCount = useCallback(async () => {
     const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
     if (!editorApi || !currentFileId) {
@@ -696,7 +696,7 @@ const Index = () => {
     } finally {
       setIsOpeningDocument(false);
     }
-  }, [refreshDocumentText]);
+  }, []);
 
   const handleDocumentPanelFile = useCallback(async (file: File | undefined) => {
     if (!file) return;
@@ -733,7 +733,7 @@ const Index = () => {
     } finally {
       setIsOpeningDocument(false);
     }
-  }, [refreshDocumentText]);
+  }, []);
 
   const handleRefreshStats = useCallback(async () => {
     if (!currentFileId) {
@@ -1412,7 +1412,7 @@ const Index = () => {
     } finally {
       setIsRunningVerbeteDefinologia(false);
     }
-  }, [backendNotReadyMessage, documentText, getGlobalVectorStoreIds, htmlEditorControlApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, uploadedChatFiles, verbetografiaSpecialty, verbetografiaTitle]);
+  }, [backendNotReadyMessage, documentText, executeLLMWithLog, getGlobalVectorStoreIds, htmlEditorControlApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, uploadedChatFiles, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunVerbeteFraseEnfatica = useCallback(async () => {
     if (!openAiReady) {
@@ -1463,7 +1463,7 @@ const Index = () => {
     } finally {
       setIsRunningVerbeteFraseEnfatica(false);
     }
-  }, [backendNotReadyMessage, documentText, getGlobalVectorStoreIds, htmlEditorControlApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, uploadedChatFiles, verbetografiaSpecialty, verbetografiaTitle]);
+  }, [backendNotReadyMessage, documentText, executeLLMWithLog, getGlobalVectorStoreIds, htmlEditorControlApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, uploadedChatFiles, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunVerbeteSinonimologia = useCallback(async () => {
     if (!openAiReady) {
@@ -1514,7 +1514,7 @@ const Index = () => {
     } finally {
       setIsRunningVerbeteSinonimologia(false);
     }
-  }, [backendNotReadyMessage, documentText, getGlobalVectorStoreIds, htmlEditorControlApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, uploadedChatFiles, verbetografiaSpecialty, verbetografiaTitle]);
+  }, [backendNotReadyMessage, documentText, executeLLMWithLog, getGlobalVectorStoreIds, htmlEditorControlApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, uploadedChatFiles, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunVerbeteFatologia = useCallback(async () => {
     if (!openAiReady) {
@@ -1565,7 +1565,7 @@ const Index = () => {
     } finally {
       setIsRunningVerbeteFatologia(false);
     }
-  }, [backendNotReadyMessage, documentText, getGlobalVectorStoreIds, htmlEditorControlApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, uploadedChatFiles, verbetografiaSpecialty, verbetografiaTitle]);
+  }, [backendNotReadyMessage, documentText, executeLLMWithLog, getGlobalVectorStoreIds, htmlEditorControlApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, uploadedChatFiles, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunLexicalSearch = useCallback(async () => {
     const book = selectedLexicalBook.trim();
@@ -1721,7 +1721,7 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [backendNotReadyMessage, isLoading, openAiReady]);
+  }, [backendNotReadyMessage, executeLLMWithLog, isLoading, openAiReady]);
 
   const handleAction = useCallback(async (type: AiActionId) => {
     const text = actionText.trim();
@@ -1785,6 +1785,15 @@ const Index = () => {
 
     setIsLoading(true);
     try {
+      let editorPlainTextContext = "";
+      let editorContextTruncated = false;
+      if (type === "ai_command" && currentFileId) {
+        const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
+        const latestEditorText = editorApi ? await editorApi.getDocumentText() : documentText;
+        const normalizedEditorText = (latestEditorText || "").trim();
+        editorContextTruncated = normalizedEditorText.length > llmEditorContextMaxChars;
+        editorPlainTextContext = normalizedEditorText.slice(0, llmEditorContextMaxChars);
+      }
       const promptMap = {
         define: (t: string) => buildDefinePrompt(t),
         synonyms: (t: string) => buildSynonymsPrompt(t),
@@ -1796,6 +1805,15 @@ const Index = () => {
       };
 
       const messages = promptMap[type](text);
+      if (type === "ai_command" && includeEditorContextInLlm && editorPlainTextContext.trim()) {
+        const truncTag = editorContextTruncated ? " [TRUNCADO]" : "";
+        messages.splice(1, 0, {
+          role: "user",
+          content:
+            `Contexto adicional do documento aberto no editor HTML (texto plano)${truncTag}:\n\n` +
+            `<<<EDITOR_HTML_TEXT>>>\n${editorPlainTextContext}\n<<<END_EDITOR_HTML_TEXT>>>`,
+        });
+      }
       const vectorStoreIds =
         type === "define" || type === "synonyms"
           ? getGlobalVectorStoreIds()
@@ -1812,7 +1830,7 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [actionText, aiCommandQuery, backendNotReadyMessage, executeAiActionsLLMWithLog, getGlobalVectorStoreIds, openAiReady, translateLanguage, uploadedChatFiles]);
+  }, [actionText, aiCommandQuery, backendNotReadyMessage, currentFileId, documentText, executeAiActionsLLMWithLog, getGlobalVectorStoreIds, htmlEditorControlApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, translateLanguage, uploadedChatFiles]);
 
   const handleOpenAiActionParameters = useCallback((type: AiActionId) => {
     setParameterPanelTarget({ section: "actions", id: type });
@@ -1859,7 +1877,7 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [backendNotReadyMessage, chatHistory, chatPreviousResponseId, currentFileId, documentText, getGlobalVectorStoreIds, htmlEditorControlApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, uploadedChatFiles]);
+  }, [backendNotReadyMessage, chatHistory, chatPreviousResponseId, currentFileId, documentText, executeLLMWithLog, getGlobalVectorStoreIds, htmlEditorControlApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, uploadedChatFiles]);
 
   const handleEditorContentChange = useCallback(({ html, text }: { html: string; text: string }) => {
     setEditorContentHtml(html);
@@ -2412,9 +2430,6 @@ const Index = () => {
                           uploadedFiles={uploadedChatFiles}
                           onRemoveUploadedFile={handleRemoveUploadedChatFile}
                           isUploadingFiles={isUploadingChatFiles}
-                          includeEditorContext={includeEditorContextInLlm}
-                          onToggleIncludeEditorContext={setIncludeEditorContextInLlm}
-                          hasOpenDocument={Boolean(currentFileId)}
                         />
                       ) : parameterPanelTarget.section === "settings" ? (
                         <div className="h-full overflow-y-auto p-3">
@@ -2433,92 +2448,7 @@ const Index = () => {
                               </span>
                             </Button>
 
-                            {false ? (
-                              <>
-                              <div><br /></div>
-                                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações LLM Chat</Label>
-                            <div className="flex items-center gap-2">
-                              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Modelo</Label>
-                              <select
-                                value={llmModel}
-                                onChange={(e) => setLlmModel(e.target.value)}
-                                className="h-8 w-full rounded-md border border-input bg-background px-3 text-[11px] text-foreground outline-none"
-                              >
-                                <option value="gpt-4.1-mini">gpt-4.1-mini</option>
-                                <option value="gpt-5-mini">gpt-5-mini</option>
-                                <option value="gpt-5.2">gpt-5.2</option>
-                                <option value="gpt-5.4">gpt-5.4</option>
-                              </select>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Temperatura</Label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                min="0"
-                                max="2"
-                                value={llmTemperature}
-                                onChange={(e) => setLlmTemperature(Number(e.target.value))}
-                                className="h-8 text-xs"
-                              />
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Output Tokens</Label>
-                              <Input
-                                type="number"
-                                min="1"
-                                value={llmMaxOutputTokens}
-                                onChange={(e) => setLlmMaxOutputTokens(e.target.value ? Number(e.target.value) : 500)}
-                                className="h-8 text-xs"
-                              />
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Num Results</Label>
-                              <Input
-                                type="number"
-                                min="1"
-                                max="20"
-                                value={llmMaxNumResults}
-                                onChange={(e) => setLlmMaxNumResults(e.target.value ? Number(e.target.value) : 5)}
-                                className="h-8 text-xs"
-                              />
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Context Max Chars</Label>
-                              <Input
-                                type="number"
-                                min="500"
-                                value={llmEditorContextMaxChars}
-                                onChange={(e) => setLlmEditorContextMaxChars(e.target.value ? Number(e.target.value) : CHAT_EDITOR_CONTEXT_MAX_CHARS)}
-                                className="h-8 text-xs"
-                              />
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Verbosity</Label>
-                              <Input value={llmVerbosity} onChange={(e) => setLlmVerbosity(e.target.value)} placeholder="low | medium | high" className="h-8 text-xs" />
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Effort</Label>
-                              <Input value={llmEffort} onChange={(e) => setLlmEffort(e.target.value)} placeholder="minimal | low | medium | high" className="h-8 text-xs" />
-                            </div>
-
-
-
-                            <div className="space-y-2">
-                              <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt</Label>
-                              <textarea
-                                value={llmSystemPrompt}
-                                onChange={(e) => setLlmSystemPrompt(e.target.value)}
-                                rows={6}
-                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground outline-none resize-none overflow-y-auto"
-                              />
-                            </div>
-
-                            <Separator className="my-1" />
-                              </>
-                            ) : null}
-
-                            <Button
+                                                        <Button
                               variant="ghost"
                               className={sectionActionButtonClass}
                               onClick={() => toggleLlmConfigPanel("biblio_externa")}
@@ -2546,125 +2476,7 @@ const Index = () => {
                               </span>
                             </Button>
 
-                            {false ? (
-                              <>
-                                <div><br /></div>
-                                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações LLM</Label>
-                                <div className="flex items-center gap-2">
-                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Modelo</Label>
-                                  <select
-                                    value={aiActionsLlmModel}
-                                    onChange={(e) => setAiActionsLlmModel(e.target.value)}
-                                    className="h-8 w-full rounded-md border border-input bg-background px-3 text-[11px] text-foreground outline-none"
-                                  >
-                                    <option value="gpt-4.1-mini">gpt-4.1-mini</option>
-                                    <option value="gpt-5-mini">gpt-5-mini</option>
-                                    <option value="gpt-5.2">gpt-5.2</option>
-                                    <option value="gpt-5.4">gpt-5.4</option>
-                                  </select>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Temperatura</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    min="0"
-                                    max="2"
-                                    value={aiActionsLlmTemperature}
-                                    onChange={(e) => setAiActionsLlmTemperature(Number(e.target.value))}
-                                    className="h-8 text-xs"
-                                  />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Output Tokens</Label>
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    value={aiActionsLlmMaxOutputTokens}
-                                    onChange={(e) => setAiActionsLlmMaxOutputTokens(e.target.value ? Number(e.target.value) : 500)}
-                                    className="h-8 text-xs"
-                                  />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Verbosity</Label>
-                                  <Input value={aiActionsLlmVerbosity} onChange={(e) => setAiActionsLlmVerbosity(e.target.value)} placeholder="low | medium | high" className="h-8 text-xs" />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Effort</Label>
-                                  <Input value={aiActionsLlmEffort} onChange={(e) => setAiActionsLlmEffort(e.target.value)} placeholder="none | low | medium | high" className="h-8 text-xs" />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt</Label>
-                                  <textarea
-                                    value={aiActionsLlmSystemPrompt}
-                                    onChange={(e) => setAiActionsLlmSystemPrompt(e.target.value)}
-                                    rows={4}
-                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground outline-none resize-none overflow-y-auto"
-                                  />
-                                </div>
-                              </>
-                            ) : null}
-
-                            {false ? (
-                              <>
-                                <div><br /></div>
-                                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações LLM</Label>
-                                <div className="flex items-center gap-2">
-                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Modelo</Label>
-                                  <select
-                                    value={biblioExternaLlmModel}
-                                    onChange={(e) => setBiblioExternaLlmModel(e.target.value)}
-                                    className="h-8 w-full rounded-md border border-input bg-background px-3 text-[11px] text-foreground outline-none"
-                                  >
-                                    <option value="gpt-4.1-mini">gpt-4.1-mini</option>
-                                    <option value="gpt-5-mini">gpt-5-mini</option>
-                                    <option value="gpt-5.2">gpt-5.2</option>
-                                    <option value="gpt-5.4">gpt-5.4</option>
-                                  </select>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Temperatura</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    min="0"
-                                    max="2"
-                                    value={biblioExternaLlmTemperature}
-                                    onChange={(e) => setBiblioExternaLlmTemperature(Number(e.target.value))}
-                                    className="h-8 text-xs"
-                                  />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Output Tokens</Label>
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    value={biblioExternaLlmMaxOutputTokens}
-                                    onChange={(e) => setBiblioExternaLlmMaxOutputTokens(e.target.value ? Number(e.target.value) : 500)}
-                                    className="h-8 text-xs"
-                                  />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Verbosity</Label>
-                                  <Input value={biblioExternaLlmVerbosity} onChange={(e) => setBiblioExternaLlmVerbosity(e.target.value)} placeholder="low | medium | high" className="h-8 text-xs" />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Effort</Label>
-                                  <Input value={biblioExternaLlmEffort} onChange={(e) => setBiblioExternaLlmEffort(e.target.value)} placeholder="none | low | medium | high" className="h-8 text-xs" />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt</Label>
-                                  <textarea
-                                    value={biblioExternaLlmSystemPrompt}
-                                    onChange={(e) => setBiblioExternaLlmSystemPrompt(e.target.value)}
-                                    rows={4}
-                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground outline-none resize-none overflow-y-auto"
-                                  />
-                                </div>
-                              </>
-                            ) : null}
-
-                            {activeLlmConfigPanel ? (
+                                                                                    {activeLlmConfigPanel ? (
                               <>
                                 <Separator className="my-4" />
                                 <div className="h-3" />
@@ -3248,7 +3060,12 @@ const Index = () => {
                   onContentChange={handleEditorContentChange}
                   onExportDocx={() => void handleExportDocx()}
                   isExportingDocx={isExportingDocx}
-                  showLlmContextIndicator={Boolean(currentFileId) && includeEditorContextInLlm}
+                  includeEditorContextInLlm={includeEditorContextInLlm}
+                  canToggleIncludeEditorContextInLlm={Boolean(currentFileId)}
+                  onToggleIncludeEditorContextInLlm={() => {
+                    if (!currentFileId) return;
+                    setIncludeEditorContextInLlm((prev) => !prev);
+                  }}
                   onImportSelectedText={() => void handleImportSelectedTextToActions()}
                   onCloseEditor={() => void handleCloseEditorWithPrompt()}
                 />

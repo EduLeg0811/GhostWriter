@@ -29,6 +29,7 @@ export function useTextStats(
   characterWithSpacesCountOverride: number | null = null,
 ): TextStats {
   return useMemo(() => {
+    void refreshKey;
     const normalized = text.replace(/\r\n/g, "\n");
     const trimmed = normalized.trim();
     const wordList = trimmed ? trimmed.split(/\s+/).filter(Boolean) : [];

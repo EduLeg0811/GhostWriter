@@ -15,7 +15,7 @@ const SPACING_SUFFIX_MAP = {
   nbsp_double: "\u00A0\u00A0",
 } as const;
 
-const MANUAL_NUMBERING_PREFIX_REGEX = /^\s*\d{1,3}[\.\)](?:\s|\u00A0)*/;
+const MANUAL_NUMBERING_PREFIX_REGEX = /^\s*\d{1,3}[.)](?:\s|\u00A0)*/;
 
 const HIGHLIGHT_COLOR_MAP: Record<string, string> = {
   yellow: "#fef08a",

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -18,18 +18,95 @@ interface LeftPanelProps {
 
 type LeftPanelActionId = "document" | "sources" | "actions" | "apps" | "settings";
 
+const GHOST_VIDEO_PLAYBACK_RATE = 0.50;
+const GHOST_VIDEO_REPLAY_DELAY_MS = 20000;
+const GHOST_VIDEO_INITIAL_DELAY_MS = 10000;
+
 const LeftPanel = ({ onOpenParameterSection, onRunRandomPensata, onOpenBookSearch, onOpenVerbetografia, onToggleJsonPanel, isJsonPanelOpen, isLoading }: LeftPanelProps) => {
   const [activeActionId, setActiveActionId] = useState<LeftPanelActionId | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const actionDisabled = isLoading;
 
   useEffect(() => {
     if (!isLoading) setActiveActionId(null);
   }, [isLoading]);
 
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mediaQuery.matches) return;
+
+    let replayTimeoutId: number | null = null;
+    let cancelled = false;
+
+    const scheduleReplay = (delayMs: number) => {
+      if (cancelled) return;
+      if (replayTimeoutId !== null) {
+        window.clearTimeout(replayTimeoutId);
+      }
+      replayTimeoutId = window.setTimeout(() => {
+        if (cancelled) return;
+        video.currentTime = 0;
+        video.playbackRate = GHOST_VIDEO_PLAYBACK_RATE;
+        void video.play().catch(() => {
+          scheduleReplay(GHOST_VIDEO_REPLAY_DELAY_MS);
+        });
+      }, delayMs);
+    };
+
+    const handleEnded = () => {
+      video.pause();
+      video.currentTime = 0;
+      scheduleReplay(GHOST_VIDEO_REPLAY_DELAY_MS);
+    };
+
+    const handleLoadedMetadata = () => {
+      video.playbackRate = GHOST_VIDEO_PLAYBACK_RATE;
+      scheduleReplay(GHOST_VIDEO_INITIAL_DELAY_MS);
+    };
+
+    video.addEventListener("ended", handleEnded);
+    video.addEventListener("loadedmetadata", handleLoadedMetadata);
+
+    if (video.readyState >= 1) {
+      handleLoadedMetadata();
+    }
+
+    return () => {
+      cancelled = true;
+      video.removeEventListener("ended", handleEnded);
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      if (replayTimeoutId !== null) {
+        window.clearTimeout(replayTimeoutId);
+      }
+      video.pause();
+      video.currentTime = 0;
+    };
+  }, []);
+
   return (
     <div className="flex h-full flex-col">
       <div className={`border-b border-border ${panelsTopMenuBarBgClass} px-4 py-4`}>
-        <h1 className="text-sm font-semibold text-foreground">Parapreceptor • Ghost Writer Editor</h1>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <h1 className="text-sm font-semibold text-foreground">Parapreceptor • Ghost Writer Editor</h1>
+            <p className="text-[11px] text-muted-foreground">Toolbox de assistência à escrita conscienciológica.</p>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-white/60 bg-white/55 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.45)] backdrop-blur-sm">
+            <div className="pointer-events-none h-px w-full bg-gradient-to-r from-transparent via-emerald-300/60 to-transparent" />
+            <video
+              ref={videoRef}
+              src="/Ghost_Witter_v0.mp4"
+              muted
+              playsInline
+              preload="metadata"
+              className="block h-24 w-full object-cover object-center opacity-95"
+              aria-label="Animação decorativa do Ghost Writer"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="scrollbar-thin flex-1 overflow-y-auto p-4">

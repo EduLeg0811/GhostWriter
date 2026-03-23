@@ -17,7 +17,9 @@ interface HtmlEditorProps {
   onCloseEditor?: () => void;
   onExportDocx?: () => void;
   isExportingDocx?: boolean;
-  showLlmContextIndicator?: boolean;
+  includeEditorContextInLlm?: boolean;
+  onToggleIncludeEditorContextInLlm?: () => void;
+  canToggleIncludeEditorContextInLlm?: boolean;
   onImportSelectedText?: () => void;
 }
 
@@ -29,7 +31,9 @@ const HtmlEditor = ({
   onCloseEditor,
   onExportDocx,
   isExportingDocx = false,
-  showLlmContextIndicator = false,
+  includeEditorContextInLlm = false,
+  onToggleIncludeEditorContextInLlm,
+  canToggleIncludeEditorContextInLlm = true,
   onImportSelectedText,
 }: HtmlEditorProps) => {
   const controlApiRef = useRef<HtmlEditorControlApi | null>(null);
@@ -87,6 +91,7 @@ const HtmlEditor = ({
     if (!root) return;
 
     const blocks = Array.from(root.querySelectorAll("p, ul, ol")) as HTMLElement[];
+    // eslint-disable-next-line no-useless-escape
     const manualListRegex = /^\s*(\d{1,3}[\.\)]|[-*•])(?:\s|\u00A0)+/;
     const endsWithColonRegex = /:\s*$/;
 
@@ -282,20 +287,18 @@ const HtmlEditor = ({
         >
           <Download className="h-4 w-4" />
         </Button>
-        {showLlmContextIndicator ? (
-          <>
-            <div className={toolbarSeparatorClass} aria-hidden="true" />
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 bg-green-100 text-blue-600 hover:bg-green-200 hover:text-blue-700"
-              title="Texto do editor sera enviado para a LLM como contexto adicional"
-            >
-              <Paperclip className="h-3.5 w-3.5" />
-            </Button>
-          </>
-        ) : null}
+        <div className={toolbarSeparatorClass} aria-hidden="true" />
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className={`h-8 w-8 ${includeEditorContextInLlm ? "bg-green-200 text-blue-700 ring-1 ring-green-400/70 hover:bg-green-300 hover:text-blue-800" : "text-muted-foreground hover:text-foreground"}`}
+          title={canToggleIncludeEditorContextInLlm ? (includeEditorContextInLlm ? "Desativar envio do texto do editor para a LLM" : "Ativar envio do texto do editor para a LLM") : "Disponivel apenas com documento aberto no editor"}
+          onClick={onToggleIncludeEditorContextInLlm}
+          disabled={!canToggleIncludeEditorContextInLlm}
+        >
+          <Paperclip className="h-3.5 w-3.5" />
+        </Button>
         <Button
           type="button"
           size="icon"

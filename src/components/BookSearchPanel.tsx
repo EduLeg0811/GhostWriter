@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -162,6 +163,5 @@ const BookSearchPanel = ({
 };
 
 export default BookSearchPanel;
-
 
 

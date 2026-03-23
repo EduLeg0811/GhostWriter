@@ -4,7 +4,6 @@ import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { Label } from "@/components/ui/label";
 import { sectionActionButtonClass } from "@/styles/buttonStyles";
 import type { UploadedLlmFile } from "@/lib/openai";
 
@@ -16,9 +15,6 @@ interface SourcesPanelProps {
   uploadedFiles: UploadedLlmFile[];
   onRemoveUploadedFile: (id: string) => void;
   isUploadingFiles?: boolean;
-  includeEditorContext: boolean;
-  onToggleIncludeEditorContext: (checked: boolean) => void;
-  hasOpenDocument: boolean;
 }
 
 const SourcesPanel = ({
@@ -29,9 +25,6 @@ const SourcesPanel = ({
   uploadedFiles,
   onRemoveUploadedFile,
   isUploadingFiles = false,
-  includeEditorContext,
-  onToggleIncludeEditorContext,
-  hasOpenDocument,
 }: SourcesPanelProps) => {
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const sourceBooks = bookSources.filter((source) => source.label.startsWith("Source"));
@@ -144,33 +137,6 @@ const SourcesPanel = ({
                     Nenhum arquivo anexado
                   </div>
                 )}
-              </div>
-
-              <div className="py-3">
-                <Separator />
-              </div>
-
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Documento de Trabalho</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!hasOpenDocument) return;
-                    onToggleIncludeEditorContext(!includeEditorContext);
-                  }}
-                  disabled={!hasOpenDocument}
-                  className="w-full text-left disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <span className="block min-w-0">
-                    <span className="flex items-center justify-between gap-3">
-                      <span className="block break-words text-sm font-medium text-foreground">Enviar o texto para a LLM</span>
-                      <Checkbox checked={includeEditorContext && hasOpenDocument} aria-label="Enviar o texto para a LLM" />
-                    </span>
-                    <span className="mt-1 block break-words text-xs text-muted-foreground">
-                      {hasOpenDocument ? "Envia o texto aberto no editor HTML como contexto adicional." : "Disponivel apenas com arquivo aberto no editor HTML."}
-                    </span>
-                  </span>
-                </button>
               </div>
             </div>
             <div className="py-2">

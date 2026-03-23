@@ -5,6 +5,11 @@ type InlineStyle = {
   highlight?: "yellow";
 };
 
+type DocxModule = typeof import("docx");
+type DocxTextRun = InstanceType<DocxModule["TextRun"]>;
+type DocxParagraph = InstanceType<DocxModule["Paragraph"]>;
+type DocxHeading = DocxModule["HeadingLevel"][keyof DocxModule["HeadingLevel"]];
+
 const BLOCK_TAGS = new Set(["p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "li"]);
 
 function mergeStyle(base: InlineStyle, extra: InlineStyle): InlineStyle {
@@ -36,7 +41,7 @@ function normalizeText(value: string): string {
   return (value || "").replace(/\u00a0/g, " ");
 }
 
-async function inlineRunsFromNode(node: Node, parentStyle: InlineStyle, docx: any): Promise<any[]> {
+async function inlineRunsFromNode(node: Node, parentStyle: InlineStyle, docx: DocxModule): Promise<DocxTextRun[]> {
   const { TextRun } = docx;
   if (node.nodeType === Node.TEXT_NODE) {
     const text = normalizeText(node.textContent || "");
@@ -52,16 +57,20 @@ async function inlineRunsFromNode(node: Node, parentStyle: InlineStyle, docx: an
   if (BLOCK_TAGS.has(tag) || tag === "ul" || tag === "ol") return [];
 
   const nextStyle = mergeStyle(parentStyle, styleFromElement(el));
-  const runs: any[] = [];
+  const runs: DocxTextRun[] = [];
   for (const child of Array.from(el.childNodes)) {
     runs.push(...(await inlineRunsFromNode(child, nextStyle, docx)));
   }
   return runs;
 }
 
-async function paragraphFromElement(el: Element, docx: any, opts?: { bullet?: boolean; numberPrefix?: string; heading?: any }): Promise<any> {
+async function paragraphFromElement(
+  el: Element,
+  docx: DocxModule,
+  opts?: { bullet?: boolean; numberPrefix?: string; heading?: DocxHeading },
+): Promise<DocxParagraph> {
   const { Paragraph, TextRun } = docx;
-  const runs: any[] = [];
+  const runs: DocxTextRun[] = [];
   if (opts?.numberPrefix) runs.push(new TextRun({ text: opts.numberPrefix }));
   for (const child of Array.from(el.childNodes)) {
     runs.push(...(await inlineRunsFromNode(child, {}, docx)));
@@ -76,14 +85,14 @@ async function paragraphFromElement(el: Element, docx: any, opts?: { bullet?: bo
   });
 }
 
-async function htmlToDocxParagraphs(html: string, docx: any): Promise<any[]> {
+async function htmlToDocxParagraphs(html: string, docx: DocxModule): Promise<DocxParagraph[]> {
   const { Paragraph, HeadingLevel } = docx;
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<div>${(html || "").trim() || "<p></p>"}</div>`, "text/html");
   const root = doc.body.firstElementChild as HTMLDivElement | null;
   if (!root) return [new Paragraph("")];
 
-  const paragraphs: any[] = [];
+  const paragraphs: DocxParagraph[] = [];
   for (const child of Array.from(root.children)) {
     const tag = child.tagName.toLowerCase();
 
@@ -103,7 +112,7 @@ async function htmlToDocxParagraphs(html: string, docx: any): Promise<any[]> {
       continue;
     }
 
-    const headingMap: Record<string, any> = {
+    const headingMap: Record<string, DocxHeading> = {
       h1: HeadingLevel.HEADING_1,
       h2: HeadingLevel.HEADING_2,
       h3: HeadingLevel.HEADING_3,
