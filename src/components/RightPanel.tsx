@@ -20,6 +20,7 @@ export interface AIResponse {
     | "rewrite"
     | "summarize"
     | "translate"
+    | "ai_command"
     | "chat"
     | "pensatas"
     | "app_ref_book"
@@ -46,6 +47,7 @@ const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactN
   rewrite: { label: "Reescrever", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
   summarize: { label: "Resumir", icon: <FileText className="h-3.5 w-3.5 text-primary" /> },
   translate: { label: "Traduzir", icon: <Languages className="h-3.5 w-3.5 text-primary" /> },
+  ai_command: { label: "Comando IA", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
   chat: { label: "Chat", icon: <MessageSquare className="h-3.5 w-3.5 text-primary" /> },
   pensatas: { label: "Pensatas LO", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_ref_book: { label: "Bibliografia de Livros", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
@@ -395,12 +397,8 @@ const RightPanel = ({
   };
 
   const responseToAppendHtml = (response: AIResponse): string => {
-    const title = typeLabels[response.type]?.label || "";
-    const subtitle = getQuerySubtitleText(response);
     const bodyHtml = responseToAppendBodyHtml(response);
-    const titleHtml = title ? `<p><strong>${escapeHtml(title)}</strong></p>` : "";
-    const subtitleHtml = subtitle ? `<p>${escapeHtml(subtitle)}</p>` : "";
-    return `${titleHtml}${subtitleHtml}${bodyHtml}`;
+    return bodyHtml;
   };
 
   const canSend = !chatDisabled && !isSending && prompt.trim().length > 0;

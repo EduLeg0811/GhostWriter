@@ -4,7 +4,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import { Color, FontFamily, FontSize, LineHeight, TextStyle } from "@tiptap/extension-text-style";
 import StarterKit from "@tiptap/starter-kit";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { Bold, Download, Highlighter, Italic, List, ListOrdered, Paperclip, RotateCcw, Undo2, X } from "lucide-react";
+import { ArrowLeft, Bold, Download, Highlighter, Italic, List, ListOrdered, Paperclip, Redo2, RotateCcw, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
@@ -18,6 +18,7 @@ interface HtmlEditorProps {
   onExportDocx?: () => void;
   isExportingDocx?: boolean;
   showLlmContextIndicator?: boolean;
+  onImportSelectedText?: () => void;
 }
 
 const HtmlEditor = ({
@@ -29,13 +30,17 @@ const HtmlEditor = ({
   onExportDocx,
   isExportingDocx = false,
   showLlmContextIndicator = false,
+  onImportSelectedText,
 }: HtmlEditorProps) => {
   const controlApiRef = useRef<HtmlEditorControlApi | null>(null);
   const onControlApiReadyRef = useRef<HtmlEditorProps["onControlApiReady"]>(onControlApiReady);
   const [documentFontSizePx, setDocumentFontSizePx] = useState(15);
   const [documentLineHeightRatio, setDocumentLineHeightRatio] = useState(1.6);
+  const [resetSpacingVersion, setResetSpacingVersion] = useState(0);
+  const compactSpacingFrameRef = useRef<number | null>(null);
   const DEFAULT_DOCUMENT_FONT_SIZE_PX = 12;
   const DEFAULT_DOCUMENT_LINE_HEIGHT_RATIO = 1.5;
+  const toolbarSeparatorClass = "mx-1.5 h-6 w-px bg-zinc-400/90 shadow-[0_0_0_1px_rgba(255,255,255,0.22)]";
 
   const normalizedContent = useMemo(() => (contentHtml || "").trim(), [contentHtml]);
 
@@ -45,56 +50,6 @@ const HtmlEditor = ({
       onControlApiReadyRef.current?.(controlApiRef.current);
     }
   }, [onControlApiReady]);
-
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Highlight.configure({ multicolor: true }),
-      TextStyle,
-      Color,
-      FontFamily,
-      FontSize,
-      LineHeight,
-      TextAlign.configure({ types: ["paragraph", "heading"] }),
-    ],
-    content: normalizedContent || "<p></p>",
-    editorProps: {
-      attributes: {
-        class:
-          "min-h-full w-full px-6 py-5 text-foreground focus:outline-none",
-      },
-    },
-    onCreate: ({ editor: e }) => {
-      const api = new HtmlEditorControlApi(e);
-      api.init();
-      controlApiRef.current = api;
-      onControlApiReadyRef.current?.(api);
-    },
-    onUpdate: ({ editor: e }) => {
-      onContentChange?.({
-        html: e.getHTML(),
-        text: e.getText({ blockSeparator: "\n" }),
-      });
-    },
-  });
-
-  useEffect(() => {
-    if (!editor) return;
-    const current = (editor.getHTML() || "").trim();
-    const next = normalizedContent || "<p></p>";
-    if (current === next) return;
-    editor.commands.setContent(next, { emitUpdate: true });
-  }, [editor, normalizedContent]);
-
-  useEffect(() => {
-    return () => {
-      if (controlApiRef.current) {
-        controlApiRef.current.destroy();
-        controlApiRef.current = null;
-      }
-      onControlApiReadyRef.current?.(null);
-    };
-  }, []);
 
   const applyDocumentFontSize = useCallback((nextFontSizePx: number) => {
     const clamped = Math.max(8, Math.min(72, nextFontSizePx));
@@ -125,6 +80,117 @@ const HtmlEditor = ({
   const resetDocumentTypography = useCallback(() => {
     setDocumentFontSizePx(DEFAULT_DOCUMENT_FONT_SIZE_PX);
     setDocumentLineHeightRatio(DEFAULT_DOCUMENT_LINE_HEIGHT_RATIO);
+    setResetSpacingVersion((prev) => prev + 1);
+  }, []);
+
+  const applyCompactListSpacing = useCallback((root: HTMLElement | null) => {
+    if (!root) return;
+
+    const blocks = Array.from(root.querySelectorAll("p, ul, ol")) as HTMLElement[];
+    const manualListRegex = /^\s*(\d{1,3}[\.\)]|[-*•])(?:\s|\u00A0)+/;
+    const endsWithColonRegex = /:\s*$/;
+
+    for (const block of blocks) {
+      block.classList.remove("manual-tight-list-item", "tight-list-intro");
+    }
+
+    for (let index = 0; index < blocks.length; index += 1) {
+      const block = blocks[index];
+      const tagName = block.tagName.toLowerCase();
+
+      if (tagName === "p" && manualListRegex.test(block.textContent || "")) {
+        block.classList.add("manual-tight-list-item");
+        const previous = blocks[index - 1];
+        if (previous?.tagName.toLowerCase() === "p" && endsWithColonRegex.test((previous.textContent || "").replace(/\u00A0/g, " "))) {
+          previous.classList.add("tight-list-intro");
+        }
+        continue;
+      }
+
+      if (tagName !== "ul" && tagName !== "ol") continue;
+
+      const previous = blocks[index - 1];
+      if (previous?.tagName.toLowerCase() === "p" && endsWithColonRegex.test((previous.textContent || "").replace(/\u00A0/g, " "))) {
+        previous.classList.add("tight-list-intro");
+      }
+    }
+  }, []);
+
+  const scheduleApplyCompactListSpacing = useCallback((root: HTMLElement | null) => {
+    if (!root) return;
+    if (compactSpacingFrameRef.current !== null) {
+      cancelAnimationFrame(compactSpacingFrameRef.current);
+    }
+    compactSpacingFrameRef.current = requestAnimationFrame(() => {
+      applyCompactListSpacing(root);
+      compactSpacingFrameRef.current = null;
+    });
+  }, [applyCompactListSpacing]);
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Highlight.configure({ multicolor: true }),
+      TextStyle,
+      Color,
+      FontFamily,
+      FontSize,
+      LineHeight,
+      TextAlign.configure({ types: ["paragraph", "heading"] }),
+    ],
+    content: normalizedContent || "<p></p>",
+    editorProps: {
+      attributes: {
+        class:
+          "min-h-full w-full px-6 py-5 text-foreground focus:outline-none",
+      },
+    },
+    onCreate: ({ editor: e }) => {
+      const api = new HtmlEditorControlApi(e);
+      api.init();
+      controlApiRef.current = api;
+      onControlApiReadyRef.current?.(api);
+      scheduleApplyCompactListSpacing(e.view.dom as HTMLElement);
+    },
+    onUpdate: ({ editor: e }) => {
+      scheduleApplyCompactListSpacing(e.view.dom as HTMLElement);
+      onContentChange?.({
+        html: e.getHTML(),
+        text: e.getText({ blockSeparator: "\n" }),
+      });
+    },
+  });
+
+  useEffect(() => {
+    if (!editor) return;
+    const current = (editor.getHTML() || "").trim();
+    const next = normalizedContent || "<p></p>";
+    if (current === next) return;
+    editor.commands.setContent(next, { emitUpdate: true });
+  }, [editor, normalizedContent]);
+
+  useEffect(() => {
+    if (!editor) return;
+    scheduleApplyCompactListSpacing(editor.view.dom as HTMLElement);
+  }, [documentFontSizePx, documentLineHeightRatio, editor, normalizedContent, scheduleApplyCompactListSpacing]);
+
+  useEffect(() => {
+    if (!editor || resetSpacingVersion === 0) return;
+    scheduleApplyCompactListSpacing(editor.view.dom as HTMLElement);
+  }, [editor, resetSpacingVersion, scheduleApplyCompactListSpacing]);
+
+  useEffect(() => {
+    return () => {
+      if (compactSpacingFrameRef.current !== null) {
+        cancelAnimationFrame(compactSpacingFrameRef.current);
+        compactSpacingFrameRef.current = null;
+      }
+      if (controlApiRef.current) {
+        controlApiRef.current.destroy();
+        controlApiRef.current = null;
+      }
+      onControlApiReadyRef.current?.(null);
+    };
   }, []);
 
   useEffect(() => {
@@ -148,6 +214,17 @@ const HtmlEditor = ({
       }
     >
       <div className={`flex flex-wrap items-center gap-1 border-b border-border ${panelsTopMenuBarBgClass} px-4 py-2.5`}>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 bg-amber-50 text-blue-600 hover:bg-amber-100 hover:text-blue-700"
+          title="Importar selecao do editor para Acoes IA"
+          onClick={onImportSelectedText}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div className={toolbarSeparatorClass} aria-hidden="true" />
         <Button type="button" size="icon" variant="ghost" className="h-8 w-8" title="Negrito" onClick={() => editor.chain().focus().toggleBold().run()}>
           <Bold className="h-4 w-4" />
         </Button>
@@ -160,6 +237,17 @@ const HtmlEditor = ({
         <Button type="button" size="icon" variant="ghost" className="h-8 w-8" title="Lista numerada" onClick={() => editor.chain().focus().toggleOrderedList().run()}>
           <ListOrdered className="h-4 w-4" />
         </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8"
+          title="Marca-texto amarelo"
+          onClick={() => editor.chain().focus().toggleHighlight({ color: "yellow" }).run()}
+        >
+          <Highlighter className="h-4 w-4" />
+        </Button>
+        <div className={toolbarSeparatorClass} aria-hidden="true" />
         <Button type="button" variant="ghost" className="h-8 px-2 text-xs font-semibold" onClick={decreaseDocumentFontSize} title="Diminuir fonte de todo o documento">
           A-
         </Button>
@@ -175,30 +263,14 @@ const HtmlEditor = ({
         <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={resetDocumentTypography} title="Resetar fonte e espacamento para o padrao">
           <RotateCcw className="h-4 w-4" />
         </Button>
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className="h-8 w-8"
-          title="Marca-texto amarelo"
-          onClick={() => editor.chain().focus().toggleHighlight({ color: "yellow" }).run()}
-        >
-          <Highlighter className="h-4 w-4" />
-        </Button>
+        <div className={toolbarSeparatorClass} aria-hidden="true" />
         <Button type="button" size="icon" variant="ghost" className="h-8 w-8" title="Desfazer" onClick={() => editor.chain().focus().undo().run()}>
           <Undo2 className="h-4 w-4" />
         </Button>
-        {showLlmContextIndicator ? (
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 text-muted-foreground"
-            title="Texto do editor sera enviado para a LLM como contexto adicional"
-          >
-            <Paperclip className="h-3.5 w-3.5" />
-          </Button>
-        ) : null}
+        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" title="Refazer" onClick={() => editor.chain().focus().redo().run()}>
+          <Redo2 className="h-4 w-4" />
+        </Button>
+        <div className={toolbarSeparatorClass} aria-hidden="true" />
         <Button
           type="button"
           size="icon"
@@ -210,6 +282,20 @@ const HtmlEditor = ({
         >
           <Download className="h-4 w-4" />
         </Button>
+        {showLlmContextIndicator ? (
+          <>
+            <div className={toolbarSeparatorClass} aria-hidden="true" />
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 bg-green-100 text-blue-600 hover:bg-green-200 hover:text-blue-700"
+              title="Texto do editor sera enviado para a LLM como contexto adicional"
+            >
+              <Paperclip className="h-3.5 w-3.5" />
+            </Button>
+          </>
+        ) : null}
         <Button
           type="button"
           size="icon"

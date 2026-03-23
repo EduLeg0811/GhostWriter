@@ -15,6 +15,8 @@ const SPACING_SUFFIX_MAP = {
   nbsp_double: "\u00A0\u00A0",
 } as const;
 
+const MANUAL_NUMBERING_PREFIX_REGEX = /^\s*\d{1,3}[\.\)](?:\s|\u00A0)*/;
+
 const HIGHLIGHT_COLOR_MAP: Record<string, string> = {
   yellow: "#fef08a",
   green: "#86efac",
@@ -172,6 +174,45 @@ function normalizeAppendText(text: string): string {
   return (text || "").replace(/\r\n/g, "\n").replace(/\n{2,}/g, "\n").trim();
 }
 
+function applyBlueColorToHtml(html: string): string {
+  const raw = (html || "").trim();
+  if (!raw) return "";
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div>${raw}</div>`, "text/html");
+  const root = doc.body.firstElementChild as HTMLDivElement | null;
+  if (!root) return raw;
+
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const textNodes: Text[] = [];
+
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text;
+    if (!node.nodeValue?.trim()) continue;
+    if (node.parentElement?.closest("span[data-blue-text='true']")) continue;
+    textNodes.push(node);
+  }
+
+  for (const node of textNodes) {
+    const span = doc.createElement("span");
+    span.setAttribute("style", "color:#1d4ed8;");
+    span.setAttribute("data-blue-text", "true");
+    span.textContent = node.nodeValue || "";
+    node.parentNode?.replaceChild(span, node);
+  }
+
+  return root.innerHTML;
+}
+
+function convertPlainTextToBlueHtml(text: string): string {
+  const raw = normalizeAppendText(text);
+  if (!raw) return "";
+  return raw
+    .split("\n")
+    .map((line) => `<p><span style="color:#1d4ed8;" data-blue-text="true">${line || " "}</span></p>`)
+    .join("");
+}
+
 export class HtmlEditorControlApi {
   private editor: Editor;
   private listeners = new Set<SelectionListener>();
@@ -230,12 +271,12 @@ export class HtmlEditorControlApi {
     const textContent = (text || "").trim();
     if (!htmlContent && !textContent) throw new Error("Texto vazio para substituir.");
 
-    this.editor.commands.focus();
-    if (htmlContent) {
-      this.editor.commands.insertContent(htmlContent);
-    } else {
-      this.editor.commands.insertContent(textContent);
-    }
+    const contentToInsert = htmlContent ? applyBlueColorToHtml(htmlContent) : convertPlainTextToBlueHtml(textContent);
+    this.editor
+      .chain()
+      .focus()
+      .insertContent(contentToInsert)
+      .run();
     this.emitSelectionChange();
   }
 
@@ -244,15 +285,23 @@ export class HtmlEditorControlApi {
     const textContent = normalizeAppendText(text);
     if (!htmlContent && !textContent) throw new Error("Conteudo vazio para inserir.");
 
+    const contentToInsert = htmlContent ? applyBlueColorToHtml(htmlContent) : convertPlainTextToBlueHtml(textContent);
+    const { state } = this.editor;
+    const selection = state.selection;
+    const hasSelectionAnchor =
+      Number.isInteger(selection.from) &&
+      Number.isInteger(selection.to) &&
+      selection.from >= 0 &&
+      selection.to >= selection.from;
+    const insertAt = hasSelectionAnchor ? selection.to : state.doc.content.size;
+
     this.editor
       .chain()
-      .focus("end")
-      // Insere 1 linha em branco antes do bloco colado.
+      .focus(insertAt)
+      // Insere 1 linha em branco antes e depois do conteudo na posicao atual da selecao/cursor.
       .insertContent("<p> </p>")
-      .insertContent("<p>_________________________________________________________</p>")
+      .insertContent(contentToInsert)
       .insertContent("<p> </p>")
-
-      .insertContent(htmlContent || textContent)
       .run();
     this.emitSelectionChange();
   }
@@ -283,14 +332,52 @@ export class HtmlEditorControlApi {
   async runMacro2ManualNumberingSelection(
     spacingMode: "normal_single" | "normal_double" | "nbsp_single" | "nbsp_double" = "nbsp_double",
   ): Promise<{ converted: number; hadNumbering: number }> {
-    const { state, view } = this.editor;
-    const { from, to } = state.selection;
+    this.editor.commands.focus();
+
+    let state = this.editor.state;
+    let view = this.editor.view;
+    let { from, to } = state.selection;
+
+    let hadNumbering = 0;
+    let selectionHasOrderedList = false;
+    let selectionHasBulletList = false;
+
+    state.doc.nodesBetween(from, to, (node) => {
+      if (node.type.name === "orderedList") {
+        selectionHasOrderedList = true;
+        return false;
+      }
+      if (node.type.name === "bulletList") {
+        selectionHasBulletList = true;
+        return false;
+      }
+      return;
+    });
+
+    if (selectionHasOrderedList && this.editor.isActive("orderedList")) {
+      this.editor.chain().focus().toggleOrderedList().run();
+      hadNumbering += 1;
+      state = this.editor.state;
+      view = this.editor.view;
+      ({ from, to } = state.selection);
+    }
+
+    if (selectionHasBulletList && this.editor.isActive("bulletList")) {
+      this.editor.chain().focus().toggleBulletList().run();
+      hadNumbering += 1;
+      state = this.editor.state;
+      view = this.editor.view;
+      ({ from, to } = state.selection);
+    }
 
     const selectedParagraphStarts: number[] = [];
+    const selectedParagraphs: Array<{ start: number; text: string }> = [];
     state.doc.nodesBetween(from, to, (node, pos) => {
       if (node.type.name !== "paragraph") return;
       if (!node.textContent.trim()) return;
-      selectedParagraphStarts.push(pos + 1);
+      const start = pos + 1;
+      selectedParagraphStarts.push(start);
+      selectedParagraphs.push({ start, text: node.textContent });
     });
 
     if (selectedParagraphStarts.length === 0) {
@@ -300,6 +387,14 @@ export class HtmlEditorControlApi {
     const suffix = SPACING_SUFFIX_MAP[spacingMode] || SPACING_SUFFIX_MAP.nbsp_double;
     const useLeadingZero = selectedParagraphStarts.length > 9;
     let tr = state.tr;
+
+    for (let i = selectedParagraphs.length - 1; i >= 0; i -= 1) {
+      const paragraph = selectedParagraphs[i];
+      const match = paragraph.text.match(MANUAL_NUMBERING_PREFIX_REGEX);
+      if (!match) continue;
+      tr = tr.delete(paragraph.start, paragraph.start + match[0].length);
+      hadNumbering += 1;
+    }
 
     // Insert from bottom to top so previously inserted prefixes don't shift upcoming positions.
     for (let i = selectedParagraphStarts.length - 1; i >= 0; i -= 1) {
@@ -312,7 +407,7 @@ export class HtmlEditorControlApi {
       view.dispatch(tr);
     }
 
-    return { converted: selectedParagraphStarts.length, hadNumbering: selectedParagraphStarts.length };
+    return { converted: selectedParagraphStarts.length, hadNumbering };
   }
 
   private emitSelectionChange = () => {

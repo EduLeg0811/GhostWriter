@@ -232,6 +232,24 @@ export function buildTranslatePrompt(text: string, targetLanguage: string, ragCo
   ];
 }
 
+export function buildAiCommandPrompt(text: string, query: string): ChatMessage[] {
+  return [
+    {
+      role: "system",
+      content: "Voce e um editor de textos acadêmicos da Conscienciologia. Responda de forma direta e objetiva, com base nos documentos da Conscienciologia.",
+    },
+    {
+      role: "user",
+      content: `Texto de referência: \n${text}\n\n`,
+    },
+
+    {
+      role: "user",
+      content: `Query: \n${query}`,
+    },
+  ];
+}
+
 export function buildChatPrompt(
   userMessage: string,
   history: ChatMessage[],

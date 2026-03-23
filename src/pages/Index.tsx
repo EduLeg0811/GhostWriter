@@ -63,6 +63,7 @@ import {
   buildRewritePrompt,
   buildSummarizePrompt,
   buildTranslatePrompt,
+  buildAiCommandPrompt,
   buildChatPrompt,
   buildVerbeteDefinologiaPrompt,
   buildVerbeteFraseEnfaticaPrompt,
@@ -78,7 +79,7 @@ import { BOOK_LABELS, type BookCode } from "@/lib/bookCatalog";
 type MacroActionId = "macro1" | "macro2";
 type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7" | "app8" | "app9" | "app10" | "app11";
 type AppPanelScope = "bibliografia" | "busca" | "verbetografia";
-type AiActionId = "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate";
+type AiActionId = "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate" | "ai_command";
 type ParameterPanelSection = "document" | "sources" | "actions" | "apps" | "settings";
 type ParameterPanelTarget =
   | { section: "document"; id: MacroActionId | null }
@@ -110,7 +111,7 @@ const BOOK_SOURCE_VECTOR_STORES = [
 ] as const;
 const DEFAULT_BOOK_SOURCE_ID = BOOK_SOURCE_VECTOR_STORES.find((item) => item.label.toUpperCase() === "WVBOOKS")?.id ?? "";
 
-const ACTION_PANEL_BUTTONS: AiActionId[] = ["define", "synonyms", "epigraph", "pensatas", "rewrite", "summarize", "translate"];
+const ACTION_PANEL_BUTTONS: AiActionId[] = ["define", "synonyms", "epigraph", "pensatas", "rewrite", "summarize", "translate", "ai_command"];
 const APP_PANEL_BUTTONS_BY_SCOPE: Record<AppPanelScope, AppActionId[]> = {
   bibliografia: ["app1", "app2", "app3", "app6"],
   busca: ["app4", "app5"],
@@ -125,6 +126,7 @@ const ACTION_PANEL_ICONS: Record<AiActionId, typeof BookOpen> = {
   rewrite: PenLine,
   summarize: FileText,
   translate: Languages,
+  ai_command: PenLine,
 };
 const APP_PANEL_ICONS: Record<AppActionId, typeof BookOpen> = {
   app1: BookOpen,
@@ -150,6 +152,7 @@ const LLM_LOG_FONT_MIN = 0.5;
 const LLM_LOG_FONT_MAX = 1.0;
 const LLM_LOG_FONT_STEP = 0.05;
 const LLM_SETTINGS_STORAGE_KEY = "llm_settings_v1";
+const AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY = "ai_actions_llm_settings_v1";
 const BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY = "biblio_externa_llm_settings_v1";
 const BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT = `Você é um assistente especializado em reconstrução de referências bibliográficas acadêmicas.
 Sua função é identificar e reconstruir referências completas a partir de uma string bibliográfica livre fornecida pelo usuário.
@@ -210,6 +213,7 @@ const parameterActionMeta: Record<AiActionId, { title: string; description: stri
   summarize: { title: "Resumir", description: "Síntese concisa." },
   pensatas: { title: "Pensatas LO", description: "Pensatas afins." },
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
+  ai_command: { title: "Comando IA", description: "Envia uma query livre para a LLM." },
 };
 const sidePanelClass = panelsBgClass;
 const PANEL_SIZES = {
@@ -309,6 +313,7 @@ const Index = () => {
   const [appPanelScope, setAppPanelScope] = useState<AppPanelScope | null>(null);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [translateLanguage, setTranslateLanguage] = useState<(typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"]>("Ingles");
+  const [aiCommandQuery, setAiCommandQuery] = useState("");
   const [macro1Term, setMacro1Term] = useState("");
   const [macro1ColorId, setMacro1ColorId] = useState<(typeof MACRO1_HIGHLIGHT_COLORS)[number]["id"]>("yellow");
   const [macro1PredictedMatches, setMacro1PredictedMatches] = useState<number | null>(null);
@@ -322,8 +327,13 @@ const Index = () => {
   const [llmVerbosity, setLlmVerbosity] = useState(CHAT_GPT5_VERBOSITY ?? "");
   const [llmEffort, setLlmEffort] = useState(CHAT_GPT5_EFFORT ?? "");
   const [llmSystemPrompt, setLlmSystemPrompt] = useState(CHAT_SYSTEM_PROMPT ?? "");
-  const [isChatConfigOpen, setIsChatConfigOpen] = useState(false);
-  const [isBiblioExternaConfigOpen, setIsBiblioExternaConfigOpen] = useState(false);
+  const [activeLlmConfigPanel, setActiveLlmConfigPanel] = useState<"chat" | "ai_actions" | "biblio_externa" | null>(null);
+  const [aiActionsLlmModel, setAiActionsLlmModel] = useState(CHAT_MODEL);
+  const [aiActionsLlmTemperature, setAiActionsLlmTemperature] = useState(CHAT_TEMPERATURE);
+  const [aiActionsLlmMaxOutputTokens, setAiActionsLlmMaxOutputTokens] = useState<number>(CHAT_MAX_OUTPUT_TOKENS ?? 500);
+  const [aiActionsLlmVerbosity, setAiActionsLlmVerbosity] = useState(CHAT_GPT5_VERBOSITY ?? "");
+  const [aiActionsLlmEffort, setAiActionsLlmEffort] = useState(CHAT_GPT5_EFFORT ?? "");
+  const [aiActionsLlmSystemPrompt, setAiActionsLlmSystemPrompt] = useState(CHAT_SYSTEM_PROMPT ?? "");
   const [biblioExternaLlmModel, setBiblioExternaLlmModel] = useState("gpt-5.4");
   const [biblioExternaLlmTemperature, setBiblioExternaLlmTemperature] = useState<number>(0);
   const [biblioExternaLlmMaxOutputTokens, setBiblioExternaLlmMaxOutputTokens] = useState<number>(500);
@@ -355,6 +365,14 @@ const Index = () => {
     maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS as number | undefined,
     maxNumResults: CHAT_MAX_NUM_RESULTS,
     editorContextMaxChars: CHAT_EDITOR_CONTEXT_MAX_CHARS,
+    gpt5Verbosity: CHAT_GPT5_VERBOSITY as string | undefined,
+    gpt5Effort: CHAT_GPT5_EFFORT as string | undefined,
+    systemPrompt: CHAT_SYSTEM_PROMPT as string | undefined,
+  });
+  const aiActionsLlmConfigRef = useRef({
+    model: CHAT_MODEL,
+    temperature: CHAT_TEMPERATURE,
+    maxOutputTokens: CHAT_MAX_OUTPUT_TOKENS as number | undefined,
     gpt5Verbosity: CHAT_GPT5_VERBOSITY as string | undefined,
     gpt5Effort: CHAT_GPT5_EFFORT as string | undefined,
     systemPrompt: CHAT_SYSTEM_PROMPT as string | undefined,
@@ -392,6 +410,13 @@ const Index = () => {
     return "Backend ainda verificando disponibilidade.";
   }, [backendStatus]);
 
+  const isChatConfigOpen = activeLlmConfigPanel === "chat";
+  const isAiActionsConfigOpen = activeLlmConfigPanel === "ai_actions";
+  const isBiblioExternaConfigOpen = activeLlmConfigPanel === "biblio_externa";
+  const toggleLlmConfigPanel = useCallback((panel: "chat" | "ai_actions" | "biblio_externa") => {
+    setActiveLlmConfigPanel((prev) => (prev === panel ? null : panel));
+  }, []);
+
   const getGlobalVectorStoreIds = useCallback(() => {
     return [...new Set(selectedBookSourceIds.map((id) => id.trim()).filter(Boolean))];
   }, [selectedBookSourceIds]);
@@ -412,6 +437,17 @@ const Index = () => {
       systemPrompt: llmSystemPrompt.trim() || CHAT_SYSTEM_PROMPT,
     };
   }, [llmEditorContextMaxChars, llmEffort, llmMaxNumResults, llmMaxOutputTokens, llmModel, llmSystemPrompt, llmTemperature, llmVerbosity]);
+
+  useEffect(() => {
+    aiActionsLlmConfigRef.current = {
+      model: aiActionsLlmModel,
+      temperature: aiActionsLlmTemperature,
+      maxOutputTokens: aiActionsLlmMaxOutputTokens,
+      gpt5Verbosity: aiActionsLlmVerbosity || undefined,
+      gpt5Effort: aiActionsLlmEffort || undefined,
+      systemPrompt: aiActionsLlmSystemPrompt.trim() || CHAT_SYSTEM_PROMPT,
+    };
+  }, [aiActionsLlmEffort, aiActionsLlmMaxOutputTokens, aiActionsLlmModel, aiActionsLlmSystemPrompt, aiActionsLlmTemperature, aiActionsLlmVerbosity]);
 
   useEffect(() => {
     try {
@@ -441,6 +477,29 @@ const Index = () => {
   }, []);
 
   useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<{
+        model: string;
+        temperature: number;
+        maxOutputTokens: number;
+        gpt5Verbosity: string;
+        gpt5Effort: string;
+        systemPrompt: string;
+      }>;
+      if (typeof parsed.model === "string" && parsed.model.trim()) setAiActionsLlmModel(parsed.model.trim());
+      if (typeof parsed.temperature === "number" && Number.isFinite(parsed.temperature)) setAiActionsLlmTemperature(Math.max(0, Math.min(parsed.temperature, 2)));
+      if (typeof parsed.maxOutputTokens === "number" && Number.isFinite(parsed.maxOutputTokens)) setAiActionsLlmMaxOutputTokens(Math.max(1, Math.floor(parsed.maxOutputTokens)));
+      if (typeof parsed.gpt5Verbosity === "string") setAiActionsLlmVerbosity(parsed.gpt5Verbosity);
+      if (typeof parsed.gpt5Effort === "string") setAiActionsLlmEffort(parsed.gpt5Effort);
+      if (typeof parsed.systemPrompt === "string") setAiActionsLlmSystemPrompt(parsed.systemPrompt);
+    } catch {
+      // Ignora storage invÃ¡lido e mantÃ©m defaults.
+    }
+  }, []);
+
+  useEffect(() => {
     const safeTemperature = Number.isFinite(llmTemperature) ? Math.max(0, Math.min(llmTemperature, 2)) : CHAT_TEMPERATURE;
     const safeMaxOutputTokens = Number.isFinite(llmMaxOutputTokens) ? Math.max(1, Math.floor(llmMaxOutputTokens)) : (CHAT_MAX_OUTPUT_TOKENS ?? 500);
     const safeMaxNumResults = Number.isFinite(llmMaxNumResults) ? Math.max(1, Math.min(Math.floor(llmMaxNumResults), 20)) : CHAT_MAX_NUM_RESULTS;
@@ -457,6 +516,18 @@ const Index = () => {
     };
     window.localStorage.setItem(LLM_SETTINGS_STORAGE_KEY, JSON.stringify(payload));
   }, [llmEditorContextMaxChars, llmEffort, llmMaxNumResults, llmMaxOutputTokens, llmModel, llmSystemPrompt, llmTemperature, llmVerbosity]);
+
+  useEffect(() => {
+    const payload = {
+      model: aiActionsLlmModel,
+      temperature: Number.isFinite(aiActionsLlmTemperature) ? Math.max(0, Math.min(aiActionsLlmTemperature, 2)) : CHAT_TEMPERATURE,
+      maxOutputTokens: Number.isFinite(aiActionsLlmMaxOutputTokens) ? Math.max(1, Math.floor(aiActionsLlmMaxOutputTokens)) : (CHAT_MAX_OUTPUT_TOKENS ?? 500),
+      gpt5Verbosity: aiActionsLlmVerbosity,
+      gpt5Effort: aiActionsLlmEffort,
+      systemPrompt: aiActionsLlmSystemPrompt,
+    };
+    window.localStorage.setItem(AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY, JSON.stringify(payload));
+  }, [aiActionsLlmEffort, aiActionsLlmMaxOutputTokens, aiActionsLlmModel, aiActionsLlmSystemPrompt, aiActionsLlmTemperature, aiActionsLlmVerbosity]);
 
   useEffect(() => {
     try {
@@ -690,6 +761,11 @@ const Index = () => {
     }
   }, [htmlEditorControlApi]);
 
+  const handleImportSelectedTextToActions = useCallback(async () => {
+    setParameterPanelTarget({ section: "actions", id: null });
+    await handleRetrieveSelectedText();
+  }, [handleRetrieveSelectedText]);
+
   const handleSelectAllContent = useCallback(async () => {
     const editorApi = htmlEditorControlApiRef.current ?? htmlEditorControlApi;
     if (!editorApi) {
@@ -759,6 +835,45 @@ const Index = () => {
       gpt5Verbosity: normalizeVerbosity(currentConfig.gpt5Verbosity),
       gpt5Effort: normalizeEffort(currentConfig.gpt5Effort),
       systemPrompt: currentConfig.systemPrompt,
+    };
+    const id = crypto.randomUUID();
+    const at = new Date().toISOString();
+    setLlmLogs([{ id, at, request: mergedPayload }]);
+    setLlmSessionLogs((prev) => [...prev, { id, at, request: mergedPayload }]);
+    try {
+      const response = await executeLLM(mergedPayload);
+      setLlmLogs((prev) => (prev[0]?.id === id ? [{ ...prev[0], response }] : prev));
+      setLlmSessionLogs((prev) => prev.map((entry) => (entry.id === id ? { ...entry, response } : entry)));
+      return response;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setLlmLogs((prev) => (prev[0]?.id === id ? [{ ...prev[0], error: message }] : prev));
+      setLlmSessionLogs((prev) => prev.map((entry) => (entry.id === id ? { ...entry, error: message } : entry)));
+      throw err;
+    }
+  }, []);
+
+  const executeAiActionsLLMWithLog = useCallback(async (payload: Parameters<typeof executeLLM>[0]) => {
+    const currentConfig = aiActionsLlmConfigRef.current;
+    const normalizeVerbosity = (value: string | undefined): "low" | "medium" | "high" | undefined => {
+      if (!value) return undefined;
+      const normalized = value.trim().toLowerCase();
+      if (normalized === "low" || normalized === "medium" || normalized === "high") return normalized;
+      return undefined;
+    };
+    const normalizeEffort = (value: string | undefined): "none" | "low" | "medium" | "high" | undefined => {
+      if (!value) return undefined;
+      const normalized = value.trim().toLowerCase();
+      if (normalized === "none" || normalized === "low" || normalized === "medium" || normalized === "high") return normalized;
+      return undefined;
+    };
+    const mergedPayload: Parameters<typeof executeLLM>[0] = {
+      ...payload,
+      model: currentConfig.model,
+      temperature: currentConfig.temperature,
+      maxOutputTokens: currentConfig.maxOutputTokens,
+      gpt5Verbosity: normalizeVerbosity(currentConfig.gpt5Verbosity),
+      gpt5Effort: normalizeEffort(currentConfig.gpt5Effort),
     };
     const id = crypto.randomUUID();
     const at = new Date().toISOString();
@@ -1610,10 +1725,16 @@ const Index = () => {
 
   const handleAction = useCallback(async (type: AiActionId) => {
     const text = actionText.trim();
+    const query = aiCommandQuery.trim();
     const inputFileIds = uploadedChatFiles.map((file) => file.id).filter(Boolean);
 
     if (!text) {
       toast.error("Selecione um trecho no documento ou escreva na caixa de texto.");
+      return;
+    }
+
+    if (type === "ai_command" && !query) {
+      toast.error("Informe a Query do Comando IA.");
       return;
     }
 
@@ -1631,7 +1752,7 @@ const Index = () => {
       setIsLoading(true);
       try {
         const content = (
-          await executeLLMWithLog({
+          await executeAiActionsLLMWithLog({
             messages: [
               {
                 role: "system",
@@ -1671,6 +1792,7 @@ const Index = () => {
         rewrite: buildRewritePrompt,
         summarize: buildSummarizePrompt,
         translate: (t: string) => buildTranslatePrompt(t, translateLanguage),
+        ai_command: (t: string) => buildAiCommandPrompt(t, query),
       };
 
       const messages = promptMap[type](text);
@@ -1683,18 +1805,21 @@ const Index = () => {
       if (type === "translate" && vectorStoreIds.length === 0) {
         throw new Error("Configure VITE_OPENAI_VECTOR_STORE_TRANSLATE_RAG.");
       }
-      const result = (await executeLLMWithLog({ messages, vectorStoreIds, inputFileIds })).content;
+      const result = (await executeAiActionsLLMWithLog({ messages, vectorStoreIds, inputFileIds })).content;
       addResponse(type, text.slice(0, 80), result);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erro na chamada a IA.");
     } finally {
       setIsLoading(false);
     }
-  }, [actionText, backendNotReadyMessage, getGlobalVectorStoreIds, openAiReady, translateLanguage, uploadedChatFiles]);
+  }, [actionText, aiCommandQuery, backendNotReadyMessage, executeAiActionsLLMWithLog, getGlobalVectorStoreIds, openAiReady, translateLanguage, uploadedChatFiles]);
 
   const handleOpenAiActionParameters = useCallback((type: AiActionId) => {
     setParameterPanelTarget({ section: "actions", id: type });
-  }, []);
+    if (type !== "translate" && type !== "ai_command") {
+      void handleAction(type);
+    }
+  }, [handleAction]);
 
   const handleChat = useCallback(async (message: string) => {
     if (!openAiReady) {
@@ -1808,6 +1933,16 @@ const Index = () => {
       setIsExportingDocx(false);
     }
   }, [currentFileId, currentFileName, documentText, editorContentHtml, htmlEditorControlApi]);
+
+  const handleCloseEditorWithPrompt = useCallback(async () => {
+    const shouldDownload = window.confirm("Deseja baixar o arquivo antes de fechar o editor?");
+    if (shouldDownload) {
+      await handleExportDocx();
+    }
+    setCurrentFileId("");
+    setCurrentFileName("");
+    setCurrentFileConvertedFromPdf(false);
+  }, [handleExportDocx]);
 
   const isHistoryProcessing =
     isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningVerbeteSearch || isRunningVerbetografiaOpenTable || isRunningVerbeteDefinologia || isRunningVerbeteFraseEnfatica || isRunningVerbeteSinonimologia || isRunningVerbeteFatologia;
@@ -2287,7 +2422,7 @@ const Index = () => {
                             <Button
                               variant="ghost"
                               className={sectionActionButtonClass}
-                              onClick={() => setIsChatConfigOpen((prev) => !prev)}
+                              onClick={() => toggleLlmConfigPanel("chat")}
                             >
                               <Sparkles className="mr-2 h-4 w-4 shrink-0 text-primary" />
                               <span className="min-w-0 flex-1 text-left">
@@ -2298,10 +2433,10 @@ const Index = () => {
                               </span>
                             </Button>
 
-                            {isChatConfigOpen ? (
+                            {false ? (
                               <>
                               <div><br /></div>
-                                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações LLM</Label>
+                                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações LLM Chat</Label>
                             <div className="flex items-center gap-2">
                               <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Modelo</Label>
                               <select
@@ -2386,7 +2521,7 @@ const Index = () => {
                             <Button
                               variant="ghost"
                               className={sectionActionButtonClass}
-                              onClick={() => setIsBiblioExternaConfigOpen((prev) => !prev)}
+                              onClick={() => toggleLlmConfigPanel("biblio_externa")}
                             >
                               <Sparkles className="mr-2 h-4 w-4 shrink-0 text-primary" />
                               <span className="min-w-0 flex-1 text-left">
@@ -2397,7 +2532,80 @@ const Index = () => {
                               </span>
                             </Button>
 
-                            {isBiblioExternaConfigOpen ? (
+                            <Button
+                              variant="ghost"
+                              className={sectionActionButtonClass}
+                              onClick={() => toggleLlmConfigPanel("ai_actions")}
+                            >
+                              <Sparkles className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                              <span className="min-w-0 flex-1 text-left">
+                                <span className="block break-words text-sm font-medium text-foreground">Config Ações IA</span>
+                                <span className="block break-words text-xs text-muted-foreground">
+                                  {isAiActionsConfigOpen ? "Ocultar configurações LLM" : "Mostrar configurações LLM"}
+                                </span>
+                              </span>
+                            </Button>
+
+                            {false ? (
+                              <>
+                                <div><br /></div>
+                                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações LLM</Label>
+                                <div className="flex items-center gap-2">
+                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Modelo</Label>
+                                  <select
+                                    value={aiActionsLlmModel}
+                                    onChange={(e) => setAiActionsLlmModel(e.target.value)}
+                                    className="h-8 w-full rounded-md border border-input bg-background px-3 text-[11px] text-foreground outline-none"
+                                  >
+                                    <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+                                    <option value="gpt-5-mini">gpt-5-mini</option>
+                                    <option value="gpt-5.2">gpt-5.2</option>
+                                    <option value="gpt-5.4">gpt-5.4</option>
+                                  </select>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Temperatura</Label>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    max="2"
+                                    value={aiActionsLlmTemperature}
+                                    onChange={(e) => setAiActionsLlmTemperature(Number(e.target.value))}
+                                    className="h-8 text-xs"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Output Tokens</Label>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    value={aiActionsLlmMaxOutputTokens}
+                                    onChange={(e) => setAiActionsLlmMaxOutputTokens(e.target.value ? Number(e.target.value) : 500)}
+                                    className="h-8 text-xs"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Verbosity</Label>
+                                  <Input value={aiActionsLlmVerbosity} onChange={(e) => setAiActionsLlmVerbosity(e.target.value)} placeholder="low | medium | high" className="h-8 text-xs" />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Effort</Label>
+                                  <Input value={aiActionsLlmEffort} onChange={(e) => setAiActionsLlmEffort(e.target.value)} placeholder="none | low | medium | high" className="h-8 text-xs" />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt</Label>
+                                  <textarea
+                                    value={aiActionsLlmSystemPrompt}
+                                    onChange={(e) => setAiActionsLlmSystemPrompt(e.target.value)}
+                                    rows={4}
+                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground outline-none resize-none overflow-y-auto"
+                                  />
+                                </div>
+                              </>
+                            ) : null}
+
+                            {false ? (
                               <>
                                 <div><br /></div>
                                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações LLM</Label>
@@ -2456,30 +2664,157 @@ const Index = () => {
                               </>
                             ) : null}
 
-                            {isChatConfigOpen ? (
+                            {activeLlmConfigPanel ? (
                               <>
-                                <Separator className="my-1" />
-                                <Separator className="my-1" />
-                                 <div className="h-2" />
-                                 
+                                <Separator className="my-4" />
+                                <div className="h-3" />
+                                <div className="space-y-3">
+                                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                    {activeLlmConfigPanel === "chat"
+                                      ? "Configurações LLM Chat"
+                                      : activeLlmConfigPanel === "ai_actions"
+                                        ? "Configurações LLM Ações"
+                                        : "Configurações LLM Biblio"}
+                                  </Label>
+
+                                  {activeLlmConfigPanel === "chat" ? (
+                                    <>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Modelo</Label>
+                                        <select value={llmModel} onChange={(e) => setLlmModel(e.target.value)} className="h-8 w-full rounded-md border border-input bg-background px-3 text-[11px] text-foreground outline-none">
+                                          <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+                                          <option value="gpt-5-mini">gpt-5-mini</option>
+                                          <option value="gpt-5.2">gpt-5.2</option>
+                                          <option value="gpt-5.4">gpt-5.4</option>
+                                        </select>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Temperatura</Label>
+                                        <Input type="number" step="0.1" min="0" max="2" value={llmTemperature} onChange={(e) => setLlmTemperature(Number(e.target.value))} className="h-8 text-xs" />
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Output Tokens</Label>
+                                        <Input type="number" min="1" value={llmMaxOutputTokens} onChange={(e) => setLlmMaxOutputTokens(e.target.value ? Number(e.target.value) : 500)} className="h-8 text-xs" />
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Num Results</Label>
+                                        <Input type="number" min="1" max="20" value={llmMaxNumResults} onChange={(e) => setLlmMaxNumResults(e.target.value ? Number(e.target.value) : 5)} className="h-8 text-xs" />
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Context Max Chars</Label>
+                                        <Input type="number" min="500" value={llmEditorContextMaxChars} onChange={(e) => setLlmEditorContextMaxChars(e.target.value ? Number(e.target.value) : CHAT_EDITOR_CONTEXT_MAX_CHARS)} className="h-8 text-xs" />
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Verbosity</Label>
+                                        <Input value={llmVerbosity} onChange={(e) => setLlmVerbosity(e.target.value)} placeholder="low | medium | high" className="h-8 text-xs" />
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Effort</Label>
+                                        <Input value={llmEffort} onChange={(e) => setLlmEffort(e.target.value)} placeholder="minimal | low | medium | high" className="h-8 text-xs" />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt</Label>
+                                        <textarea value={llmSystemPrompt} onChange={(e) => setLlmSystemPrompt(e.target.value)} rows={10} className="w-full rounded-md border border-input bg-white px-3 py-2 text-xs text-foreground outline-none resize-none overflow-y-auto" />
+                                      </div>
+                                    </>
+                                  ) : null}
+
+                                  {activeLlmConfigPanel === "ai_actions" ? (
+                                    <>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Modelo</Label>
+                                        <select value={aiActionsLlmModel} onChange={(e) => setAiActionsLlmModel(e.target.value)} className="h-8 w-full rounded-md border border-input bg-background px-3 text-[11px] text-foreground outline-none">
+                                          <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+                                          <option value="gpt-5-mini">gpt-5-mini</option>
+                                          <option value="gpt-5.2">gpt-5.2</option>
+                                          <option value="gpt-5.4">gpt-5.4</option>
+                                        </select>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Temperatura</Label>
+                                        <Input type="number" step="0.1" min="0" max="2" value={aiActionsLlmTemperature} onChange={(e) => setAiActionsLlmTemperature(Number(e.target.value))} className="h-8 text-xs" />
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Output Tokens</Label>
+                                        <Input type="number" min="1" value={aiActionsLlmMaxOutputTokens} onChange={(e) => setAiActionsLlmMaxOutputTokens(e.target.value ? Number(e.target.value) : 500)} className="h-8 text-xs" />
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Verbosity</Label>
+                                        <Input value={aiActionsLlmVerbosity} onChange={(e) => setAiActionsLlmVerbosity(e.target.value)} placeholder="low | medium | high" className="h-8 text-xs" />
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Effort</Label>
+                                        <Input value={aiActionsLlmEffort} onChange={(e) => setAiActionsLlmEffort(e.target.value)} placeholder="none | low | medium | high" className="h-8 text-xs" />
+                                      </div>
+                                      {/* <div className="space-y-2">
+                                        <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt</Label>
+                                        <textarea value={aiActionsLlmSystemPrompt} onChange={(e) => setAiActionsLlmSystemPrompt(e.target.value)} rows={10} className="w-full rounded-md border border-input bg-white px-3 py-2 text-xs text-foreground outline-none resize-none overflow-y-auto" />
+                                      </div> */}
+                                    </>
+                                  ) : null}
+
+                                  {activeLlmConfigPanel === "biblio_externa" ? (
+                                    <>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Modelo</Label>
+                                        <select value={biblioExternaLlmModel} onChange={(e) => setBiblioExternaLlmModel(e.target.value)} className="h-8 w-full rounded-md border border-input bg-background px-3 text-[11px] text-foreground outline-none">
+                                          <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+                                          <option value="gpt-5-mini">gpt-5-mini</option>
+                                          <option value="gpt-5.2">gpt-5.2</option>
+                                          <option value="gpt-5.4">gpt-5.4</option>
+                                        </select>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Temperatura</Label>
+                                        <Input type="number" step="0.1" min="0" max="2" value={biblioExternaLlmTemperature} onChange={(e) => setBiblioExternaLlmTemperature(Number(e.target.value))} className="h-8 text-xs" />
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Output Tokens</Label>
+                                        <Input type="number" min="1" value={biblioExternaLlmMaxOutputTokens} onChange={(e) => setBiblioExternaLlmMaxOutputTokens(e.target.value ? Number(e.target.value) : 500)} className="h-8 text-xs" />
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Verbosity</Label>
+                                        <Input value={biblioExternaLlmVerbosity} onChange={(e) => setBiblioExternaLlmVerbosity(e.target.value)} placeholder="low | medium | high" className="h-8 text-xs" />
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Effort</Label>
+                                        <Input value={biblioExternaLlmEffort} onChange={(e) => setBiblioExternaLlmEffort(e.target.value)} placeholder="none | low | medium | high" className="h-8 text-xs" />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt</Label>
+                                        <textarea value={biblioExternaLlmSystemPrompt} onChange={(e) => setBiblioExternaLlmSystemPrompt(e.target.value)} rows={10} className="w-full rounded-md border border-input bg-white px-3 py-2 text-xs text-foreground outline-none resize-none overflow-y-auto" />
+                                      </div>
+                                    </>
+                                  ) : null}
+                                </div>
                               </>
                             ) : null}
                           </div>
                         </div>
-                      ) : parameterPanelTarget.section === "actions" && parameterPanelTarget.id ? (
+                      ) : parameterPanelTarget.section === "actions" ? (
                         <AiActionParametersPanel
-                          title={parameterActionMeta[parameterPanelTarget.id].title}
-                          description={parameterActionMeta[parameterPanelTarget.id].description}
+                          title={parameterPanelTarget.id ? parameterActionMeta[parameterPanelTarget.id].title : "Ações IA"}
+                          description={
+                            parameterPanelTarget.id
+                              ? parameterActionMeta[parameterPanelTarget.id].description
+                              : "Selecione uma ação acima ou escreva/importe o texto de entrada."
+                          }
                           actionText={actionText}
                           onActionTextChange={setActionText}
+                          queryText={parameterPanelTarget.id === "ai_command" ? aiCommandQuery : undefined}
+                          onQueryTextChange={parameterPanelTarget.id === "ai_command" ? setAiCommandQuery : undefined}
                           onRetrieveSelectedText={() => void handleRetrieveSelectedText()}
-                          onApply={() => void handleAction(parameterPanelTarget.id as AiActionId)}
+                          onApply={() => {
+                            if (!parameterPanelTarget.id) return;
+                            void handleAction(parameterPanelTarget.id as AiActionId);
+                          }}
                           isLoading={isLoading}
                           hasDocumentOpen={Boolean(currentFileId)}
                           showLanguageSelect={parameterPanelTarget.id === "translate"}
                           languageOptions={TRANSLATE_LANGUAGE_OPTIONS.map((option) => ({ ...option }))}
                           selectedLanguage={translateLanguage}
                           onSelectedLanguageChange={(value) => setTranslateLanguage(value as (typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"])}
+                          showApplyButton={parameterPanelTarget.id === "translate" || parameterPanelTarget.id === "ai_command"}
                           showPanelChrome={false}
                         />
                       ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app1" ? (
@@ -2914,11 +3249,8 @@ const Index = () => {
                   onExportDocx={() => void handleExportDocx()}
                   isExportingDocx={isExportingDocx}
                   showLlmContextIndicator={Boolean(currentFileId) && includeEditorContextInLlm}
-                  onCloseEditor={() => {
-                    setCurrentFileId("");
-                    setCurrentFileName("");
-                    setCurrentFileConvertedFromPdf(false);
-                  }}
+                  onImportSelectedText={() => void handleImportSelectedTextToActions()}
+                  onCloseEditor={() => void handleCloseEditorWithPrompt()}
                 />
                 {isOpeningDocument && (
                   <div className={`absolute inset-0 z-10 flex items-center justify-center ${panelsBgClass}`}>

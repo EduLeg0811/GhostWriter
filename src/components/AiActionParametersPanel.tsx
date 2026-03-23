@@ -11,6 +11,8 @@ interface AiActionParametersPanelProps {
   description: string;
   actionText: string;
   onActionTextChange: (value: string) => void;
+  queryText?: string;
+  onQueryTextChange?: (value: string) => void;
   onRetrieveSelectedText: () => void;
   onApply: () => void;
   isLoading: boolean;
@@ -19,6 +21,7 @@ interface AiActionParametersPanelProps {
   languageOptions?: Array<{ value: string; label: string }>;
   selectedLanguage?: string;
   onSelectedLanguageChange?: (value: string) => void;
+  showApplyButton?: boolean;
   onClose?: () => void;
   showPanelChrome?: boolean;
 }
@@ -28,6 +31,8 @@ const AiActionParametersPanel = ({
   description,
   actionText,
   onActionTextChange,
+  queryText = "",
+  onQueryTextChange,
   onRetrieveSelectedText,
   onApply,
   isLoading,
@@ -36,13 +41,22 @@ const AiActionParametersPanel = ({
   languageOptions = [],
   selectedLanguage = "",
   onSelectedLanguageChange,
+  showApplyButton = true,
   onClose,
   showPanelChrome = true,
 }: AiActionParametersPanelProps) => {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const queryTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const resizeTextarea = () => {
     const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  const resizeQueryTextarea = () => {
+    const el = queryTextareaRef.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
@@ -52,18 +66,79 @@ const AiActionParametersPanel = ({
     resizeTextarea();
   }, [actionText]);
 
+  useLayoutEffect(() => {
+    resizeQueryTextarea();
+  }, [queryText]);
+
   const content = (
-    <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
-      <div className="space-y-5">
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-foreground">{title}</p>
-          <p className="text-xs text-muted-foreground">{description}</p>
+    <div className="flex h-full flex-col">
+      <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
+        <div className="space-y-5">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">{title}</p>
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
+
+          {showLanguageSelect && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Idioma de Saida</Label>
+              <select
+                value={selectedLanguage}
+                onChange={(e) => onSelectedLanguageChange?.(e.target.value)}
+                className="h-8 w-full rounded-md border border-border bg-white px-3 text-xs outline-none focus:border-primary"
+              >
+                {languageOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {typeof onQueryTextChange === "function" && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Query</Label>
+              <textarea
+                ref={queryTextareaRef}
+                rows={3}
+                value={queryText}
+                onChange={(e) => {
+                  onQueryTextChange(e.target.value);
+                  resizeQueryTextarea();
+                }}
+                placeholder="Escreva a query a ser enviada para a LLM"
+                className="min-h-[80px] w-full overflow-hidden resize-none rounded-md border border-border bg-white px-3 py-2 text-xs outline-none focus:border-primary"
+              />
+            </div>
+          )}
+
+          {showApplyButton && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className={primaryActionButtonClass}
+              onClick={onApply}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin text-black relative z-10" />
+                  <span className="relative z-10 text-blue-500">{title}</span>
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 h-4 w-4 text-black relative z-10" />
+                  <span className="relative z-10 text-blue-500">{title}</span>
+                </>
+              )}
+            </Button>
+          )}
         </div>
+      </div>
 
-        <Separator />
-
-        <div className="space-y-2">
-          {/*<Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Caixa de Entrada</Label>*/}
+      <div className="border-t border-border px-4 py-3">
+        <div className="space-y-3">
           <div className="flex justify-end">
             <Button
               variant="ghost"
@@ -78,53 +153,16 @@ const AiActionParametersPanel = ({
           </div>
           <textarea
             ref={textareaRef}
-            rows={6}
+            rows={4}
             value={actionText}
             onChange={(e) => {
               onActionTextChange(e.target.value);
               resizeTextarea();
             }}
             placeholder="Write a word, phrase or text"
-            className="min-h-[110px] w-full overflow-hidden resize-none rounded-md border border-border bg-white px-3 py-2 text-xs outline-none focus:border-primary"
+            className="min-h-[96px] w-full overflow-hidden resize-none rounded-md border border-border bg-white px-3 py-2 text-xs outline-none focus:border-primary"
           />
         </div>
-
-        {showLanguageSelect && (
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Idioma de Saida</Label>
-            <select
-              value={selectedLanguage}
-              onChange={(e) => onSelectedLanguageChange?.(e.target.value)}
-              className="h-8 w-full rounded-md border border-border bg-white px-3 text-xs outline-none focus:border-primary"
-            >
-              {languageOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <Button
-          variant="secondary"
-          size="sm"
-          className={primaryActionButtonClass}
-          onClick={onApply}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin text-black relative z-10" />
-              <span className="relative z-10 text-blue-500">{title}</span>
-            </>
-          ) : (
-            <>
-              <Play className="mr-2 h-4 w-4 text-black relative z-10" />
-              <span className="relative z-10 text-blue-500">{title}</span>
-            </>
-          )}
-        </Button>
       </div>
     </div>
   );
@@ -145,4 +183,3 @@ const AiActionParametersPanel = ({
 };
 
 export default AiActionParametersPanel;
-
