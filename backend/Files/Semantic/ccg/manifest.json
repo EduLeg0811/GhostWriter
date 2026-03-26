@@ -1,0 +1,21 @@
+{
+  "index_label": "CCG",
+  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmpw90w_5pg.xlsx",
+  "source_rows": 1980,
+  "indexed_rows": 1980,
+  "sheet_name": "Sheet1",
+  "text_column": "text",
+  "metadata_columns": [
+    "title",
+    "folha",
+    "number",
+    "source"
+  ],
+  "model": "text-embedding-3-small",
+  "embedding_dtype": "float16",
+  "dimensions": 1536,
+  "generated_at": "2026-03-25T18:43:56.000Z",
+  "normalization": "l2",
+  "source_mtime": "2026-03-25T18:43:21.000Z",
+  "source_size": 157960
+}

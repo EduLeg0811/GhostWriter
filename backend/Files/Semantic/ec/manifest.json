@@ -1,0 +1,24 @@
+{
+  "index_label": "EC",
+  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmpi6114c49.xlsx",
+  "source_rows": 6530,
+  "indexed_rows": 6530,
+  "sheet_name": "Sheet1",
+  "text_column": "text",
+  "metadata_columns": [
+    "number",
+    "title",
+    "date",
+    "area",
+    "theme",
+    "author",
+    "link"
+  ],
+  "model": "text-embedding-3-small",
+  "embedding_dtype": "float16",
+  "dimensions": 1536,
+  "generated_at": "2026-03-25T18:58:45.000Z",
+  "normalization": "l2",
+  "source_mtime": "2026-03-25T18:56:51.000Z",
+  "source_size": 1089244
+}

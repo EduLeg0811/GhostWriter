@@ -8,8 +8,10 @@ import { aiAppsSectionBgClass, cardsBgClass, panelsTopMenuBarBgClass } from "@/s
 
 interface LeftPanelProps {
   onOpenParameterSection: (section: "document" | "sources" | "actions" | "apps" | "settings") => void;
+  onOpenGeneralSettings: () => void;
   onRunRandomPensata: () => Promise<void> | void;
   onOpenBookSearch: () => void;
+  onOpenSemanticSearch: () => void;
   onOpenVerbetografia: () => void;
   onToggleJsonPanel: () => void;
   isJsonPanelOpen: boolean;
@@ -19,10 +21,10 @@ interface LeftPanelProps {
 type LeftPanelActionId = "document" | "sources" | "actions" | "apps" | "settings";
 
 const GHOST_VIDEO_PLAYBACK_RATE = 0.50;
-const GHOST_VIDEO_REPLAY_DELAY_MS = 20000;
-const GHOST_VIDEO_INITIAL_DELAY_MS = 10000;
+const GHOST_VIDEO_REPLAY_DELAY_MS = 30000;
+const GHOST_VIDEO_INITIAL_DELAY_MS = 15000;
 
-const LeftPanel = ({ onOpenParameterSection, onRunRandomPensata, onOpenBookSearch, onOpenVerbetografia, onToggleJsonPanel, isJsonPanelOpen, isLoading }: LeftPanelProps) => {
+const LeftPanel = ({ onOpenParameterSection, onOpenGeneralSettings, onRunRandomPensata, onOpenBookSearch, onOpenSemanticSearch, onOpenVerbetografia, onToggleJsonPanel, isJsonPanelOpen, isLoading }: LeftPanelProps) => {
   const [activeActionId, setActiveActionId] = useState<LeftPanelActionId | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const actionDisabled = isLoading;
@@ -134,6 +136,55 @@ const LeftPanel = ({ onOpenParameterSection, onRunRandomPensata, onOpenBookSearc
 
           <Separator className="my-1" />
 
+
+
+          <div className="space-y-2.5">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ferramentas de Busca</Label>
+            <div className="space-y-1.5"></div>
+
+              <Button variant="ghost" className={`${sectionActionButtonClass} border-0 shadow-none`} onClick={onOpenBookSearch} disabled={actionDisabled}>
+                <Search className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Lexical Search</span>
+                  <span className="block break-words text-xs text-muted-foreground">Busca léxica nos livros e verbetes</span>
+                </span>
+              </Button>
+
+              <Button variant="ghost" className={`${sectionActionButtonClass} border-0 shadow-none`} onClick={onOpenSemanticSearch} disabled={actionDisabled}>
+                <Search className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Semantic Search</span>
+                  <span className="block break-words text-xs text-muted-foreground">Busca por afinidade semântica</span>
+                </span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                className={`${sectionActionButtonClass} border-0 shadow-none`}
+                onClick={() => {
+                  setActiveActionId("apps");
+                  onOpenParameterSection("apps");
+                }}
+                disabled={actionDisabled}
+              >
+                {isLoading && activeActionId === "apps" ? (
+                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                )}
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Bibliografia</span>
+                  <span className="block break-words text-xs text-muted-foreground">Busca referências bibliográficas</span>
+                </span>
+              </Button>
+
+          </div>
+
+
+
+          <Separator className="my-1" />
+
+
           <div className="space-y-2.5">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ferramentas IA</Label>
             <div className="space-y-1.5">
@@ -157,33 +208,7 @@ const LeftPanel = ({ onOpenParameterSection, onRunRandomPensata, onOpenBookSearc
                 </span>
               </Button>
 
-              <Button
-                variant="ghost"
-                className={`${sectionActionButtonClass} border-0 shadow-none`}
-                onClick={() => {
-                  setActiveActionId("apps");
-                  onOpenParameterSection("apps");
-                }}
-                disabled={actionDisabled}
-              >
-                {isLoading && activeActionId === "apps" ? (
-                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
-                ) : (
-                  <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                )}
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Bibliografia</span>
-                  <span className="block break-words text-xs text-muted-foreground">Ferramentas de bibliografia</span>
-                </span>
-              </Button>
-
-              <Button variant="ghost" className={`${sectionActionButtonClass} border-0 shadow-none`} onClick={onOpenBookSearch} disabled={actionDisabled}>
-                <Search className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Busca de Termos</span>
-                  <span className="block break-words text-xs text-muted-foreground">Busca termos nos livros e verbetes</span>
-                </span>
-              </Button>
+             
 
               <Button variant="ghost" className={`${sectionActionButtonClass} border-0 shadow-none`} onClick={onOpenVerbetografia} disabled={actionDisabled}>
                 <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
@@ -199,6 +224,23 @@ const LeftPanel = ({ onOpenParameterSection, onRunRandomPensata, onOpenBookSearc
 
           <div className="space-y-2.5">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações</Label>
+            <Button
+              variant="ghost"
+              className={`${sectionActionButtonClass} border-0 shadow-none`}
+              onClick={() => {
+                setActiveActionId("settings");
+                onOpenGeneralSettings();
+              }}
+              disabled={actionDisabled}
+              title="Configurações Gerais"
+              aria-label="Configurações Gerais"
+            >
+              <Settings className="mr-2 h-4 w-4 shrink-0 text-primary" />
+              <span className="min-w-0 flex-1 text-left">
+                <span className="block break-words text-sm font-medium text-foreground">Geral</span>
+                <span className="block break-words text-xs text-muted-foreground">Preferências da interface</span>
+              </span>
+            </Button>
             <Button
               variant="ghost"
               className={`${sectionActionButtonClass} border-0 shadow-none`}

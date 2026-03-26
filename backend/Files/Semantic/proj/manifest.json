@@ -1,0 +1,19 @@
+{
+  "index_label": "PROJ",
+  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmph_rhlbml.xlsx",
+  "source_rows": 8985,
+  "indexed_rows": 8985,
+  "sheet_name": "Sheet1",
+  "text_column": "text",
+  "metadata_columns": [
+    "title",
+    "number"
+  ],
+  "model": "text-embedding-3-small",
+  "embedding_dtype": "float16",
+  "dimensions": 1536,
+  "generated_at": "2026-03-25T19:35:35.000Z",
+  "normalization": "l2",
+  "source_mtime": "2026-03-25T19:33:03.000Z",
+  "source_size": 1493548
+}

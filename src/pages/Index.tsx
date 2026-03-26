@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlignLeft, BookOpen, FileText, Hash, Languages, ListOrdered, Loader2, Menu, PenLine, RefreshCw, Repeat2, RotateCcw, Search, Sparkles, Trash2, Type, Upload, X } from "lucide-react";
-import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import LeftPanel from "@/components/LeftPanel";
@@ -11,6 +10,7 @@ import InsertRefVerbetePanel from "@/components/InsertRefVerbetePanel";
 import BiblioGeralPanel from "@/components/BiblioGeralPanel";
 import BiblioExternaPanel from "@/components/BiblioExternaPanel";
 import BookSearchPanel, { BOOK_OPTION_LABELS } from "@/components/BookSearchPanel";
+import SemanticSearchPanel from "@/components/SemanticSearchPanel";
 import VerbeteSearchPanel from "@/components/VerbeteSearchPanel";
 import VerbetografiaPanel from "@/components/VerbetografiaPanel";
 import Macro1HighlightPanel from "@/components/Macro1HighlightPanel";
@@ -31,10 +31,12 @@ import {
   healthCheck,
   insertRefBookMacro,
   insertRefVerbeteApp,
+  listSemanticIndexesApp,
   listLexicalBooksApp,
   openVerbetografiaTableApp,
   randomPensataApp,
   saveFileText,
+  semanticSearchPensatasApp,
   searchLexicalBookApp,
   searchVerbeteApp,
   UploadedFileMeta,
@@ -43,6 +45,7 @@ import {
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 import { buildDocxBlobFromHtml } from "@/lib/docx-export";
 import { cleanupConvertedPdfHeaderHtml, parseDocxArrayBuffer, warmupDocxParser } from "@/lib/file-parser";
+import { buildHistorySearchCardsMarkdown, type HistorySearchCardMetadata } from "@/lib/historySearchCards";
 import { buttonsPrimaryBgClass, cardsBgClass, panelsBgClass, panelsTopMenuBarBgClass, uploadDocBgClass } from "@/styles/backgroundColors";
 import { markdownToEditorHtml, normalizeHistoryContentToMarkdown, plainTextToEditorHtml } from "@/lib/markdown";
 import {
@@ -77,44 +80,72 @@ import { sectionActionButtonClass } from "@/styles/buttonStyles";
 import { BOOK_LABELS, type BookCode } from "@/lib/bookCatalog";
 
 type MacroActionId = "macro1" | "macro2";
-type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7" | "app8" | "app9" | "app10" | "app11";
-type AppPanelScope = "bibliografia" | "busca" | "verbetografia";
+type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7" | "app8" | "app9" | "app10" | "app11" | "app12";
+type AppPanelScope = "bibliografia" | "busca_termos" | "semantic_search" | "verbetografia";
+type SemanticIndexOption = {
+  id: string;
+  label: string;
+  sourceFile: string;
+  sourceRows: number;
+  model: string;
+  dimensions: number;
+  embeddingDtype: string;
+};
 type AiActionId = "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate" | "ai_command";
 type ParameterPanelSection = "document" | "sources" | "actions" | "apps" | "settings";
+type SettingsPanelId = "llm" | "general";
 type ParameterPanelTarget =
   | { section: "document"; id: MacroActionId | null }
   | { section: "sources"; id: null }
   | { section: "actions"; id: AiActionId | null }
   | { section: "apps"; id: AppActionId | null }
-  | { section: "settings"; id: null }
+  | { section: "settings"; id: SettingsPanelId }
   | null;
 type MobilePanelId = "left" | "center" | "right" | "editor" | "json";
 type SourcesPanelView = "books" | "vector-store" | "upload" | null;
 type BackendStatus = "checking" | "ready" | "missing_openai_key" | "unavailable";
+const SEMANTIC_TITLE_METADATA_KEYS = ["title", "titulo", "verbete", "tema", "cabecalho", "heading"];
+const SEMANTIC_NUMBER_METADATA_KEYS = ["number", "numero", "paragraph_number", "index", "ordem", "id"];
 
-const BOOK_SOURCE_VECTOR_STORES = [
-  { label: "Source1 - Manuais", id: "vs_69bb0cf2a1b881918932390d13f8d6da" },
-  { label: "Source2 - 700Exp", id: "vs_69bb0d959ffc819189a3c24f2ebb2d1c" },
-  { label: "Source3 - Basicos", id: "vs_69bb0db9d3548191adb0eeb435c95f54" },
-  { label: "Source4 - Proj", id: "vs_69bb0e0c6404819198424a86b887358f" },
-  { label: "Source5 - HSR_HSP", id: "vs_69bb0e57ec1c8191bb9da3760410d225" },
-  { label: "Source6 - CCG", id: "vs_69bb10fdfa208191bdad6c97ecc48c57" },
-  { label: "Source7 - DAC", id: "vs_69bb116a458c8191bb52fad036476e8a" },
-  { label: "Source8 - LO", id: "vs_69bb11928ff08191b24e3e35a93b4d5b" },
-  { label: "ECWV", id: "vs_699d09de9ca48191b63fbbd4d195a696" },
-  { label: "Revistas", id: "vs_69289c64b8308191806dcdd5856426d9" },
-  { label: "Blog Tert", id: "vs_6928989410dc8191bd9a838eb38876b7" },
-  { label: "Autores", id: "vs_692894b455188191a900282a80e16a44" },
-  { label: "Mini", id: "vs_692890daa4248191afd3cf04a0c51ad5" },
-  { label: "WVBooks", id: "vs_6912908250e4819197e23fe725e04fae" },
-  { label: "EduNotes", id: "vs_68f195fdeda08191815ec795ba1f57ba" },
+const BOOK_SOURCE = [
+
+  // ------------------------------------------------------------------------------
+  // Livros & Tratados
+  // ------------------------------------------------------------------------------
+  { label: "Básicos: Nossa Evolução, O que é a Conscienciologia", id: "vs_69bb0db9d3548191adb0eeb435c95f54" },
+  { label: "Conscienciograma", id: "vs_69bb10fdfa208191bdad6c97ecc48c57" },
+
+  { label: "Manuais: Tenepes, Proéxis, Dupla", id: "vs_69bb0cf2a1b881918932390d13f8d6da" },
+  { label: "700 Experimentos da Conscienciologia", id: "vs_69bb0d959ffc819189a3c24f2ebb2d1c" },
+ 
+  { label: "Projeciologia", id: "vs_69bb0e0c6404819198424a86b887358f" },
+  { label: "Homo sapiens: HSR, HSP", id: "vs_69bb0e57ec1c8191bb9da3760410d225" },
+ 
+  { label: "Dicionário de Argumentos da Conscienciologia (DAC)", id: "vs_69bb116a458c8191bb52fad036476e8a" },
+  { label: "Léxico de Ortopensatas (LO)", id: "vs_69bb11928ff08191b24e3e35a93b4d5b" },
+
+  // ------------------------------------------------------------------------------
 ] as const;
-const DEFAULT_BOOK_SOURCE_ID = BOOK_SOURCE_VECTOR_STORES.find((item) => item.label.toUpperCase() === "WVBOOKS")?.id ?? "";
+
+const VECTOR_STORES_SOURCE = [
+  { label: "WVBooks", id: "vs_6912908250e4819197e23fe725e04fae" },
+  { label: "Verbetes Waldo Vieira", id: "vs_699d09de9ca48191b63fbbd4d195a696" },
+
+  { label: "Blog Tert", id: "vs_6928989410dc8191bd9a838eb38876b7" },
+  { label: "Mini", id: "vs_692890daa4248191afd3cf04a0c51ad5" },
+  { label: "EduNotes", id: "vs_68f195fdeda08191815ec795ba1f57ba" },
+  
+  { label: "Revistas", id: "vs_69289c64b8308191806dcdd5856426d9" },
+  { label: "Autores", id: "vs_692894b455188191a900282a80e16a44" },
+] as const;
+
+const DEFAULT_BOOK_SOURCE_ID = VECTOR_STORES_SOURCE.find((item) => item.label.toUpperCase() === "WVBOOKS")?.id ?? "";
 
 const ACTION_PANEL_BUTTONS: AiActionId[] = ["define", "synonyms", "epigraph", "pensatas", "rewrite", "summarize", "translate", "ai_command"];
 const APP_PANEL_BUTTONS_BY_SCOPE: Record<AppPanelScope, AppActionId[]> = {
   bibliografia: ["app1", "app2", "app3", "app6"],
-  busca: ["app4", "app5"],
+  busca_termos: ["app4", "app5"],
+  semantic_search: ["app12"],
   verbetografia: ["app7", "app8", "app9", "app10", "app11"],
 };
 const MACRO_PANEL_BUTTONS: MacroActionId[] = ["macro1", "macro2"];
@@ -135,6 +166,7 @@ const APP_PANEL_ICONS: Record<AppActionId, typeof BookOpen> = {
   app4: Search,
   app5: Search,
   app6: Search,
+  app12: Search,
   app7: FileText,
   app8: BookOpen,
   app11: PenLine,
@@ -154,6 +186,7 @@ const LLM_LOG_FONT_STEP = 0.05;
 const LLM_SETTINGS_STORAGE_KEY = "llm_settings_v1";
 const AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY = "ai_actions_llm_settings_v1";
 const BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY = "biblio_externa_llm_settings_v1";
+const GENERAL_SETTINGS_STORAGE_KEY = "general_settings_v1";
 const BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT = `Você é um assistente especializado em reconstrução de referências bibliográficas acadêmicas.
 Sua função é identificar e reconstruir referências completas a partir de uma string bibliográfica livre fornecida pelo usuário.
 
@@ -195,6 +228,7 @@ const parameterAppMeta: Record<AppActionId, { title: string; description: string
   app4: { title: "Busca em Livros", description: "Busca termos nos livros de Waldo Vieira." },
   app5: { title: "Busca em Verbetes", description: "Busca termos nos verbetes em geral." },
   app6: { title: "Bibliografia Externa", description: "Busca referências externas na internet." },
+  app12: { title: "Semantic Search", description: "Busca semântica nas bases vetoriais disponíveis." },
   app7: { title: "Tabela Automatizada", description: "Abre tabela no Word e no editor HTML." },
   app8: { title: "Definologia", description: "Gera Definologia do verbete." },
   app9: { title: "Sinonimologia", description: "Gera Sinonimologia do verbete." },
@@ -297,6 +331,12 @@ const Index = () => {
   const [lexicalTerm, setLexicalTerm] = useState("");
   const [lexicalMaxResults, setLexicalMaxResults] = useState(DEFAULT_BOOK_SEARCH_MAX_RESULTS);
   const [isRunningLexicalSearch, setIsRunningLexicalSearch] = useState(false);
+  const [semanticSearchQuery, setSemanticSearchQuery] = useState("");
+  const [semanticSearchMaxResults, setSemanticSearchMaxResults] = useState(DEFAULT_BOOK_SEARCH_MAX_RESULTS);
+  const [semanticSearchIndexes, setSemanticSearchIndexes] = useState<SemanticIndexOption[]>([]);
+  const [selectedSemanticSearchIndexId, setSelectedSemanticSearchIndexId] = useState("");
+  const [isLoadingSemanticSearchIndexes, setIsLoadingSemanticSearchIndexes] = useState(false);
+  const [isRunningSemanticSearch, setIsRunningSemanticSearch] = useState(false);
   const [verbeteSearchAuthor, setVerbeteSearchAuthor] = useState("");
   const [verbeteSearchTitle, setVerbeteSearchTitle] = useState("");
   const [verbeteSearchArea, setVerbeteSearchArea] = useState("");
@@ -349,6 +389,9 @@ const Index = () => {
   const [isMobileView, setIsMobileView] = useState(false);
   const [activeMobilePanel, setActiveMobilePanel] = useState<MobilePanelId>("left");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [historyNotice, setHistoryNotice] = useState<string | null>(null);
+  const [enableHistoryNumbering, setEnableHistoryNumbering] = useState(true);
+  const [enableHistoryReferences, setEnableHistoryReferences] = useState(true);
   const [isImportingDocument, setIsImportingDocument] = useState(false);
   const [selectedImportFileName, setSelectedImportFileName] = useState("");
   const [sourcesPanelView, setSourcesPanelView] = useState<SourcesPanelView>(null);
@@ -357,6 +400,7 @@ const Index = () => {
   const [isUploadingChatFiles, setIsUploadingChatFiles] = useState(false);
   const [includeEditorContextInLlm, setIncludeEditorContextInLlm] = useState(true);
   const saveTimerRef = useRef<number | null>(null);
+  const historyNoticeTimeoutRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const htmlEditorControlApiRef = useRef<HtmlEditorControlApi | null>(null);
   const llmConfigRef = useRef({
@@ -380,6 +424,32 @@ const Index = () => {
   const currentFileIdRef = useRef("");
   const macro1CountRequestIdRef = useRef(0);
   const previousHasEditorPanelRef = useRef(false);
+  const showHistoryNotice = useCallback((message: string) => {
+    const trimmed = (message || "").trim();
+    if (!trimmed) return;
+    setHistoryNotice(trimmed);
+    if (historyNoticeTimeoutRef.current !== null) {
+      window.clearTimeout(historyNoticeTimeoutRef.current);
+    }
+    historyNoticeTimeoutRef.current = window.setTimeout(() => {
+      setHistoryNotice(null);
+      historyNoticeTimeoutRef.current = null;
+    }, 4500);
+  }, []);
+  const toast = useRef({
+    error: (message: string) => showHistoryNotice(message),
+    info: (message: string) => showHistoryNotice(message),
+    success: (message: string) => showHistoryNotice(message),
+    warning: (message: string) => showHistoryNotice(message),
+  }).current;
+
+  useEffect(() => {
+    return () => {
+      if (historyNoticeTimeoutRef.current !== null) {
+        window.clearTimeout(historyNoticeTimeoutRef.current);
+      }
+    };
+  }, []);
   
 
   const stats = useTextStats(
@@ -495,7 +565,19 @@ const Index = () => {
       if (typeof parsed.gpt5Effort === "string") setAiActionsLlmEffort(parsed.gpt5Effort);
       if (typeof parsed.systemPrompt === "string") setAiActionsLlmSystemPrompt(parsed.systemPrompt);
     } catch {
-      // Ignora storage invÃ¡lido e mantÃ©m defaults.
+      // Ignora storage inválido e mantém defaults.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(GENERAL_SETTINGS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<{ enableHistoryNumbering: boolean; enableHistoryReferences: boolean }>;
+      if (typeof parsed.enableHistoryNumbering === "boolean") setEnableHistoryNumbering(parsed.enableHistoryNumbering);
+      if (typeof parsed.enableHistoryReferences === "boolean") setEnableHistoryReferences(parsed.enableHistoryReferences);
+    } catch {
+      // Ignora storage invalido e mantem defaults.
     }
   }, []);
 
@@ -528,6 +610,10 @@ const Index = () => {
     };
     window.localStorage.setItem(AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY, JSON.stringify(payload));
   }, [aiActionsLlmEffort, aiActionsLlmMaxOutputTokens, aiActionsLlmModel, aiActionsLlmSystemPrompt, aiActionsLlmTemperature, aiActionsLlmVerbosity]);
+
+  useEffect(() => {
+    window.localStorage.setItem(GENERAL_SETTINGS_STORAGE_KEY, JSON.stringify({ enableHistoryNumbering, enableHistoryReferences }));
+  }, [enableHistoryNumbering, enableHistoryReferences]);
 
   useEffect(() => {
     try {
@@ -809,7 +895,116 @@ const Index = () => {
   }, [htmlEditorControlApi, responses]);
 
   const addResponse = (type: AIResponse["type"], query: string, content: string) => {
-    setResponses((prev) => [{ id: crypto.randomUUID(), type, query, content, timestamp: new Date() }, ...prev]);
+    setResponses((prev) => [{
+      id: crypto.randomUUID(),
+      type,
+      query,
+      content,
+      timestamp: new Date(),
+    }, ...prev]);
+  };
+
+  const normalizeHistorySearchMetadataValue = (value: unknown): string =>
+    value == null ? "" : String(value).replace(/\u00a0/g, " ").trim();
+
+  const getFirstHistorySearchMetadataValue = (metadata: Record<string, unknown>, keys: string[]): string => {
+    for (const key of keys) {
+      const value = normalizeHistorySearchMetadataValue(metadata[key]);
+      if (value) return value;
+    }
+    return "";
+  };
+
+  const assignHistorySearchMetadata = (
+    target: HistorySearchCardMetadata,
+    key: string,
+    value: unknown,
+    options?: { preserveCollision?: boolean },
+  ) => {
+    const normalizedValue = normalizeHistorySearchMetadataValue(value);
+    if (!normalizedValue) return;
+
+    if (!(key in target)) {
+      target[key] = normalizedValue;
+      return;
+    }
+
+    if (target[key] === normalizedValue) return;
+    if (!options?.preserveCollision) return;
+
+    let collisionKey = `raw_${key}`;
+    let suffix = 2;
+    while (collisionKey in target) {
+      if (target[collisionKey] === normalizedValue) return;
+      collisionKey = `raw_${key}_${suffix}`;
+      suffix += 1;
+    }
+    target[collisionKey] = normalizedValue;
+  };
+
+  const buildLexicalHistorySearchMetadata = (
+    item: {
+      book: string;
+      row: number;
+      number: number | null;
+      title: string;
+      data: Record<string, string>;
+    },
+    fallbackBook: string,
+  ): HistorySearchCardMetadata => {
+    const metadata: HistorySearchCardMetadata = {};
+    const sourceBookCode = normalizeHistorySearchMetadataValue(item.book) || normalizeHistorySearchMetadataValue(fallbackBook);
+    const sourcebook = sourceBookCode ? BOOK_OPTION_LABELS[sourceBookCode] ?? sourceBookCode : "";
+    const title = normalizeHistorySearchMetadataValue(item.title) || "s/titulo";
+    const number = item.number == null ? "" : normalizeHistorySearchMetadataValue(item.number);
+
+    assignHistorySearchMetadata(metadata, "sourcebook", sourcebook);
+    assignHistorySearchMetadata(metadata, "title", title);
+    assignHistorySearchMetadata(metadata, "number", number);
+    assignHistorySearchMetadata(metadata, "book", sourceBookCode);
+    assignHistorySearchMetadata(metadata, "row", item.row);
+
+    for (const [key, value] of Object.entries(item.data || {})) {
+      assignHistorySearchMetadata(metadata, key, value, { preserveCollision: true });
+    }
+
+    return metadata;
+  };
+
+  const buildSemanticHistorySearchMetadata = (
+    item: {
+      book: string;
+      index_id: string;
+      index_label: string;
+      row: number;
+      metadata: Record<string, unknown>;
+      score: number;
+    },
+    fallbackIndexLabel: string,
+  ): HistorySearchCardMetadata => {
+    const rawMetadata = item.metadata && typeof item.metadata === "object" ? item.metadata : {};
+    const metadata: HistorySearchCardMetadata = {};
+    const sourcebook =
+      normalizeHistorySearchMetadataValue(item.index_label) ||
+      normalizeHistorySearchMetadataValue(fallbackIndexLabel) ||
+      normalizeHistorySearchMetadataValue(item.book);
+    const title = getFirstHistorySearchMetadataValue(rawMetadata, SEMANTIC_TITLE_METADATA_KEYS) || "s/titulo";
+    const number = getFirstHistorySearchMetadataValue(rawMetadata, SEMANTIC_NUMBER_METADATA_KEYS);
+
+    assignHistorySearchMetadata(metadata, "sourcebook", sourcebook);
+    assignHistorySearchMetadata(metadata, "title", title);
+    assignHistorySearchMetadata(metadata, "number", number);
+    assignHistorySearchMetadata(metadata, "book", item.book);
+    assignHistorySearchMetadata(metadata, "index_id", item.index_id);
+    assignHistorySearchMetadata(metadata, "index_label", item.index_label || fallbackIndexLabel);
+    assignHistorySearchMetadata(metadata, "row", item.row);
+    assignHistorySearchMetadata(metadata, "score", item.score);
+
+    for (const [key, value] of Object.entries(rawMetadata)) {
+      assignHistorySearchMetadata(metadata, key, value, { preserveCollision: true });
+    }
+
+    return metadata;
   };
 
   const executeLLMWithLog = useCallback(async (payload: Parameters<typeof executeLLM>[0]) => {
@@ -907,7 +1102,13 @@ const Index = () => {
     setAppPanelScope(section === "apps" ? "bibliografia" : null);
     if (section === "sources") setSourcesPanelView("books");
     else setSourcesPanelView(null);
-    setParameterPanelTarget({ section, id: null });
+    setParameterPanelTarget(section === "settings" ? { section, id: "llm" } : { section, id: null });
+  }, []);
+
+  const handleOpenGeneralSettings = useCallback(() => {
+    setAppPanelScope(null);
+    setSourcesPanelView(null);
+    setParameterPanelTarget({ section: "settings", id: "general" });
   }, []);
 
   const handleToggleBookSource = useCallback((id: string, checked: boolean) => {
@@ -1302,9 +1503,35 @@ const Index = () => {
     }
   }, [lexicalBooks, selectedLexicalBook]);
 
+  const ensureSemanticIndexesLoaded = useCallback(async () => {
+    if (semanticSearchIndexes.length > 0) return semanticSearchIndexes;
+    setIsLoadingSemanticSearchIndexes(true);
+    try {
+      const data = await listSemanticIndexesApp();
+      const indexes = data.result.indexes?.length ? data.result.indexes : [];
+      setSemanticSearchIndexes(indexes);
+      setSelectedSemanticSearchIndexId((prev) => {
+        if (prev && indexes.some((item) => item.id === prev)) return prev;
+        const preferred = indexes.find((item) => item.id.toUpperCase() === "LO");
+        return preferred?.id ?? indexes[0]?.id ?? "";
+      });
+      return indexes;
+    } catch (err: unknown) {
+      setSemanticSearchIndexes([]);
+      setSelectedSemanticSearchIndexId("");
+      const msg = err instanceof Error ? err.message : "Falha ao carregar indices para Semantic Search.";
+      toast.error(msg);
+      return [];
+    } finally {
+      setIsLoadingSemanticSearchIndexes(false);
+    }
+  }, [semanticSearchIndexes]);
+
   const handleActionApps = useCallback((type: AppActionId) => {
     if (type === "app4" || type === "app5") {
-      setAppPanelScope("busca");
+      setAppPanelScope("busca_termos");
+    } else if (type === "app12") {
+      setAppPanelScope("semantic_search");
     } else if (type === "app7" || type === "app8" || type === "app11" || type === "app9" || type === "app10") {
       setAppPanelScope("verbetografia");
     } else {
@@ -1326,16 +1553,25 @@ const Index = () => {
     if (type === "app5") {
       // Sem pre-load; usa base fixa EC.xlsx
     }
+    if (type === "app12") {
+      void ensureSemanticIndexesLoaded();
+    }
     if (type === "app7" || type === "app8" || type === "app11" || type === "app9" || type === "app10") {
       if (!verbetografiaTitle.trim() && actionText.trim()) setVerbetografiaTitle(actionText.trim());
     }
-  }, [actionText, biblioExternaTitle, biblioGeralTitle, ensureLexicalBooksLoaded, verbetografiaTitle]);
+  }, [actionText, biblioExternaTitle, biblioGeralTitle, ensureLexicalBooksLoaded, ensureSemanticIndexesLoaded, verbetografiaTitle]);
 
   const handleOpenBookSearchFromLeft = useCallback(() => {
-    setAppPanelScope("busca");
+    setAppPanelScope("busca_termos");
     setParameterPanelTarget({ section: "apps", id: null });
     void ensureLexicalBooksLoaded();
   }, [ensureLexicalBooksLoaded]);
+
+  const handleOpenSemanticSearchFromLeft = useCallback(() => {
+    setAppPanelScope("semantic_search");
+    setParameterPanelTarget({ section: "apps", id: "app12" });
+    void ensureSemanticIndexesLoaded();
+  }, [ensureSemanticIndexesLoaded]);
 
   const handleOpenVerbetografiaFromLeft = useCallback(() => {
     setAppPanelScope("verbetografia");
@@ -1589,29 +1825,17 @@ const Index = () => {
         toast.info("Nenhuma ocorrencia encontrada.");
         return;
       }
-      const markdown = matches
-        .map((item, idx) => {
-
-          const title = (item.title || "").trim();
+      const searchCards = matches
+        .map((item) => {
           const text = (item.text || "").trim();
           const body = text || Object.values(item.data || {}).filter(Boolean).join(" | ");
-          const titlePrefix = title ? `**${title}.** ` : "";
-          const sourceBook = (item.book || book || "").trim();
-          const sourceBookLabel = BOOK_OPTION_LABELS[sourceBook] ?? sourceBook;
-          const sourceTitle = title || "s/titulo";
-          const sourceNumber = item.number != null && String(item.number).trim() !== "" ? String(item.number).trim() : "?";
-          const folhaRaw = String(item.data?.folha || "").trim();
-          const argumentoRaw = String(item.data?.argumento || "").trim();
-          const folhaPart = folhaRaw || "s/folha";
-          const argumentoPart = argumentoRaw || "s/argumento";
-          const sourceRef = sourceBook === "CCG"
-            ? `(**${sourceBookLabel}**; *${sourceTitle}*; ${folhaPart})`
-            : sourceBook === "DAC"
-              ? `(**${sourceBookLabel}**; *${sourceTitle}*; ${argumentoPart})`
-              : `(**${sourceBookLabel}**; *${sourceTitle}*)`;
-          return `**${idx + 1}.\u00A0\u00A0**${titlePrefix}${body}<br/>${sourceRef}`;
+          return {
+            textParagraphs: [body],
+            metadata: buildLexicalHistorySearchMetadata(item, book),
+          };
         })
-        .join("\n\n");
+        .filter((item) => item.textParagraphs.some((paragraph) => paragraph.trim()));
+      const markdown = buildHistorySearchCardsMarkdown(searchCards);
       const shownInfo = totalFound > maxResults ? ` | Exibidos: ${maxResults}` : "";
       addResponse(
         "app_book_search",
@@ -1625,6 +1849,54 @@ const Index = () => {
       setIsRunningLexicalSearch(false);
     }
   }, [lexicalMaxResults, lexicalTerm, selectedLexicalBook]);
+
+  const handleRunSemanticSearch = useCallback(async () => {
+    const indexId = selectedSemanticSearchIndexId.trim();
+    const query = semanticSearchQuery.trim();
+    const maxResults = Math.max(1, Math.min(50, semanticSearchMaxResults || 1));
+    if (!indexId) {
+      toast.error("Selecione uma base vetorial para o Semantic Search.");
+      return;
+    }
+    if (!query) {
+      toast.error("Informe uma query para o Semantic Search.");
+      return;
+    }
+
+    setIsRunningSemanticSearch(true);
+    try {
+      const data = await semanticSearchPensatasApp({ indexId, query, limit: maxResults });
+      const matches = (data.result.matches || []).slice(0, maxResults);
+      if (matches.length <= 0) {
+        toast.info("Nenhuma pensata semanticamente afim encontrada.");
+        return;
+      }
+
+      const indexLabel = matches[0]?.index_label?.trim() || semanticSearchIndexes.find((item) => item.id === indexId)?.label || indexId;
+      const searchCards = matches
+        .map((item) => {
+          const text = (item.text || "").trim();
+          return {
+            textParagraphs: [text],
+            metadata: buildSemanticHistorySearchMetadata(item, indexLabel),
+          };
+        })
+        .filter((item) => item.textParagraphs.some((paragraph) => paragraph.trim()));
+      const markdown = buildHistorySearchCardsMarkdown(searchCards);
+
+      const trimmedQuery = query.length > 120 ? `${query.slice(0, 117)}...` : query;
+      addResponse(
+        "app_semantic_search",
+        `Base: ${indexLabel} | Consulta: ${trimmedQuery} | Total: ${matches.length}`,
+        markdown,
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Falha ao executar Semantic Search.";
+      toast.error(msg);
+    } finally {
+      setIsRunningSemanticSearch(false);
+    }
+  }, [selectedSemanticSearchIndexId, semanticSearchIndexes, semanticSearchMaxResults, semanticSearchQuery]);
 
   const handleRunVerbeteSearch = useCallback(async () => {
     const author = verbeteSearchAuthor.trim();
@@ -1648,7 +1920,7 @@ const Index = () => {
       }
 
       const markdown = matches
-        .map((item, idx) => {
+        .map((item) => {
 
           const row = item.data || {};
           const rowTitle = String(row.title || item.title || "").trim();
@@ -1657,7 +1929,8 @@ const Index = () => {
           const rowAuthor = String(row.author || "").trim();
           const rowNumber = item.number != null ? String(item.number).trim() : "";
           const rowDate = String(row.date || "").trim();
-          const rowLink = String(item.link || row.link || "").trim();
+          const rawRowLink = String(item.link || row.link || row.Link || "").trim();
+          const rowLink = /^https?:\/\/\S+$/i.test(rawRowLink) ? rawRowLink : "";
 
           const titlePart = `${rowTitle || "s/titulo"}`;
           const areaPart = `${rowArea || "s/area"}`;
@@ -1666,7 +1939,7 @@ const Index = () => {
           const datePart = rowDate || "s/data";
           const definologiaPart = `**Definologia.** ${rowText || ""}`.trim();
           const linkPart = rowLink ? `[PDF](${rowLink})` : "";
-          const headerLine = `**${idx + 1}.\u00A0\u00A0** **${titlePart}** (*${areaPart}*) — *${authorPart}* — ${numberPart} — ${datePart}`;
+          const headerLine = `**${titlePart}** (*${areaPart}*) - *${authorPart}* - ${numberPart} - ${datePart}`;
           return `${headerLine}\n${definologiaPart}\n${linkPart}`;
         })
         .join("\n\n");
@@ -1824,7 +2097,8 @@ const Index = () => {
         throw new Error("Configure VITE_OPENAI_VECTOR_STORE_TRANSLATE_RAG.");
       }
       const result = (await executeAiActionsLLMWithLog({ messages, vectorStoreIds, inputFileIds })).content;
-      addResponse(type, text.slice(0, 80), result);
+      const historyQuery = type === "ai_command" ? query : text.slice(0, 80);
+      addResponse(type, historyQuery, result);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erro na chamada a IA.");
     } finally {
@@ -1963,7 +2237,7 @@ const Index = () => {
   }, [handleExportDocx]);
 
   const isHistoryProcessing =
-    isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningVerbeteSearch || isRunningVerbetografiaOpenTable || isRunningVerbeteDefinologia || isRunningVerbeteFraseEnfatica || isRunningVerbeteSinonimologia || isRunningVerbeteFatologia;
+    isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningSemanticSearch || isRunningVerbeteSearch || isRunningVerbetografiaOpenTable || isRunningVerbeteDefinologia || isRunningVerbeteFraseEnfatica || isRunningVerbeteSinonimologia || isRunningVerbeteFatologia;
   const hasEditorPanel = Boolean(currentFileId) || isOpeningDocument;
   const hasCenterPanel = Boolean(parameterPanelTarget);
   const hasJsonPanel = isJsonLogPanelOpen;
@@ -2168,8 +2442,10 @@ const Index = () => {
           >
             <LeftPanel
               onOpenParameterSection={handleOpenParameterSection}
+              onOpenGeneralSettings={handleOpenGeneralSettings}
               onRunRandomPensata={handleRunRandomPensata}
               onOpenBookSearch={handleOpenBookSearchFromLeft}
+              onOpenSemanticSearch={handleOpenSemanticSearchFromLeft}
               onOpenVerbetografia={handleOpenVerbetografiaFromLeft}
               onToggleJsonPanel={() => {
                 setIsJsonLogPanelOpen((prev) => !prev);
@@ -2207,7 +2483,10 @@ const Index = () => {
                       </Button>
                     </div>
 
-                    {parameterPanelTarget.section !== "document" && parameterPanelTarget.section !== "sources" && parameterPanelTarget.section !== "settings" && (
+                    {parameterPanelTarget.section !== "document"
+                      && parameterPanelTarget.section !== "sources"
+                      && parameterPanelTarget.section !== "settings"
+                      && !(parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app12") && (
                       <div className="border-b border-border p-3">
                         <div className="grid grid-cols-1 gap-2">
                         {parameterPanelTarget.section === "actions" &&
@@ -2424,7 +2703,8 @@ const Index = () => {
                       ) : parameterPanelTarget.section === "sources" ? (
                         <SourcesPanel
                           onUploadFiles={(files) => void handleUploadSourceFiles(files)}
-                          bookSources={BOOK_SOURCE_VECTOR_STORES.map((item) => ({ ...item }))}
+                          bookSources={BOOK_SOURCE.map((item) => ({ ...item }))}
+                          vectorStoreSources={VECTOR_STORES_SOURCE.map((item) => ({ ...item }))}
                           selectedBookSourceIds={selectedBookSourceIds}
                           onToggleBookSource={handleToggleBookSource}
                           uploadedFiles={uploadedChatFiles}
@@ -2434,6 +2714,15 @@ const Index = () => {
                       ) : parameterPanelTarget.section === "settings" ? (
                         <div className="h-full overflow-y-auto p-3">
                           <div className="space-y-3">
+                            {parameterPanelTarget.id === "general" ? (
+                              <div className="space-y-4">
+                                <div className="space-y-1">
+                                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Histórico</Label>
+                                  <p className="text-xs text-muted-foreground">Os controles de numeração e referências foram movidos para a barra superior do painel Histórico.</p>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
                             <Button
                               variant="ghost"
                               className={sectionActionButtonClass}
@@ -2601,6 +2890,8 @@ const Index = () => {
                                 </div>
                               </>
                             ) : null}
+                              </>
+                            )}
                           </div>
                         </div>
                       ) : parameterPanelTarget.section === "actions" ? (
@@ -2704,6 +2995,22 @@ const Index = () => {
                           onMaxResultsChange={setLexicalMaxResults}
                           onRunSearch={() => void handleRunLexicalSearch()}
                           isRunning={isRunningLexicalSearch}
+                          showPanelChrome={false}
+                        />
+                      ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app12" ? (
+                        <SemanticSearchPanel
+                          title={parameterAppMeta.app12.title}
+                          description={parameterAppMeta.app12.description}
+                          selectedIndexId={selectedSemanticSearchIndexId}
+                          availableIndexes={semanticSearchIndexes}
+                          isLoadingIndexes={isLoadingSemanticSearchIndexes}
+                          onSelectedIndexChange={setSelectedSemanticSearchIndexId}
+                          query={semanticSearchQuery}
+                          maxResults={semanticSearchMaxResults}
+                          onQueryChange={setSemanticSearchQuery}
+                          onMaxResultsChange={setSemanticSearchMaxResults}
+                          onRunSearch={() => void handleRunSemanticSearch()}
+                          isRunning={isRunningSemanticSearch}
                           showPanelChrome={false}
                         />
                       ) : parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app5" ? (
@@ -2814,12 +3121,18 @@ const Index = () => {
           >
             <RightPanel
               responses={responses}
+              enableHistoryNumbering={enableHistoryNumbering}
+              enableHistoryReferences={enableHistoryReferences}
+              onToggleHistoryNumbering={() => setEnableHistoryNumbering((prev) => !prev)}
+              onToggleHistoryReferences={() => setEnableHistoryReferences((prev) => !prev)}
               onClear={() => setResponses([])}
               onSendMessage={(message) => void handleChat(message)}
               onCleanConversation={handleCleanLlmConversation}
               onAppendToEditor={(html) => void handleAppendHistoryToEditor(html)}
+              onNotify={showHistoryNotice}
               showAppendToEditor={Boolean(currentFileId)}
               isSending={isHistoryProcessing}
+              historyNotice={historyNotice}
               chatDisabled={!openAiReady}
               chatDisabledReason={backendStatus === "unavailable"
                 ? "Backend indisponivel em http://localhost:8787."

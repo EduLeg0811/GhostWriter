@@ -10,6 +10,7 @@ import type { UploadedLlmFile } from "@/lib/openai";
 interface SourcesPanelProps {
   onUploadFiles: (files: File[]) => void;
   bookSources: Array<{ id: string; label: string }>;
+  vectorStoreSources: Array<{ id: string; label: string }>;
   selectedBookSourceIds: string[];
   onToggleBookSource: (id: string, checked: boolean) => void;
   uploadedFiles: UploadedLlmFile[];
@@ -20,6 +21,7 @@ interface SourcesPanelProps {
 const SourcesPanel = ({
   onUploadFiles,
   bookSources,
+  vectorStoreSources,
   selectedBookSourceIds,
   onToggleBookSource,
   uploadedFiles,
@@ -27,8 +29,7 @@ const SourcesPanel = ({
   isUploadingFiles = false,
 }: SourcesPanelProps) => {
   const uploadInputRef = useRef<HTMLInputElement>(null);
-  const sourceBooks = bookSources.filter((source) => source.label.startsWith("Source"));
-  const vectorStores = bookSources.filter((source) => !source.label.startsWith("Source"));
+  const sourceBooks = bookSources;
 
   const renderSourceItem = (source: { id: string; label: string }) => {
     const checked = selectedBookSourceIds.includes(source.id);
@@ -47,7 +48,7 @@ const SourcesPanel = ({
       <div className="flex h-full flex-col space-y-3">
         <div className="space-y-1">
           <p className="text-sm font-semibold text-foreground">Fontes</p>
-          <p className="text-xs text-muted-foreground">Selecione a origem do conhecimento para uso futuro.</p>
+          <p className="text-xs text-muted-foreground">Selecione a origem do conhecimento da LLM.</p>
         </div>
 
         <Separator />
@@ -57,7 +58,7 @@ const SourcesPanel = ({
             {/*<Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dados-Fontes</Label>*/}
             <div className="space-y-2">
               <div className="space-y-1.5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Livros e Tratados</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Livros & Tratados</p>
                 <div className="space-y-1">
                   {sourceBooks.map(renderSourceItem)}
                 </div>
@@ -70,7 +71,7 @@ const SourcesPanel = ({
               <div className="space-y-1.5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vector Stores</p>
                 <div className="space-y-1">
-                  {vectorStores.map(renderSourceItem)}
+                  {vectorStoreSources.map(renderSourceItem)}
                 </div>
               </div>
 

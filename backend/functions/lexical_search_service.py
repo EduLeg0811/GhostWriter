@@ -41,8 +41,15 @@ FILE_TO_BOOK_CODE: dict[str, str] = {filename: code for code, filename in BOOK_C
 MAX_BOOK_SEARCH = 200
 
 
+def _sanitize_search_text(text: str) -> str:
+    cleaned = (text or "").replace("\u00A0", " ")
+    cleaned = re.sub(r"[\u200B-\u200D\u2060\uFEFF]", "", cleaned)
+    cleaned = cleaned.replace("\r", " ").replace("\n", " ").replace("\t", " ")
+    return re.sub(r"\s+", " ", cleaned).strip()
+
+
 def _normalize(text: str) -> str:
-    base = unicodedata.normalize("NFD", text or "")
+    base = unicodedata.normalize("NFD", _sanitize_search_text(text))
     return "".join(ch for ch in base if unicodedata.category(ch) != "Mn").lower().strip()
 
 
@@ -73,6 +80,7 @@ def _balanced_parentheses(query: str) -> bool:
 
 
 def _tokenize_query(query: str) -> list[str]:
+    query = _sanitize_search_text(query)
     tokens: list[str] = []
     i, n = 0, len(query)
     while i < n:
@@ -102,9 +110,24 @@ def _tokenize_query(query: str) -> list[str]:
 
 
 def _shunting_yard(tokens: list[str]) -> list[str]:
+    normalized_tokens: list[str] = []
+    prev_token: str | None = None
+
+    def _is_operand(token: str) -> bool:
+        return token not in _BOOL_OPS and token not in {"(", ")"}
+
+    for token in tokens:
+        if prev_token is not None:
+            prev_is_operand = _is_operand(prev_token) or prev_token == ")"
+            next_starts_operand = _is_operand(token) or token == "(" or token == "!"
+            if prev_is_operand and next_starts_operand:
+                normalized_tokens.append("&")
+        normalized_tokens.append(token)
+        prev_token = token
+
     output: list[str] = []
     st: list[str] = []
-    for t in tokens:
+    for t in normalized_tokens:
         if t in _BOOL_OPS:
             while st and st[-1] in _BOOL_OPS and _BOOL_OPS[st[-1]] >= _BOOL_OPS[t]:
                 output.append(st.pop())
@@ -139,7 +162,7 @@ def _phrase_pattern(quoted_raw: str) -> re.Pattern[str]:
 
 
 def _compile_boolean_predicate(query: str) -> Callable[[str], bool]:
-    q = (query or "").strip()
+    q = _sanitize_search_text(query)
     if not q:
         return lambda _pnorm: True
 
@@ -192,7 +215,7 @@ def _compile_boolean_predicate(query: str) -> Callable[[str], bool]:
 
 
 def _compile_prefilter(query: str) -> Optional[Callable[[str], bool]]:
-    q = (query or "").strip()
+    q = _sanitize_search_text(query)
     if not q:
         return None
 
@@ -245,9 +268,10 @@ def _process_found_paragraph(paragraph: str, search_term: str) -> str:
     if not search_term:
         return paragraph
 
-    needle = _normalize_for_match(search_term)
-    if not needle:
+    sanitized_query = _sanitize_search_text(search_term)
+    if not sanitized_query:
         return paragraph
+    predicate = _compile_boolean_predicate(sanitized_query)
 
     if paragraph.count("|") >= 2:
         parts = paragraph.split("|")
@@ -257,7 +281,7 @@ def _process_found_paragraph(paragraph: str, search_term: str) -> str:
         rebuilt: list[str] = [parts[0].strip()]
         for sub in parts[1:]:
             segment = sub.strip()
-            if needle in _normalize_for_match(segment):
+            if predicate(_normalize_for_match(segment)):
                 rebuilt.append(segment)
 
         if len(rebuilt) == 1:
@@ -267,6 +291,21 @@ def _process_found_paragraph(paragraph: str, search_term: str) -> str:
         return result.replace("|", "").replace("\\", "").replace("\n", "").strip()
 
     return paragraph
+
+
+def _split_search_segments(row_map: dict[str, Any]) -> list[str]:
+    segments: list[str] = []
+
+    for value in row_map.values():
+        if not value:
+            continue
+        cleaned = _strip_markdown_simple(str(value))
+        if not cleaned:
+            continue
+        parts = [part.strip() for part in cleaned.split("|")]
+        segments.extend(part for part in parts if part)
+
+    return segments
 
 
 def list_lexical_books() -> list[str]:
@@ -282,7 +321,7 @@ def list_lexical_books() -> list[str]:
 
 def _search_lexical_book_internal(book: str, term: str, limit: int = 50) -> tuple[int, list[dict[str, Any]]]:
     book_code = (book or "").strip().upper()
-    raw_term = (term or "").strip()
+    raw_term = _sanitize_search_text(term)
     if not book_code:
         raise ValueError("Parametro 'book' e obrigatorio.")
     if not raw_term:
@@ -317,18 +356,19 @@ def _search_lexical_book_internal(book: str, term: str, limit: int = 50) -> tupl
             row_map: dict[str, Any] = {}
             for idx, value in enumerate(values):
                 key = headers[idx] if idx < len(headers) and headers[idx] else f"col_{idx + 1}"
-                row_map[key] = "" if value is None else str(value).strip()
+                row_map[key] = "" if value is None else _sanitize_search_text(str(value))
 
-            normalized_values: list[str] = []
-            for value in row_map.values():
-                if not value:
-                    continue
-                cleaned = _strip_markdown_simple(str(value))
-                normalized_values.append(cleaned)
-            haystack = _normalize_for_match(" ".join(normalized_values))
-            if prefilter is not None and not prefilter(haystack):
+            segments = _split_search_segments(row_map)
+            haystack = _normalize_for_match(" ".join(segments))
+            normalized_segments = [_normalize_for_match(segment) for segment in segments]
+
+            if prefilter is not None and not (
+                prefilter(haystack) or any(prefilter(segment) for segment in normalized_segments)
+            ):
                 continue
-            if not predicate(haystack):
+            if not (
+                predicate(haystack) or any(predicate(segment) for segment in normalized_segments)
+            ):
                 continue
 
             row_number_raw = row_map.get("number") or row_map.get("paragraph_number") or ""
@@ -337,7 +377,9 @@ def _search_lexical_book_internal(book: str, term: str, limit: int = 50) -> tupl
             except Exception:
                 row_number = None
 
-            raw_text = _strip_markdown_simple(str(row_map.get("text") or "").strip())
+            # Mantem o markdown original do Excel no payload de retorno.
+            # A remocao de marcacoes serve apenas para o matching acima.
+            raw_text = str(row_map.get("text") or "").strip()
             processed_text = _process_found_paragraph(raw_text, raw_term) if raw_text else raw_text
             if raw_text and not processed_text:
                 continue
@@ -383,10 +425,10 @@ def search_lexical_verbetes_with_total(
         raise FileNotFoundError("Base de verbetes nao encontrada: EC.xlsx")
 
     filters = {
-        "author": (author or "").strip(),
-        "title": (title or "").strip(),
-        "area": (area or "").strip(),
-        "text": (text or "").strip(),
+        "author": _sanitize_search_text(author),
+        "title": _sanitize_search_text(title),
+        "area": _sanitize_search_text(area),
+        "text": _sanitize_search_text(text),
     }
     active_filters = {key: value for key, value in filters.items() if value}
     if not active_filters:
@@ -413,7 +455,7 @@ def search_lexical_verbetes_with_total(
             for idx, cell in enumerate(cells):
                 value = getattr(cell, "value", None)
                 key = headers[idx] if idx < len(headers) and headers[idx] else f"col_{idx + 1}"
-                cell_text = "" if value is None else str(value).strip()
+                cell_text = "" if value is None else _sanitize_search_text(str(value))
                 if key == "link":
                     hyperlink = getattr(cell, "hyperlink", None)
                     target = ""

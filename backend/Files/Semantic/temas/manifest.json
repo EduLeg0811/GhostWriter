@@ -1,0 +1,19 @@
+{
+  "index_label": "TEMAS",
+  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmptjhnx7o4.xlsx",
+  "source_rows": 734,
+  "indexed_rows": 734,
+  "sheet_name": "Capítulos",
+  "text_column": "text",
+  "metadata_columns": [
+    "title",
+    "number"
+  ],
+  "model": "text-embedding-3-small",
+  "embedding_dtype": "float16",
+  "dimensions": 1536,
+  "generated_at": "2026-03-25T20:01:36.000Z",
+  "normalization": "l2",
+  "source_mtime": "2026-03-25T20:01:26.000Z",
+  "source_size": 131431
+}

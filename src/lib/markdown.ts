@@ -22,8 +22,12 @@ function renderInlineMarkdown(text: string): string {
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
 
   return escaped
+    .replace(/\*\*\*([\s\S]+?)\*\*\*/g, "<strong><em>$1</em></strong>")
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.*?)\*/g, "<em>$1</em>");
+    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    .replace(/___([\s\S]+?)___/g, "<strong><em>$1</em></strong>")
+    .replace(/__(.*?)__/g, "<strong>$1</strong>")
+    .replace(/(?<!\w)_(?!\s)(.*?)(?<!\s)_(?!\w)/g, "<em>$1</em>");
 }
 
 export function markdownToEditorHtml(text: string): string {

@@ -1,0 +1,20 @@
+{
+  "index_label": "DAC",
+  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmpgcs073jh.xlsx",
+  "source_rows": 4763,
+  "indexed_rows": 4763,
+  "sheet_name": "Sheet1",
+  "text_column": "text",
+  "metadata_columns": [
+    "title",
+    "argumento",
+    "number"
+  ],
+  "model": "text-embedding-3-small",
+  "embedding_dtype": "float16",
+  "dimensions": 1536,
+  "generated_at": "2026-03-25T18:52:51.000Z",
+  "normalization": "l2",
+  "source_mtime": "2026-03-25T18:51:30.000Z",
+  "source_size": 1017417
+}

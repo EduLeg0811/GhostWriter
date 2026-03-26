@@ -7,3 +7,4 @@ pdf2docx
 pandas
 numpy
 openpyxl
+streamlit

@@ -1,0 +1,19 @@
+{
+  "index_label": "700EXP",
+  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmpomi1fz86.xlsx",
+  "source_rows": 4018,
+  "indexed_rows": 4018,
+  "sheet_name": "Sheet1",
+  "text_column": "text",
+  "metadata_columns": [
+    "title",
+    "number"
+  ],
+  "model": "text-embedding-3-small",
+  "embedding_dtype": "float16",
+  "dimensions": 1536,
+  "generated_at": "2026-03-25T18:41:02.000Z",
+  "normalization": "l2",
+  "source_mtime": "2026-03-25T18:39:57.000Z",
+  "source_size": 926431
+}

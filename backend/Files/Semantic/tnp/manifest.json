@@ -1,0 +1,19 @@
+{
+  "index_label": "TNP",
+  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmpv031b_re.xlsx",
+  "source_rows": 340,
+  "indexed_rows": 340,
+  "sheet_name": "Sheet1",
+  "text_column": "text",
+  "metadata_columns": [
+    "title",
+    "number"
+  ],
+  "model": "text-embedding-3-small",
+  "embedding_dtype": "float16",
+  "dimensions": 1536,
+  "generated_at": "2026-03-25T20:04:21.000Z",
+  "normalization": "l2",
+  "source_mtime": "2026-03-25T20:04:15.000Z",
+  "source_size": 56540
+}

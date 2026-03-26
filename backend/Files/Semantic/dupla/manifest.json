@@ -1,0 +1,19 @@
+{
+  "index_label": "DUPLA",
+  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmpt2_s_l3o.xlsx",
+  "source_rows": 783,
+  "indexed_rows": 783,
+  "sheet_name": "Capítulos",
+  "text_column": "text",
+  "metadata_columns": [
+    "title",
+    "number"
+  ],
+  "model": "text-embedding-3-small",
+  "embedding_dtype": "float16",
+  "dimensions": 1536,
+  "generated_at": "2026-03-25T18:56:42.000Z",
+  "normalization": "l2",
+  "source_mtime": "2026-03-25T18:56:29.000Z",
+  "source_size": 109269
+}

@@ -165,6 +165,12 @@ class LexicalVerbeteSearchRequest(BaseModel):
     limit: int = 50
 
 
+class SemanticSearchRequest(BaseModel):
+    indexId: str = ""
+    query: str = ""
+    limit: int = 10
+
+
 class HighlightRequest(BaseModel):
     term: str
 
@@ -1118,6 +1124,61 @@ def api_lexical_verbete_search(payload: LexicalVerbeteSearchRequest) -> dict[str
         },
     }
 
+
+@app.get("/api/apps/semantic/indexes")
+def api_semantic_indexes() -> dict[str, Any]:
+    try:
+        from backend.functions.semantic_search_service import list_semantic_indexes
+    except Exception:
+        from functions.semantic_search_service import list_semantic_indexes
+
+    try:
+        indexes = list_semantic_indexes()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Falha ao listar indices semanticos: {exc}")
+
+    return {
+        "ok": True,
+        "result": {
+            "indexes": indexes,
+        },
+    }
+
+
+@app.post("/api/apps/semantic/search")
+def api_semantic_search(payload: SemanticSearchRequest) -> dict[str, Any]:
+    require_openai_key()
+    index_id = (payload.indexId or "").strip()
+    query = (payload.query or "").strip()
+    if not index_id:
+        raise HTTPException(status_code=400, detail="Parametro 'indexId' e obrigatorio.")
+    if not query:
+        raise HTTPException(status_code=400, detail="Parametro 'query' e obrigatorio.")
+    limit = max(1, min(int(payload.limit or 10), 50))
+
+    try:
+        from backend.functions.semantic_search_service import search_semantic_index
+    except Exception:
+        from functions.semantic_search_service import search_semantic_index
+
+    try:
+        total, matches = search_semantic_index(index_id=index_id, query=query, limit=limit, api_key=get_openai_api_key())
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Falha ao executar Semantic Search: {exc}")
+
+    return {
+        "ok": True,
+        "result": {
+            "indexId": index_id,
+            "query": query,
+            "total": total,
+            "matches": matches,
+        },
+    }
 
 @app.post("/api/files/upload")
 async def api_files_upload(file: UploadFile = File(...)) -> dict[str, Any]:

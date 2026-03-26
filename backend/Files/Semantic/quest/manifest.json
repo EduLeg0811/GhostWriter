@@ -1,0 +1,23 @@
+{
+  "index_label": "QUEST",
+  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmpl_islbli.xlsx",
+  "source_rows": 3800,
+  "indexed_rows": 3800,
+  "sheet_name": "Final Clean ",
+  "text_column": "text",
+  "metadata_columns": [
+    "title",
+    "date",
+    "number",
+    "quest",
+    "answer",
+    "author"
+  ],
+  "model": "text-embedding-3-small",
+  "embedding_dtype": "float16",
+  "dimensions": 1536,
+  "generated_at": "2026-03-25T19:39:28.000Z",
+  "normalization": "l2",
+  "source_mtime": "2026-03-25T19:38:26.000Z",
+  "source_size": 1066039
+}

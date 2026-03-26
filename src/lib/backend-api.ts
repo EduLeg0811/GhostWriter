@@ -260,3 +260,52 @@ export async function searchVerbeteApp(payload: {
     cache: "no-store",
   });
 }
+
+export async function semanticSearchPensatasApp(payload: {
+  indexId: string;
+  query: string;
+  limit?: number;
+}): Promise<{
+  ok: boolean;
+  result: {
+    indexId: string;
+    query: string;
+    total: number;
+    matches: Array<{
+      book: string;
+      index_id: string;
+      index_label: string;
+      row: number;
+      text: string;
+      metadata: Record<string, unknown>;
+      score: number;
+    }>;
+  };
+}> {
+  return fetchJsonWithRetry(apiUrl("/api/apps/semantic/search"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+}
+
+export async function listSemanticIndexesApp(): Promise<{
+  ok: boolean;
+  result: {
+    indexes: Array<{
+      id: string;
+      label: string;
+      sourceFile: string;
+      sourceRows: number;
+      model: string;
+      dimensions: number;
+      embeddingDtype: string;
+    }>;
+  };
+}> {
+  return fetchJsonWithRetry(apiUrl("/api/apps/semantic/indexes"), {
+    method: "GET",
+    cache: "no-store",
+  });
+}

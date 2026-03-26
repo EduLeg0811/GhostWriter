@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { MouseEvent, useCallback, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, BookOpen, Clock, Copy, FileText, Languages, ListOrdered, Loader2, MessageSquare, PenLine, Repeat2, RotateCcw, Search, SendHorizontal, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { renderHistorySearchCardsHtml } from "@/lib/historySearchCards";
 import { markdownToEditorHtml, normalizeHistoryContentToMarkdown } from "@/lib/markdown";
 import { buttonsPrimarySolidBgClass, cardsBgClass, chatSectionBgClass, panelsBgClass, panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 
@@ -10,6 +10,7 @@ import { buttonsPrimarySolidBgClass, cardsBgClass, chatSectionBgClass, panelsBgC
 const HISTORY_FONT_DEFAULT = 0.75;
 // DESTAQUE: incremento/decremento aplicado nos botoes A- e A+.
 const HISTORY_FONT_STEP = 0.05;
+const RESULT_LINE_INDENT_PX = 28;
 
 export interface AIResponse {
   id: string;
@@ -30,6 +31,7 @@ export interface AIResponse {
     | "app_biblio_externa"
     | "app_random_pensata"
     | "app_book_search"
+    | "app_semantic_search"
     | "app_verbete_search"
     | "app_verbete_definologia"
     | "app_verbete_frase_enfatica"
@@ -57,6 +59,7 @@ const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactN
   app_biblio_externa: { label: "Bibliografia Externa", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_random_pensata: { label: "Pensata Sorteada", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
   app_book_search: { label: "Book Search", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
+  app_semantic_search: { label: "Semantic Search", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_verbete_search: { label: "Busca em Verbetes", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_verbete_definologia: { label: "Definologia", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
   app_verbete_frase_enfatica: { label: "Frase Enfática", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
@@ -66,26 +69,38 @@ const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactN
 
 interface RightPanelProps {
   responses: AIResponse[];
+  enableHistoryNumbering?: boolean;
+  enableHistoryReferences?: boolean;
+  onToggleHistoryNumbering?: () => void;
+  onToggleHistoryReferences?: () => void;
   onClear: () => void;
   onSendMessage: (message: string) => Promise<void> | void;
   onCleanConversation?: () => Promise<void> | void;
   onAppendToEditor?: (html: string) => Promise<void> | void;
+  onNotify?: (message: string) => void;
   showAppendToEditor?: boolean;
   isSending?: boolean;
   chatDisabled?: boolean;
   chatDisabledReason?: string;
+  historyNotice?: string | null;
 }
 
 const RightPanel = ({
   responses,
+  enableHistoryNumbering = true,
+  enableHistoryReferences = true,
+  onToggleHistoryNumbering,
+  onToggleHistoryReferences,
   onClear,
   onSendMessage,
   onCleanConversation,
   onAppendToEditor,
+  onNotify,
   showAppendToEditor = false,
   isSending = false,
   chatDisabled = false,
   chatDisabledReason,
+  historyNotice,
 }: RightPanelProps) => {
   const [prompt, setPrompt] = useState("");
   const [historyFontScale, setHistoryFontScale] = useState(HISTORY_FONT_DEFAULT);
@@ -102,20 +117,94 @@ const RightPanel = ({
     setHistoryFontScale(HISTORY_FONT_DEFAULT);
   };
   const isHttpUrlText = (value: string): boolean => /^https?:\/\/\S+$/i.test((value || "").trim());
+  const triggerPdfDownload = useCallback(async (urlText: string) => {
+    const url = (urlText || "").trim();
+    if (!isHttpUrlText(url)) return;
+
+    try {
+      const response = await fetch(url, { mode: "cors" });
+      if (!response.ok) throw new Error(`Falha ao baixar PDF (${response.status})`);
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = "";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch {
+      const fallbackLink = document.createElement("a");
+      fallbackLink.href = url;
+      fallbackLink.download = "";
+      fallbackLink.target = "_blank";
+      fallbackLink.rel = "noopener noreferrer";
+      document.body.appendChild(fallbackLink);
+      fallbackLink.click();
+      fallbackLink.remove();
+    }
+  }, []);
+
+  const handlePdfIconClick = useCallback((event: MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement | null;
+    const anchor = target?.closest("a[data-pdf-download-url]") as HTMLAnchorElement | null;
+    const url = anchor?.dataset.pdfDownloadUrl?.trim() || "";
+    if (!anchor || !url) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    void triggerPdfDownload(url);
+  }, [triggerPdfDownload]);
 
   const applyExternalLinkLineStyle = (block: Element, urlText: string, doc: Document): void => {
     const htmlBlock = block as HTMLElement;
-    htmlBlock.style.fontSize = "0.8em";
-    htmlBlock.style.color = "rgba(22, 184, 70, 1)";
+    htmlBlock.style.fontSize = "0.9em";
+    htmlBlock.style.color = "rgba(115,115,115,0.5)";
     const a = doc.createElement("a");
     a.href = urlText;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.textContent = "PDF";
+    a.dataset.pdfDownloadUrl = urlText;
+    a.setAttribute("aria-label", "Baixar PDF");
+    a.setAttribute("download", "");
     a.style.color = "inherit";
     a.style.textDecoration = "none";
+    a.style.display = "inline-flex";
+    a.style.alignItems = "center";
+    a.style.justifyContent = "center";
+    a.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-5-5Z" fill="#ef4444"/>
+        <path d="M14 2v5h5" fill="#fca5a5"/>
+        <path d="M8 17h8M8 13h5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>`;
     block.innerHTML = "";
     block.appendChild(a);
+  };
+
+  const appendExternalLinkIconToHeader = (block: Element, urlText: string, doc: Document): void => {
+    const anchor = doc.createElement("a");
+    anchor.href = urlText;
+    anchor.dataset.pdfDownloadUrl = urlText;
+    anchor.setAttribute("aria-label", "Baixar PDF");
+    anchor.setAttribute("download", "");
+    anchor.style.display = "inline-flex";
+    anchor.style.alignItems = "center";
+    anchor.style.justifyContent = "center";
+    anchor.style.verticalAlign = "baseline";
+    anchor.style.marginLeft = "12px";
+    anchor.style.textDecoration = "none";
+    anchor.style.textIndent = "0";
+    anchor.style.position = "relative";
+    anchor.style.top = "1px";
+
+    anchor.innerHTML = `
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-5-5Z" fill="#ef4444"/>
+        <path d="M14 2v5h5" fill="#fca5a5"/>
+        <path d="M8 17h8M8 13h5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>`;
+
+    block.appendChild(anchor);
   };
 
   const applyHangingIndent = (block: Element, px = 19): void => {
@@ -154,16 +243,91 @@ const RightPanel = ({
 
       const firstStrong = block.querySelector("strong");
       if (firstStrong && /^\s*\d{1,2}\.\s*$/.test((firstStrong.textContent || "").replace(/\u00a0/g, " "))) {
-        firstStrong.textContent = `${normalizedIndex}.  `;
+        firstStrong.textContent = `${normalizedIndex}. `;
       } else if (block.firstChild && block.firstChild.nodeType === Node.TEXT_NODE) {
         const raw = (block.firstChild.nodeValue || "").replace(/\u00a0/g, " ");
-        block.firstChild.nodeValue = raw.replace(/^\s*\d{1,2}\.\s*/, `${normalizedIndex}.  `);
+        block.firstChild.nodeValue = raw.replace(/^\s*\d{1,2}\.\s*/, `${normalizedIndex}. `);
       }
 
       // Hanging indent: index stays on the left, wrapped lines align with item text.
-      applyHangingIndent(block, 28);
+      applyHangingIndent(block, RESULT_LINE_INDENT_PX);
       (block as HTMLElement).style.marginTop = "0.2em";
       (block as HTMLElement).style.marginBottom = "0.2em";
+    }
+
+    return root.innerHTML;
+  };
+
+  const styleVerbeteSearchResultItemsHtml = (html: string): string => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
+    const root = doc.body.firstElementChild as HTMLDivElement | null;
+    if (!root) return html;
+
+    const blocks = Array.from(root.querySelectorAll("p")).filter((block) => {
+      const text = (block.textContent || "").replace(/\u00a0/g, " ").trim();
+      if (!text) return false;
+      const hasHeaderShape =
+        block.querySelector("strong") !== null &&
+        block.querySelector("em") !== null &&
+        text.includes("#");
+      return hasHeaderShape;
+    });
+
+    const shouldPad = blocks.length >= 10;
+
+    blocks.forEach((block, index) => {
+      const normalizedIndex = shouldPad && index + 1 < 10 ? `0${index + 1}` : String(index + 1);
+      const prefix = `${normalizedIndex}. `;
+
+      if (block.firstChild?.nodeType === Node.TEXT_NODE) {
+        block.firstChild.nodeValue = (block.firstChild.nodeValue || "").replace(/^\s*\d{1,2}\.\s*/, "");
+      }
+
+      block.insertBefore(doc.createTextNode(prefix), block.firstChild);
+      applyHangingIndent(block, RESULT_LINE_INDENT_PX);
+      (block as HTMLElement).style.marginTop = "0.2em";
+      (block as HTMLElement).style.marginBottom = "0.2em";
+    });
+
+    return root.innerHTML;
+  };
+
+  const removeNumberingFromHistoryHtml = (html: string): string => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
+    const root = doc.body.firstElementChild as HTMLDivElement | null;
+    if (!root) return html;
+
+    for (const list of Array.from(root.querySelectorAll("ol"))) {
+      const htmlList = list as HTMLOListElement;
+      htmlList.style.listStyle = "none";
+      htmlList.style.paddingLeft = "0";
+      htmlList.style.marginLeft = "0";
+    }
+
+    const blocks = Array.from(root.querySelectorAll("p, li"));
+    for (const block of blocks) {
+      const firstStrong = block.querySelector("strong");
+      if (firstStrong) {
+        const normalizedStrongText = (firstStrong.textContent || "").replace(/\u00a0/g, " ");
+        if (/^\s*\d{1,2}\.\s*$/.test(normalizedStrongText)) {
+          firstStrong.remove();
+          const next = block.firstChild;
+          if (next?.nodeType === Node.TEXT_NODE) {
+            next.nodeValue = (next.nodeValue || "").replace(/^\s+/, "");
+          }
+        } else if (/^\s*\d{1,2}\.\s+/.test(normalizedStrongText)) {
+          firstStrong.textContent = normalizedStrongText.replace(/^\s*\d{1,2}\.\s+/, "");
+        }
+      }
+
+      if (block.firstChild?.nodeType === Node.TEXT_NODE) {
+        block.firstChild.nodeValue = (block.firstChild.nodeValue || "").replace(/^\s*\d{1,2}\.\s*/, "");
+      }
+
+      (block as HTMLElement).style.paddingLeft = "0";
+      (block as HTMLElement).style.textIndent = "0";
     }
 
     return root.innerHTML;
@@ -251,30 +415,6 @@ const RightPanel = ({
 
     return root.innerHTML;
   };
-
-
-  // Ajusta a fonte das Referencias na busca de livros
-  const styleBookSearchSourceRefHtml = (html: string): string => {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
-    const root = doc.body.firstElementChild as HTMLDivElement | null;
-    if (!root) return html;
-
-    const blocks = Array.from(root.querySelectorAll("p, li"));
-    const sourceRefPattern = /(<strong>[^<]+<\/strong>;[\s\S]*)\s*$/;
-
-    for (const block of blocks) {
-      const current = block.innerHTML || "";
-      const next = current.replace(
-        sourceRefPattern,
-        '<span style="color:#909090;">$1</span>',
-      );
-      if (next !== current) block.innerHTML = next;
-    }
-
-    return root.innerHTML;
-  };
-
   const styleVerbeteSearchHtml = (html: string): string => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
@@ -284,7 +424,8 @@ const RightPanel = ({
     const blocks = Array.from(root.querySelectorAll("p"));
     if (blocks.length === 0) return html;
 
-    for (const block of blocks) {
+    for (let index = 0; index < blocks.length; index += 1) {
+      const block = blocks[index];
       const rawText = (block.textContent || "").trim();
       const hasExternalHref = Array.from(block.querySelectorAll("a")).some((a) => isHttpUrlText(a.getAttribute("href") || ""));
       const hasHeaderShape =
@@ -296,6 +437,28 @@ const RightPanel = ({
         block.style.color = "#1e3a8a";
         block.style.fontWeight = "700";
         applyHangingIndent(block);
+
+        for (let lookAhead = index + 1; lookAhead < blocks.length; lookAhead += 1) {
+          const candidateBlock = blocks[lookAhead];
+          const candidateText = (candidateBlock.textContent || "").trim();
+          const candidateHasHeaderShape =
+            candidateBlock.querySelector("strong") !== null &&
+            candidateBlock.querySelector("em") !== null &&
+            candidateText.includes("#");
+          if (candidateHasHeaderShape) break;
+
+          const candidateAnchor = candidateBlock.querySelector("a") as HTMLAnchorElement | null;
+          const candidateHref = (candidateAnchor?.href || "").trim();
+          const candidateIsUrl = isHttpUrlText(candidateText);
+          const candidateHasExternalHref = Boolean(candidateHref) && isHttpUrlText(candidateHref);
+          const candidateUrl = candidateIsUrl ? candidateText : candidateHasExternalHref ? candidateHref : "";
+
+          if (candidateUrl) {
+            appendExternalLinkIconToHeader(block, candidateUrl, doc);
+            candidateBlock.remove();
+            break;
+          }
+        }
       } else {
         applyIndentedLine(block);
       }
@@ -331,20 +494,36 @@ const RightPanel = ({
     return root.innerHTML;
   };
 
-  const responseToEditorHtml = (response: AIResponse): string => {
+  const responseToEditorHtml = (
+    response: AIResponse,
+    applyHistoryNumbering = true,
+    applyHistoryReferences = true,
+  ): string => {
     const { content, type, query } = response;
-    const markdown = normalizeHistoryContentToMarkdown(content);
+    const markdown = normalizeHistoryContentToMarkdown(content).replace(/\u00a0/g, " ");
+    if (type === "app_book_search" || type === "app_semantic_search") {
+      const renderedHtml = renderHistorySearchCardsHtml(markdown, {
+        applyNumbering: applyHistoryNumbering,
+        showMetadata: applyHistoryReferences,
+      });
+      return type === "app_book_search" ? highlightBookSearchHtml(renderedHtml, query) : renderedHtml;
+    }
     const html = markdownToEditorHtml(markdown);
-    if (type === "app_book_search") return styleBookSearchSourceRefHtml(highlightBookSearchHtml(html, query));
-    if (type === "app_verbete_search") return styleVerbeteSearchHtml(highlightBookSearchHtml(html, query));
-    return styleNumberedListItemsHtml(html);
+    if (type === "app_verbete_search") {
+      const formattedHtml = styleVerbeteSearchHtml(highlightBookSearchHtml(html, query));
+      return applyHistoryNumbering ? styleVerbeteSearchResultItemsHtml(formattedHtml) : removeNumberingFromHistoryHtml(formattedHtml);
+    }
+    return applyHistoryNumbering ? styleNumberedListItemsHtml(html) : removeNumberingFromHistoryHtml(html);
   };
 
   const responseToAppendBodyHtml = (response: AIResponse): string => {
     const { content, type, query } = response;
-    const markdown = normalizeHistoryContentToMarkdown(content).replace(/\r\n/g, "\n").replace(/\n{2,}/g, "\n");
+    const markdown = normalizeHistoryContentToMarkdown(content).replace(/\u00a0/g, " ").replace(/\r\n/g, "\n").replace(/\n{2,}/g, "\n");
+    if (type === "app_book_search" || type === "app_semantic_search") {
+      const renderedHtml = renderHistorySearchCardsHtml(markdown, { applyNumbering: false, showMetadata: true });
+      return type === "app_book_search" ? highlightBookSearchHtml(renderedHtml, query) : renderedHtml;
+    }
     const html = markdownToEditorHtml(markdown);
-    if (type === "app_book_search") return highlightBookSearchHtml(html, query);
     if (type === "app_verbete_search") return removeVerbeteLinkLineHtml(highlightBookSearchHtml(html, query));
     return html;
   };
@@ -370,7 +549,7 @@ const RightPanel = ({
     } else {
       await navigator.clipboard.writeText(text);
     }
-    toast.success("Conteudo copiado.");
+    onNotify?.("Conteudo copiado.");
   };
 
   const renderQuerySubtitle = (response: AIResponse): React.ReactNode => {
@@ -415,14 +594,39 @@ const RightPanel = ({
       <div className={`flex items-center justify-between border-b border-border ${panelsTopMenuBarBgClass} px-4 py-3`}>
         <h2 className="text-sm font-semibold text-foreground">Histórico ({responses.length})</h2>
         <div className="flex flex-1 items-center justify-center">
-          {isSending && (
+          {historyNotice ? (
+            <div className="inline-flex min-h-7 items-center justify-center rounded-md bg-red-100 px-3 py-1 text-center text-[11px] font-medium leading-tight text-red-800 sm:text-xs">
+              <span>{historyNotice}</span>
+            </div>
+          ) : isSending ? (
             <div className="inline-flex h-7 items-center gap-2 rounded-full border border-green-200 bg-green-100 px-5 text-sm font-simibold leading-none text-blue-700 ring-0 ring-green-200 shadow-sm">
               <Loader2 className="h-4 w-5 shrink-0 animate-spin text-blue-700" />
               <span className="leading-none">Processando</span>
             </div>
-          )}
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`${enableHistoryNumbering ? "bg-green-300 text-green-950 hover:bg-green-400" : "bg-transparent text-muted-foreground hover:bg-muted"} h-7 w-7`}
+            onClick={onToggleHistoryNumbering}
+            title="Numerar Resultados"
+            aria-label="Numerar Resultados"
+          >
+            <ListOrdered className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`${enableHistoryReferences ? "bg-green-300 text-green-950 hover:bg-green-400" : "bg-transparent text-muted-foreground hover:bg-muted"} h-7 w-7`}
+            onClick={onToggleHistoryReferences}
+            title="Inserir Referências"
+            aria-label="Inserir Referências"
+          >
+            <BookOpen className="h-3.5 w-3.5" />
+          </Button>
+          <div className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
           <Button
             variant="ghost"
             size="icon"
@@ -471,6 +675,8 @@ const RightPanel = ({
           <div className="space-y-3 p-3">
             {responses.map((r) => {
               const meta = typeLabels[r.type];
+              const shouldApplyNumberingToCard = enableHistoryNumbering;
+              const shouldApplyReferencesToCard = enableHistoryReferences;
               return (
                 <div key={r.id} className={`space-y-2 rounded-lg border border-border ${cardsBgClass} p-3`}>
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-primary" style={historyFontStyle}>
@@ -490,7 +696,8 @@ const RightPanel = ({
                   <div
                     className={`prose prose-sm max-w-none text-xs text-foreground ${r.type === "app_verbete_frase_enfatica" ? "uppercase" : ""}`}
                     style={historyFontStyle}
-                    dangerouslySetInnerHTML={{ __html: responseToEditorHtml(r) }}
+                    onClick={r.type === "app_verbete_search" ? handlePdfIconClick : undefined}
+                    dangerouslySetInnerHTML={{ __html: responseToEditorHtml(r, shouldApplyNumberingToCard, shouldApplyReferencesToCard) }}
                   />
 
                   <div className="flex justify-end">
