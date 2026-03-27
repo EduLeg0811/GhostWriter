@@ -48,10 +48,12 @@ const VerbeteSearchPanel = ({
   const content = (
     <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
       <div className="space-y-3">
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-foreground">{title}</p>
-          <p className="text-xs text-muted-foreground">{description}</p>
-        </div>
+        {showPanelChrome ? (
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">{title}</p>
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
+        ) : null}
 
         <Separator />
 

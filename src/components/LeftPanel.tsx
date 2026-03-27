@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { BookOpen, Braces, ExternalLink, FileText, FolderOpen, Loader2, Search, Settings } from "lucide-react";
+import { BookOpen, Braces, ExternalLink, FileText, FolderOpen, Languages, Loader2, PenLine, Search, Settings } from "lucide-react";
 import { sectionActionButtonClass } from "@/styles/buttonStyles";
 import { aiAppsSectionBgClass, cardsBgClass, panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 
 interface LeftPanelProps {
-  onOpenParameterSection: (section: "document" | "sources" | "actions" | "apps" | "settings") => void;
+  onOpenParameterSection: (section: "document" | "sources" | "actions" | "rewriting" | "translation" | "apps" | "settings") => void;
   onOpenGeneralSettings: () => void;
+  onOpenAiCommand: () => void;
+  onOpenVerbetografiaTable: () => void;
   onRunRandomPensata: () => Promise<void> | void;
   onOpenBookSearch: () => void;
   onOpenSemanticSearch: () => void;
@@ -18,13 +20,13 @@ interface LeftPanelProps {
   isLoading: boolean;
 }
 
-type LeftPanelActionId = "document" | "sources" | "actions" | "apps" | "settings";
+type LeftPanelActionId = "document" | "sources" | "actions" | "rewriting" | "translation" | "ai_command" | "verbetografia_table" | "apps" | "settings";
 
 const GHOST_VIDEO_PLAYBACK_RATE = 0.50;
 const GHOST_VIDEO_REPLAY_DELAY_MS = 30000;
 const GHOST_VIDEO_INITIAL_DELAY_MS = 15000;
 
-const LeftPanel = ({ onOpenParameterSection, onOpenGeneralSettings, onRunRandomPensata, onOpenBookSearch, onOpenSemanticSearch, onOpenVerbetografia, onToggleJsonPanel, isJsonPanelOpen, isLoading }: LeftPanelProps) => {
+const LeftPanel = ({ onOpenParameterSection, onOpenGeneralSettings, onOpenAiCommand, onOpenVerbetografiaTable, onRunRandomPensata, onOpenBookSearch, onOpenSemanticSearch, onOpenVerbetografia, onToggleJsonPanel, isJsonPanelOpen, isLoading }: LeftPanelProps) => {
   const [activeActionId, setActiveActionId] = useState<LeftPanelActionId | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const actionDisabled = isLoading;
@@ -174,11 +176,12 @@ const LeftPanel = ({ onOpenParameterSection, onOpenGeneralSettings, onRunRandomP
                 )}
                 <span className="min-w-0 flex-1 text-left">
                   <span className="block break-words text-sm font-medium text-foreground">Bibliografia</span>
-                  <span className="block break-words text-xs text-muted-foreground">Busca referências bibliográficas</span>
+                  <span className="block break-words text-xs text-muted-foreground">Busca as referências bibliográficas</span>
                 </span>
               </Button>
 
           </div>
+
 
 
 
@@ -203,22 +206,113 @@ const LeftPanel = ({ onOpenParameterSection, onOpenGeneralSettings, onRunRandomP
                   <BookOpen className="mr-2 h-4 w-4 shrink-0 text-primary" />
                 )}
                 <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Ações IA</span>
-                  <span className="block break-words text-xs text-muted-foreground">Definir, Resumir, Traduzir e mais</span>
+                  <span className="block break-words text-sm font-medium text-foreground">Termos & Conceitos</span>
+                  <span className="block break-words text-xs text-muted-foreground">Definir e listar sinônimos</span>
                 </span>
               </Button>
 
-             
+              <Button
+                variant="ghost"
+                className={`${sectionActionButtonClass} border-0 shadow-none`}
+                onClick={() => {
+                  setActiveActionId("rewriting");
+                  onOpenParameterSection("rewriting");
+                }}
+                disabled={actionDisabled}
+              >
+                {isLoading && activeActionId === "rewriting" ? (
+                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                )}
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Parágrafos & Trechos</span>
+                  <span className="block break-words text-xs text-muted-foreground">Reescrever, resumir e criar epigrafe</span>
+                </span>
+              </Button>
 
+              <Button
+                variant="ghost"
+                className={`${sectionActionButtonClass} border-0 shadow-none`}
+                onClick={() => {
+                  setActiveActionId("translation");
+                  onOpenParameterSection("translation");
+                }}
+                disabled={actionDisabled}
+              >
+                {isLoading && activeActionId === "translation" ? (
+                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <Languages className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                )}
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Tradução & Dicionário</span>
+                  <span className="block break-words text-xs text-muted-foreground">Traduzir texto e consultar termos</span>
+                </span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                className={`${sectionActionButtonClass} border-0 shadow-none`}
+                onClick={() => {
+                  setActiveActionId("ai_command");
+                  onOpenAiCommand();
+                }}
+                disabled={actionDisabled}
+              >
+                {isLoading && activeActionId === "ai_command" ? (
+                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <PenLine className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                )}
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Comando IA</span>
+                  <span className="block break-words text-xs text-muted-foreground">Enviar instrucao livre para LLM</span>
+                </span>
+              </Button>
+
+            </div>
+            </div>
+
+
+
+          <Separator className="my-1" />
+
+
+          <div className="space-y-2.5">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Verbetografia IA</Label>
+           
               <Button variant="ghost" className={`${sectionActionButtonClass} border-0 shadow-none`} onClick={onOpenVerbetografia} disabled={actionDisabled}>
                 <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
                 <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Verbetografia IA</span>
+                  <span className="block break-words text-sm font-medium text-foreground">Seções do verbete</span>
                   <span className="block break-words text-xs text-muted-foreground">Tabela automatizada de verbete</span>
                 </span>
               </Button>
-            </div>
+
+              <Button
+                variant="ghost"
+                className={`${sectionActionButtonClass} border-0 shadow-none`}
+                onClick={() => {
+                  setActiveActionId("verbetografia_table");
+                  onOpenVerbetografiaTable();
+                }}
+                disabled={actionDisabled}
+              >
+                {isLoading && activeActionId === "verbetografia_table" ? (
+                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                )}
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Tabela Automatizada</span>
+                  <span className="block break-words text-xs text-muted-foreground">Abre tabela Word e editor HTML</span>
+                </span>
+              </Button>
+
           </div>
+
+
 
           <Separator className="my-1" />
 

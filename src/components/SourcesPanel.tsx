@@ -46,13 +46,6 @@ const SourcesPanel = ({
   return (
     <div className="h-full overflow-y-auto p-3">
       <div className="flex h-full flex-col space-y-3">
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-foreground">Fontes</p>
-          <p className="text-xs text-muted-foreground">Selecione a origem do conhecimento da LLM.</p>
-        </div>
-
-        <Separator />
-
         <div className="min-h-0 flex-1 space-y-3" aria-label="Dados-Fontes">
           <>
             {/*<Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dados-Fontes</Label>*/}

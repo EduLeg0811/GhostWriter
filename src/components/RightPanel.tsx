@@ -1,7 +1,7 @@
 import { MouseEvent, useCallback, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BookOpen, Clock, Copy, FileText, Languages, ListOrdered, Loader2, MessageSquare, PenLine, Repeat2, RotateCcw, Search, SendHorizontal, Trash2 } from "lucide-react";
+import { ArrowRight, BookOpen, Clock, Copy, FileText, Languages, ListOrdered, Loader2, MessageSquare, PenLine, Repeat2, RotateCcw, Search, SendHorizontal, Settings, Trash2 } from "lucide-react";
 import { renderHistorySearchCardsHtml } from "@/lib/historySearchCards";
 import { markdownToEditorHtml, normalizeHistoryContentToMarkdown } from "@/lib/markdown";
 import { buttonsPrimarySolidBgClass, cardsBgClass, chatSectionBgClass, panelsBgClass, panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
@@ -76,6 +76,8 @@ interface RightPanelProps {
   onClear: () => void;
   onSendMessage: (message: string) => Promise<void> | void;
   onCleanConversation?: () => Promise<void> | void;
+  onToggleChatConfig?: () => Promise<void> | void;
+  isChatConfigOpen?: boolean;
   onAppendToEditor?: (html: string) => Promise<void> | void;
   onNotify?: (message: string) => void;
   showAppendToEditor?: boolean;
@@ -94,6 +96,8 @@ const RightPanel = ({
   onClear,
   onSendMessage,
   onCleanConversation,
+  onToggleChatConfig,
+  isChatConfigOpen = false,
   onAppendToEditor,
   onNotify,
   showAppendToEditor = false,
@@ -760,6 +764,16 @@ const RightPanel = ({
             disabled={isSending}
           >
             <RotateCcw className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => void onToggleChatConfig?.()}
+            title={isChatConfigOpen ? "Ocultar configuracoes do chat" : "Mostrar configuracoes do chat"}
+            aria-label={isChatConfigOpen ? "Ocultar configuracoes do chat" : "Mostrar configuracoes do chat"}
+            className={`inline-flex h-10 w-10 shrink-0 items-center justify-center self-center rounded-lg border border-border bg-white text-muted-foreground shadow-sm transition hover:bg-zinc-50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50`}
+            disabled={isSending}
+          >
+            <Settings className="h-4 w-4" />
           </button>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Play, X } from "lucide-react";
+import { Loader2, Play, Settings, X } from "lucide-react";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 
@@ -16,6 +16,9 @@ interface VerbetografiaPanelProps {
   actionLabelIdle?: string;
   actionLabelRunning?: string;
   isRunning: boolean;
+  showConfigButton?: boolean;
+  onToggleConfig?: () => void;
+  isConfigOpen?: boolean;
   onClose?: () => void;
   showPanelChrome?: boolean;
 }
@@ -31,18 +34,35 @@ const VerbetografiaPanel = ({
   actionLabelIdle = "Abrir Tabela",
   actionLabelRunning = "Abrindo",
   isRunning,
+  showConfigButton = false,
+  onToggleConfig,
+  isConfigOpen = false,
   onClose,
   showPanelChrome = true,
 }: VerbetografiaPanelProps) => {
   const content = (
     <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
       <div className="space-y-4">
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-foreground">{title}</p>
-          <p className="text-xs text-muted-foreground">{description}</p>
-        </div>
+        {showConfigButton ? (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => void onToggleConfig?.()}
+              title={isConfigOpen ? "Ocultar configuracoes de Acoes IA" : "Mostrar configuracoes de Acoes IA"}
+              aria-label={isConfigOpen ? "Ocultar configuracoes de Acoes IA" : "Mostrar configuracoes de Acoes IA"}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-white text-muted-foreground shadow-sm transition hover:bg-zinc-50 hover:text-foreground"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          </div>
+        ) : null}
 
-
+        {showPanelChrome ? (
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">{title}</p>
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
+        ) : null}
 
         <div className="flex items-center gap-2">
           <Label className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Titulo</Label>
@@ -103,4 +123,3 @@ const VerbetografiaPanel = ({
 };
 
 export default VerbetografiaPanel;
-

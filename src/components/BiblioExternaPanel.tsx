@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Play, X } from "lucide-react";
+import { Loader2, Play, Settings, X } from "lucide-react";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 
@@ -27,6 +27,9 @@ interface BiblioExternaPanelProps {
   onFreeTextChange: (value: string) => void;
   onRun: () => void;
   isRunning: boolean;
+  onToggleConfig?: () => void;
+  isConfigOpen?: boolean;
+  configContent?: React.ReactNode;
   onClose?: () => void;
   showPanelChrome?: boolean;
 }
@@ -52,20 +55,36 @@ const BiblioExternaPanel = ({
   onFreeTextChange,
   onRun,
   isRunning,
+  onToggleConfig,
+  isConfigOpen = false,
+  configContent,
   onClose,
   showPanelChrome = true,
 }: BiblioExternaPanelProps) => {
   const canRun = (author.trim() || titleField.trim() || year.trim() || journal.trim() || publisher.trim() || identifier.trim() || extra.trim() || freeText.trim()) && !isRunning;
 
   const content = (
-    <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
-      <div className="space-y-3">
-        <div className="space-y-1">
-          <p className="text-sm font-semibold text-foreground">{title}</p>
-          <p className="text-xs text-muted-foreground">{description}</p>
+    <div className="flex h-full flex-col">
+      <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
+        <div className="space-y-3">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => void onToggleConfig?.()}
+            title={isConfigOpen ? "Ocultar configuracoes LLM" : "Mostrar configuracoes LLM"}
+            aria-label={isConfigOpen ? "Ocultar configuracoes LLM" : "Mostrar configuracoes LLM"}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-white text-muted-foreground shadow-sm transition hover:bg-zinc-50 hover:text-foreground"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
         </div>
 
-        {/*<Separator />*/}
+        {showPanelChrome ? (
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">{title}</p>
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
+        ) : null}
 
         <div className="flex items-center gap-2">
           <Label className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Autor</Label>
@@ -119,7 +138,17 @@ const BiblioExternaPanel = ({
             </>
           )}
         </Button>
+        </div>
       </div>
+      {isConfigOpen ? (
+        <div className="border-t border-border p-4">
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border bg-muted/30 p-3">
+              {configContent}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 
