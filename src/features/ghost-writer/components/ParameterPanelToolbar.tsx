@@ -35,10 +35,12 @@ const ParameterPanelToolbar = ({
     || parameterPanelTarget.section === "rewriting"
     || parameterPanelTarget.section === "translation";
   const isAiCommandSection = parameterPanelTarget.section === "actions" && parameterPanelTarget.id === "ai_command";
+  const isVerbetografiaTablePanel = parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app7";
   const showToolbar = parameterPanelTarget.section !== "document"
     && parameterPanelTarget.section !== "sources"
     && parameterPanelTarget.section !== "applications"
-    && !(parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app12");
+    && !(parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app12")
+    && !isVerbetografiaTablePanel;
 
   if (!showToolbar) return null;
 
@@ -51,8 +53,8 @@ const ParameterPanelToolbar = ({
               <button
                 type="button"
                 onClick={onToggleAiActionsConfig}
-                title={isAiActionsConfigOpen ? "Ocultar configuracoes de Acoes IA" : "Mostrar configuracoes de Acoes IA"}
-                aria-label={isAiActionsConfigOpen ? "Ocultar configuracoes de Acoes IA" : "Mostrar configuracoes de Acoes IA"}
+                title={isAiActionsConfigOpen ? "Ocultar configurações IA" : "Mostrar configurações IA"}
+                aria-label={isAiActionsConfigOpen ? "Ocultar configurações IA" : "Mostrar configurações IA"}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-white text-muted-foreground shadow-sm transition hover:bg-zinc-50 hover:text-foreground"
               >
                 <Settings className="h-4 w-4" />
@@ -105,8 +107,8 @@ const ParameterPanelToolbar = ({
                     <button
                       type="button"
                       onClick={onToggleAiActionsConfig}
-                      title={isAiActionsConfigOpen ? "Ocultar configuracoes de Acoes IA" : "Mostrar configuracoes de Acoes IA"}
-                      aria-label={isAiActionsConfigOpen ? "Ocultar configuracoes de Acoes IA" : "Mostrar configuracoes de Acoes IA"}
+                      title={isAiActionsConfigOpen ? "Ocultar configurações IA" : "Mostrar configurações IA"}
+                      aria-label={isAiActionsConfigOpen ? "Ocultar configurações IA" : "Mostrar configurações IA"}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-white text-muted-foreground shadow-sm transition hover:bg-zinc-50 hover:text-foreground"
                     >
                       <Settings className="h-4 w-4" />

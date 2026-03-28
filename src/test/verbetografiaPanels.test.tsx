@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ParameterPanelToolbar from "@/features/ghost-writer/components/ParameterPanelToolbar";
 import AppsParameterSection from "@/features/ghost-writer/components/AppsParameterSection";
+import { ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
 
 const baseAppsProps = {
   appPanelScope: "verbetografia" as const,
@@ -123,7 +124,7 @@ const baseAppsProps = {
 };
 
 describe("verbetografia panels", () => {
-  it("uses the top toolbar as selector only for verbetografia actions", () => {
+  it("uses the top toolbar as selector only for the current verbetografia actions", () => {
     const onSelectVerbetografiaAction = vi.fn();
     const onRunAppAction = vi.fn();
 
@@ -141,18 +142,23 @@ describe("verbetografia panels", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /tabela verbete/i }));
+    expect(screen.queryByRole("button", { name: /tabela verbete/i })).not.toBeInTheDocument();
 
-    expect(onSelectVerbetografiaAction).toHaveBeenCalledWith("app7");
+    fireEvent.click(screen.getByRole("button", { name: /definologia/i }));
+
+    expect(onSelectVerbetografiaAction).toHaveBeenCalledWith("app8");
     expect(onRunAppAction).not.toHaveBeenCalled();
   });
 
   it("keeps the verbetografia body empty until a section button is selected", () => {
     render(
       <AppsParameterSection
-        {...baseAppsProps}
-        appId={null}
-      />,
+        hasDocumentOpen={false} includeEditorContextInLlm={false} onToggleIncludeEditorContextInLlm={function (): void {
+          throw new Error("Function not implemented.");
+        } } aiActionSystemPrompts={undefined} onAiActionSystemPromptChange={function (actionId: ActionSystemPromptId, value: string): void {
+          throw new Error("Function not implemented.");
+        } } {...baseAppsProps}
+        appId={null}      />,
     );
 
     expect(screen.queryByDisplayValue("Autopesquisa")).not.toBeInTheDocument();
@@ -165,19 +171,66 @@ describe("verbetografia panels", () => {
 
     render(
       <AppsParameterSection
-        {...baseAppsProps}
+        hasDocumentOpen={false} includeEditorContextInLlm={false} onToggleIncludeEditorContextInLlm={function (): void {
+          throw new Error("Function not implemented.");
+        } } aiActionSystemPrompts={undefined} onAiActionSystemPromptChange={function (actionId: ActionSystemPromptId, value: string): void {
+          throw new Error("Function not implemented.");
+        } } {...baseAppsProps}
         appId="app7"
-        onRunVerbetografiaOpenTable={onRunVerbetografiaOpenTable}
-      />,
+        onRunVerbetografiaOpenTable={onRunVerbetografiaOpenTable}      />,
     );
+
+    const openButton = screen.getByRole("button", { name: /tabela automatizada/i });
+    expect(openButton).toBeInTheDocument();
+
+    fireEvent.click(openButton);
 
     expect(screen.getByDisplayValue("Autopesquisa")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Parapercepciologia")).toBeInTheDocument();
 
-    const button = screen.getByRole("button", { name: /tabela automatizada/i });
-    expect(button.className).toContain("border-green-300");
+    const actionButton = screen.getByRole("button", { name: /abre tabela no editor/i });
+    expect(actionButton.className).toContain("border-green-300");
 
-    fireEvent.click(button);
+    fireEvent.click(actionButton);
     expect(onRunVerbetografiaOpenTable).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows semantic search fields only after clicking the main panel button", () => {
+    render(
+      <AppsParameterSection
+        hasDocumentOpen={false}
+        includeEditorContextInLlm={false}
+        onToggleIncludeEditorContextInLlm={function (): void {
+          throw new Error("Function not implemented.");
+        }}
+        aiActionSystemPrompts={undefined}
+        onAiActionSystemPromptChange={function (actionId: ActionSystemPromptId, value: string): void {
+          throw new Error("Function not implemented.");
+        }}
+        {...baseAppsProps}
+        appId="app12"
+        appPanelScope={null}
+        semanticSearchIndexes={[{
+          id: "idx-1",
+          label: "Indice 1",
+          sourceRows: 10,
+          model: "text-embedding-3-large",
+          dimensions: 3072,
+          embeddingDtype: "float32",
+          sourceFile: ""
+        }]}
+        selectedSemanticSearchIndexId="idx-1"
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /busca semântica/i })).toBeInTheDocument();
+    expect(screen.queryByText("Base Vetorial")).not.toBeInTheDocument();
+    expect(screen.queryByText("Query")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /busca semântica/i }));
+
+    expect(screen.getByText("Base Vetorial")).toBeInTheDocument();
+    expect(screen.getByText("Query")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /buscar/i })).toBeInTheDocument();
   });
 });

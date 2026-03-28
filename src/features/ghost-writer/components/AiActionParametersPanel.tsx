@@ -111,8 +111,8 @@ const AiActionParametersPanel = ({
               <button
                 type="button"
                 onClick={() => void onToggleConfig?.()}
-                title={isConfigOpen ? "Ocultar configuracoes de Acoes IA" : "Mostrar configuracoes de Acoes IA"}
-                aria-label={isConfigOpen ? "Ocultar configuracoes de Acoes IA" : "Mostrar configuracoes de Acoes IA"}
+                title={isConfigOpen ? "Ocultar configurações IA" : "Mostrar configurações IA"}
+                aria-label={isConfigOpen ? "Ocultar configurações IA" : "Mostrar configurações IA"}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-white text-muted-foreground shadow-sm transition hover:bg-zinc-50 hover:text-foreground"
               >
                 <Settings className="h-4 w-4" />
@@ -143,23 +143,6 @@ const AiActionParametersPanel = ({
             </div>
           )}
 
-          {typeof onQueryTextChange === "function" && (
-            <div className="space-y-2">
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Query</Label>
-              <textarea
-                ref={queryTextareaRef}
-                rows={3}
-                value={queryText}
-                onChange={(e) => {
-                  onQueryTextChange(e.target.value);
-                  resizeQueryTextarea();
-                }}
-                placeholder="Escreva a query a ser enviada para a LLM"
-                className="min-h-[80px] w-full overflow-hidden resize-none rounded-md border border-border bg-white px-3 py-2 text-xs outline-none focus:border-primary"
-              />
-            </div>
-          )}
-
           {showActionTextArea ? (
             <div className="space-y-3">
               <div className="flex justify-end">
@@ -187,6 +170,23 @@ const AiActionParametersPanel = ({
               />
             </div>
           ) : null}
+
+          {typeof onQueryTextChange === "function" && (
+            <div className="space-y-2">
+              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Query</Label>
+              <textarea
+                ref={queryTextareaRef}
+                rows={3}
+                value={queryText}
+                onChange={(e) => {
+                  onQueryTextChange(e.target.value);
+                  resizeQueryTextarea();
+                }}
+                placeholder="Escreva a query a ser enviada para a LLM"
+                className="min-h-[80px] w-full overflow-hidden resize-none rounded-md border border-border bg-white px-3 py-2 text-xs outline-none focus:border-primary"
+              />
+            </div>
+          )}
 
           {applyButton}
         </div>

@@ -14,6 +14,7 @@ interface VerbetografiaPanelProps {
   onRun?: () => void;
   isRunning?: boolean;
   showActionButton?: boolean;
+  showActionSectionTitle?: boolean;
   secondaryActionTitle?: string;
   secondaryActionLabel?: string;
   onSecondaryRun?: () => void;
@@ -37,6 +38,7 @@ const VerbetografiaPanel = ({
   onRun,
   isRunning = false,
   showActionButton = false,
+  showActionSectionTitle = true,
   secondaryActionTitle,
   secondaryActionLabel,
   onSecondaryRun,
@@ -61,8 +63,8 @@ const VerbetografiaPanel = ({
             <button
               type="button"
               onClick={() => void onToggleConfig?.()}
-              title={isConfigOpen ? "Ocultar configuracoes de Acoes IA" : "Mostrar configuracoes de Acoes IA"}
-              aria-label={isConfigOpen ? "Ocultar configuracoes de Acoes IA" : "Mostrar configuracoes de Acoes IA"}
+              title={isConfigOpen ? "Ocultar configurações IA" : "Mostrar configurações IA"}
+              aria-label={isConfigOpen ? "Ocultar configurações IA" : "Mostrar configurações IA"}
               className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-white text-muted-foreground shadow-sm transition hover:bg-zinc-50 hover:text-foreground"
             >
               <Settings className="h-4 w-4" />
@@ -99,7 +101,9 @@ const VerbetografiaPanel = ({
 
         {showActionButton ? (
           <div className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
+            {showActionSectionTitle ? (
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
+            ) : null}
             <div className="grid grid-cols-1 gap-2">
               <Button
                 variant="secondary"

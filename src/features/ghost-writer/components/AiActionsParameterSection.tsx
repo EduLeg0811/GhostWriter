@@ -1,5 +1,7 @@
 import AiActionParametersPanel from "@/features/ghost-writer/components/AiActionParametersPanel";
 import AiAssistantConfigPanel from "@/features/ghost-writer/components/AiAssistantConfigPanel";
+import { Label } from "@/components/ui/label";
+import { getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
 import { parameterActionMeta } from "@/features/ghost-writer/config/metadata";
 import { TRANSLATE_LANGUAGE_OPTIONS } from "@/features/ghost-writer/config/options";
 import type { AiActionId, AiPanelScope, SelectOption } from "@/features/ghost-writer/types";
@@ -15,11 +17,13 @@ interface AiActionsParameterSectionProps {
   isLoading: boolean;
   hasDocumentOpen: boolean;
   isConfigOpen: boolean;
+  includeEditorContextInLlm: boolean;
   aiActionsLlmModel: string;
   aiActionsLlmTemperature: number;
   aiActionsLlmMaxOutputTokens: number;
   aiActionsLlmVerbosity: string;
   aiActionsLlmEffort: string;
+  aiActionSystemPrompts: Partial<Record<ActionSystemPromptId, string>>;
   aiActionsSelectedVectorStoreId: string;
   aiActionVectorStoreOptions: SelectOption[];
   uploadedChatFiles: UploadedLlmFile[];
@@ -34,6 +38,8 @@ interface AiActionsParameterSectionProps {
   onAiActionsLlmMaxOutputTokensChange: (value: number) => void;
   onAiActionsLlmVerbosityChange: (value: string) => void;
   onAiActionsLlmEffortChange: (value: string) => void;
+  onAiActionSystemPromptChange: (actionId: AiActionId, value: string) => void;
+  onToggleIncludeEditorContextInLlm: () => void;
   onAiActionsSelectedVectorStoreIdChange: (value: string) => void;
   onUploadFiles: (files: File[]) => void | Promise<void>;
   onRemoveUploadedFile: (fileId: string) => void;
@@ -49,11 +55,13 @@ const AiActionsParameterSection = ({
   isLoading,
   hasDocumentOpen,
   isConfigOpen,
+  includeEditorContextInLlm,
   aiActionsLlmModel,
   aiActionsLlmTemperature,
   aiActionsLlmMaxOutputTokens,
   aiActionsLlmVerbosity,
   aiActionsLlmEffort,
+  aiActionSystemPrompts,
   aiActionsSelectedVectorStoreId,
   aiActionVectorStoreOptions,
   uploadedChatFiles,
@@ -68,11 +76,14 @@ const AiActionsParameterSection = ({
   onAiActionsLlmMaxOutputTokensChange,
   onAiActionsLlmVerbosityChange,
   onAiActionsLlmEffortChange,
+  onAiActionSystemPromptChange,
+  onToggleIncludeEditorContextInLlm,
   onAiActionsSelectedVectorStoreIdChange,
   onUploadFiles,
   onRemoveUploadedFile,
 }: AiActionsParameterSectionProps) => {
   const shouldShowActionPanel = Boolean(actionId) && !(actionId === "ai_command" && isAiCommandSelectionPending);
+  const selectedActionSystemPrompt = actionId ? getActionSystemPrompt(aiActionSystemPrompts, actionId) : "";
 
   return (
     <div className="flex h-full flex-col">
@@ -99,7 +110,7 @@ const AiActionsParameterSection = ({
             showConfigButton={false}
             onToggleConfig={undefined}
             isConfigOpen={false}
-            showActionTextArea={actionId !== "ai_command"}
+            showActionTextArea
             showPanelChrome={false}
           />
         ) : (
@@ -126,6 +137,22 @@ const AiActionsParameterSection = ({
             uploadedFiles={uploadedChatFiles}
             onRemoveUploadedFile={onRemoveUploadedFile}
             isUploadingFiles={isUploadingChatFiles}
+            includeEditorContextInLlm={includeEditorContextInLlm}
+            onToggleIncludeEditorContextInLlm={onToggleIncludeEditorContextInLlm}
+            canToggleIncludeEditorContextInLlm={hasDocumentOpen}
+            extraContent={actionId ? (
+              <div className="space-y-2">
+                <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt da Ação</Label>
+                <textarea
+                  value={selectedActionSystemPrompt}
+                  onChange={(event) => {
+                    if (actionId) onAiActionSystemPromptChange(actionId, event.target.value);
+                  }}
+                  rows={10}
+                  className="w-full rounded-md border border-input bg-white px-3 py-2 text-[11px] text-foreground outline-none resize-none overflow-y-auto"
+                />
+              </div>
+            ) : null}
           />
         </div>
       ) : null}

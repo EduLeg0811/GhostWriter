@@ -103,7 +103,7 @@ const Index = () => {
     aiCommandQuery, setAiCommandQuery, llmModel, setLlmModel, llmTemperature, setLlmTemperature, llmMaxOutputTokens, setLlmMaxOutputTokens, llmMaxNumResults, setLlmMaxNumResults,
     llmEditorContextMaxChars, setLlmEditorContextMaxChars, llmVerbosity, setLlmVerbosity, llmEffort, setLlmEffort, llmSystemPrompt, setLlmSystemPrompt, aiActionsLlmModel,
     setAiActionsLlmModel, aiActionsLlmTemperature, setAiActionsLlmTemperature, aiActionsLlmMaxOutputTokens, setAiActionsLlmMaxOutputTokens, aiActionsLlmVerbosity, setAiActionsLlmVerbosity,
-    aiActionsLlmEffort, setAiActionsLlmEffort, aiActionsLlmSystemPrompt, setAiActionsLlmSystemPrompt, aiActionsSelectedVectorStoreIds, setAiActionsSelectedVectorStoreIds,
+    aiActionsLlmEffort, setAiActionsLlmEffort, aiActionsLlmSystemPrompt, setAiActionsLlmSystemPrompt, aiActionSystemPrompts, setAiActionSystemPrompts, aiActionsSelectedVectorStoreIds, setAiActionsSelectedVectorStoreIds,
     aiActionsSelectedInputFileIds, setAiActionsSelectedInputFileIds, biblioExternaLlmModel, setBiblioExternaLlmModel, biblioExternaLlmTemperature, setBiblioExternaLlmTemperature,
     biblioExternaLlmMaxOutputTokens, setBiblioExternaLlmMaxOutputTokens, biblioExternaLlmVerbosity, setBiblioExternaLlmVerbosity, biblioExternaLlmEffort, setBiblioExternaLlmEffort,
     biblioExternaLlmSystemPrompt, setBiblioExternaLlmSystemPrompt, chatPreviousResponseId, setChatPreviousResponseId, llmLogs, setLlmLogs, llmSessionLogs, setLlmSessionLogs,
@@ -244,6 +244,7 @@ const Index = () => {
     biblioExternaLlmVerbosity,
     biblioExternaLlmEffort,
     biblioExternaLlmSystemPrompt,
+    aiActionSystemPrompts,
     documentText,
     openAiReady,
     isLoading,
@@ -266,6 +267,18 @@ const Index = () => {
     addResponse,
     toast,
   });
+
+  const handleOpenVerbetografiaTableWithPrompt = useCallback(async () => {
+    if (currentFileId) {
+      const shouldDownloadCurrentEditorText = window.confirm(
+        "Deseja baixar o texto atual do editor HTML antes de abrir a tabela? O conteúdo atual será substituído.",
+      );
+      if (shouldDownloadCurrentEditorText) {
+        await handleExportDocx();
+      }
+    }
+    await handleOpenVerbetografiaTable();
+  }, [currentFileId, handleExportDocx, handleOpenVerbetografiaTable]);
 
   const handleOpenParameterSection = useCallback((section: ParameterPanelSection) => {
     setIsAiCommandSelectionPending(false);
@@ -440,6 +453,7 @@ const Index = () => {
                     aiActionsLlmMaxOutputTokens={aiActionsLlmMaxOutputTokens}
                     aiActionsLlmVerbosity={aiActionsLlmVerbosity}
                     aiActionsLlmEffort={aiActionsLlmEffort}
+                    aiActionSystemPrompts={aiActionSystemPrompts}
                     aiActionsSelectedVectorStoreIds={aiActionsSelectedVectorStoreIds}
                     aiActionVectorStoreOptions={aiActionVectorStoreOptions}
                     selectedRefBook={selectedRefBook}
@@ -487,6 +501,7 @@ const Index = () => {
                     isRunningVerbeteSearch={isRunningVerbeteSearch}
                     verbetografiaTitle={verbetografiaTitle}
                     verbetografiaSpecialty={verbetografiaSpecialty}
+                    includeEditorContextInLlm={includeEditorContextInLlm}
                     isRunningVerbetografiaOpenTable={isRunningVerbetografiaOpenTable}
                     isRunningVerbeteDefinologia={isRunningVerbeteDefinologia}
                     isRunningVerbeteFraseEnfatica={isRunningVerbeteFraseEnfatica}
@@ -528,6 +543,13 @@ const Index = () => {
                     onAiActionsLlmMaxOutputTokensChange={setAiActionsLlmMaxOutputTokens}
                     onAiActionsLlmVerbosityChange={setAiActionsLlmVerbosity}
                     onAiActionsLlmEffortChange={setAiActionsLlmEffort}
+                    onAiActionSystemPromptChange={(actionId, value) => {
+                      setAiActionSystemPrompts((prev) => ({ ...prev, [actionId]: value }));
+                    }}
+                    onToggleIncludeEditorContextInLlm={() => {
+                      if (!currentFileId) return;
+                      setIncludeEditorContextInLlm((prev) => !prev);
+                    }}
                     onAiActionsSelectedVectorStoreIdsChange={setAiActionsSelectedVectorStoreIds}
                     onUploadSourceFiles={handleUploadSourceFiles}
                     onSelectRefBook={handleSelectRefBook}
@@ -570,7 +592,7 @@ const Index = () => {
                     onVerbeteSearchTextChange={setVerbeteSearchText}
                     onVerbeteSearchMaxResultsChange={setVerbeteSearchMaxResults}
                     onRunVerbeteSearch={handleRunVerbeteSearch}
-                    onRunVerbetografiaOpenTable={handleOpenVerbetografiaTable}
+                    onRunVerbetografiaOpenTable={handleOpenVerbetografiaTableWithPrompt}
                     onRunVerbeteDefinologia={handleRunVerbeteDefinologia}
                     onRunVerbeteFraseEnfatica={handleRunVerbeteFraseEnfatica}
                     onRunVerbeteSinonimologia={handleRunVerbeteSinonimologia}
@@ -627,6 +649,12 @@ const Index = () => {
               showAppendToEditor={Boolean(currentFileId)}
               isSending={isHistoryProcessing}
               historyNotice={historyNotice}
+              includeEditorContextInLlm={includeEditorContextInLlm}
+              canToggleIncludeEditorContextInLlm={Boolean(currentFileId)}
+              onToggleIncludeEditorContextInLlm={() => {
+                if (!currentFileId) return;
+                setIncludeEditorContextInLlm((prev) => !prev);
+              }}
               chatDisabled={!openAiReady}
               chatDisabledReason={backendStatus === "unavailable"
                 ? "Backend indisponivel em http://localhost:8787."

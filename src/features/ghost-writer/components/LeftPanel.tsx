@@ -24,7 +24,17 @@ const GHOST_VIDEO_PLAYBACK_RATE = 0.50;
 const GHOST_VIDEO_REPLAY_DELAY_MS = 30000;
 const GHOST_VIDEO_INITIAL_DELAY_MS = 15000;
 
-const LeftPanel = ({ onOpenParameterSection, onOpenAiCommand, onOpenVerbetografiaTable, onOpenBookSearch, onOpenSemanticSearch, onOpenVerbetografia, onToggleJsonPanel, isJsonPanelOpen, isLoading }: LeftPanelProps) => {
+const LeftPanel = ({
+  onOpenParameterSection,
+  onOpenAiCommand,
+  onOpenVerbetografiaTable,
+  onOpenBookSearch,
+  onOpenSemanticSearch,
+  onOpenVerbetografia,
+  onToggleJsonPanel,
+  isJsonPanelOpen,
+  isLoading,
+}: LeftPanelProps) => {
   const [activeActionId, setActiveActionId] = useState<LeftPanelActionId | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const actionDisabled = isLoading;
@@ -93,7 +103,7 @@ const LeftPanel = ({ onOpenParameterSection, onOpenAiCommand, onOpenVerbetografi
       <div className={`border-b border-border ${panelsTopMenuBarBgClass} px-4 py-4`}>
         <div className="space-y-3">
           <div className="space-y-1">
-            <h1 className="text-sm font-semibold text-foreground">Parapreceptor • Ghost Writer Editor</h1>
+            <h1 className="text-sm font-semibold text-foreground">Parapreceptor   ●   Ghost Writer Editor</h1>
             <p className="text-[11px] text-muted-foreground">Toolbox de assistência à escrita conscienciológica.</p>
           </div>
           <div className="overflow-hidden rounded-2xl border border-white/60 bg-white/55 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.45)] backdrop-blur-sm">
@@ -134,60 +144,11 @@ const LeftPanel = ({ onOpenParameterSection, onOpenAiCommand, onOpenVerbetografi
             </Button>
           </div>
 
-          <Separator className="my-1" />
 
-
-
-          <div className="space-y-2.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ferramentas de Busca</Label>
-            <div className="space-y-1.5"></div>
-
-              <Button variant="ghost" className={`${sectionActionButtonClass} border-0 shadow-none`} onClick={onOpenBookSearch} disabled={actionDisabled}>
-                <Search className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Lexical Search</span>
-                  <span className="block break-words text-xs text-muted-foreground">Busca léxica nos livros e verbetes</span>
-                </span>
-              </Button>
-
-              <Button variant="ghost" className={`${sectionActionButtonClass} border-0 shadow-none`} onClick={onOpenSemanticSearch} disabled={actionDisabled}>
-                <Search className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Semantic Search</span>
-                  <span className="block break-words text-xs text-muted-foreground">Busca por afinidade semântica</span>
-                </span>
-              </Button>
-
-              <Button
-                variant="ghost"
-                className={`${sectionActionButtonClass} border-0 shadow-none`}
-                onClick={() => {
-                  setActiveActionId("apps");
-                  onOpenParameterSection("apps");
-                }}
-                disabled={actionDisabled}
-              >
-                {isLoading && activeActionId === "apps" ? (
-                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
-                ) : (
-                  <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                )}
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Bibliografia</span>
-                  <span className="block break-words text-xs text-muted-foreground">Busca as referências bibliográficas</span>
-                </span>
-              </Button>
-
-          </div>
-
-
-
-
-          <Separator className="my-1" />
-
+<Separator className="my-1" />
 
           <div className="space-y-2.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ferramentas IA</Label>
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ferramentas de Texto</Label>
             <div className="space-y-1.5">
               <Button
                 variant="default"
@@ -268,29 +229,88 @@ const LeftPanel = ({ onOpenParameterSection, onOpenAiCommand, onOpenVerbetografi
                   <span className="block break-words text-xs text-muted-foreground">Enviar instrucao livre para LLM</span>
                 </span>
               </Button>
-
             </div>
-            </div>
-
+          </div>
 
 
           <Separator className="my-1" />
 
+          <div className="space-y-2.5">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ferramentas de Busca</Label>
+            <div className="space-y-1.5" />
+
+            <Button variant="ghost" className={`${sectionActionButtonClass} border-0 shadow-none`} onClick={onOpenBookSearch} disabled={actionDisabled}>
+              <Search className="mr-2 h-4 w-4 shrink-0 text-primary" />
+              <span className="min-w-0 flex-1 text-left">
+                <span className="block break-words text-sm font-medium text-foreground">Lexical Search</span>
+                <span className="block break-words text-xs text-muted-foreground">Busca léxica nos livros e verbetes</span>
+              </span>
+            </Button>
+
+            <Button variant="ghost" className={`${sectionActionButtonClass} border-0 shadow-none`} onClick={onOpenSemanticSearch} disabled={actionDisabled}>
+              <Search className="mr-2 h-4 w-4 shrink-0 text-primary" />
+              <span className="min-w-0 flex-1 text-left">
+                <span className="block break-words text-sm font-medium text-foreground">Semantic Search</span>
+                <span className="block break-words text-xs text-muted-foreground">Busca por afinidade semântica</span>
+              </span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              className={`${sectionActionButtonClass} border-0 shadow-none`}
+              onClick={() => {
+                setActiveActionId("apps");
+                onOpenParameterSection("apps");
+              }}
+              disabled={actionDisabled}
+            >
+              {isLoading && activeActionId === "apps" ? (
+                <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+              ) : (
+                <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
+              )}
+              <span className="min-w-0 flex-1 text-left">
+                <span className="block break-words text-sm font-medium text-foreground">Bibliografia</span>
+                <span className="block break-words text-xs text-muted-foreground">Busca as referências bibliográficas</span>
+              </span>
+            </Button>
+          </div>
+
+          
+
+          <Separator className="my-1" />
 
           <div className="space-y-2.5">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Verbetografia IA</Label>
-           
-              <Button variant="ghost" className={`${sectionActionButtonClass} border-0 shadow-none`} onClick={onOpenVerbetografia} disabled={actionDisabled}>
+
+            <Button variant="ghost" className={`${sectionActionButtonClass} border-0 shadow-none`} onClick={onOpenVerbetografia} disabled={actionDisabled}>
+              <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
+              <span className="min-w-0 flex-1 text-left">
+                <span className="block break-words text-sm font-medium text-foreground">Seções do Verbete</span>
+                <span className="block break-words text-xs text-muted-foreground">Escreve seções com auxílio da IA</span>
+              </span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              className={`${sectionActionButtonClass} border-0 shadow-none`}
+              onClick={() => {
+                setActiveActionId("verbetografia_table");
+                onOpenVerbetografiaTable();
+              }}
+              disabled={actionDisabled}
+            >
+              {isLoading && activeActionId === "verbetografia_table" ? (
+                <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+              ) : (
                 <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Automatização Verbetográfica</span>
-                  <span className="block break-words text-xs text-muted-foreground">Escreve seções e cria tabela</span>
-                </span>
-              </Button>
-
+              )}
+              <span className="min-w-0 flex-1 text-left">
+                <span className="block break-words text-sm font-medium text-foreground">Tabela Verbete</span>
+                <span className="block break-words text-xs text-muted-foreground">Abre tabela Word e editor HTML</span>
+              </span>
+            </Button>
           </div>
-
-
 
           <Separator className="my-1" />
 
@@ -349,10 +369,8 @@ const LeftPanel = ({ onOpenParameterSection, onOpenAiCommand, onOpenVerbetografi
           </div>
         </div>
       </div>
-
     </div>
   );
 };
 
 export default LeftPanel;
-

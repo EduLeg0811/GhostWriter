@@ -43,6 +43,7 @@ import {
   LLM_SETTINGS_STORAGE_KEY,
   NO_VECTOR_STORE_ID,
 } from "@/features/ghost-writer/config/constants";
+import { applySystemPromptOverride, getActionSystemPrompt, sanitizeStoredActionSystemPrompts, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
 import { BOOK_SOURCE, VECTOR_STORES_SOURCE } from "@/features/ghost-writer/config/options";
 import { getAiPanelScopeByAction, normalizeIdList } from "@/features/ghost-writer/config/metadata";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
@@ -98,6 +99,8 @@ interface UseGhostWriterLlmParams {
   setAiActionsLlmEffort: Dispatch<SetStateAction<string>>;
   aiActionsLlmSystemPrompt: string;
   setAiActionsLlmSystemPrompt: Dispatch<SetStateAction<string>>;
+  aiActionSystemPrompts: Partial<Record<ActionSystemPromptId, string>>;
+  setAiActionSystemPrompts: Dispatch<SetStateAction<Partial<Record<ActionSystemPromptId, string>>>>;
   aiActionsSelectedVectorStoreIds: string[];
   setAiActionsSelectedVectorStoreIds: Dispatch<SetStateAction<string[]>>;
   aiActionsSelectedInputFileIds: string[];
@@ -217,6 +220,8 @@ const useGhostWriterLlm = ({
   setAiActionsLlmEffort,
   aiActionsLlmSystemPrompt,
   setAiActionsLlmSystemPrompt,
+  aiActionSystemPrompts,
+  setAiActionSystemPrompts,
   aiActionsSelectedVectorStoreIds,
   setAiActionsSelectedVectorStoreIds,
   aiActionsSelectedInputFileIds,
@@ -394,6 +399,7 @@ const useGhostWriterLlm = ({
         gpt5Verbosity: string;
         gpt5Effort: string;
         systemPrompt: string;
+        actionSystemPrompts: Record<string, string>;
         vectorStoreIds: string[];
         inputFileIds: string[];
       }>;
@@ -403,12 +409,13 @@ const useGhostWriterLlm = ({
       if (typeof parsed.gpt5Verbosity === "string") setAiActionsLlmVerbosity(parsed.gpt5Verbosity);
       if (typeof parsed.gpt5Effort === "string") setAiActionsLlmEffort(parsed.gpt5Effort);
       if (typeof parsed.systemPrompt === "string") setAiActionsLlmSystemPrompt(parsed.systemPrompt);
+      setAiActionSystemPrompts((prev) => ({ ...prev, ...sanitizeStoredActionSystemPrompts(parsed.actionSystemPrompts) }));
       if (Array.isArray(parsed.vectorStoreIds)) setAiActionsSelectedVectorStoreIds(normalizeIdList(parsed.vectorStoreIds.filter((value): value is string => typeof value === "string")));
       if (Array.isArray(parsed.inputFileIds)) setAiActionsSelectedInputFileIds(normalizeIdList(parsed.inputFileIds.filter((value): value is string => typeof value === "string")));
     } catch {
       // Keep defaults on invalid storage.
     }
-  }, [setAiActionsLlmEffort, setAiActionsLlmMaxOutputTokens, setAiActionsLlmModel, setAiActionsLlmSystemPrompt, setAiActionsLlmTemperature, setAiActionsLlmVerbosity, setAiActionsSelectedInputFileIds, setAiActionsSelectedVectorStoreIds]);
+  }, [setAiActionSystemPrompts, setAiActionsLlmEffort, setAiActionsLlmMaxOutputTokens, setAiActionsLlmModel, setAiActionsLlmSystemPrompt, setAiActionsLlmTemperature, setAiActionsLlmVerbosity, setAiActionsSelectedInputFileIds, setAiActionsSelectedVectorStoreIds]);
 
   useEffect(() => {
     try {
@@ -448,10 +455,11 @@ const useGhostWriterLlm = ({
       gpt5Verbosity: aiActionsLlmVerbosity,
       gpt5Effort: aiActionsLlmEffort,
       systemPrompt: aiActionsLlmSystemPrompt,
+      actionSystemPrompts: aiActionSystemPrompts,
       vectorStoreIds: normalizeIdList(aiActionsSelectedVectorStoreIds),
       inputFileIds: normalizeIdList(aiActionsSelectedInputFileIds),
     }));
-  }, [aiActionsLlmEffort, aiActionsLlmMaxOutputTokens, aiActionsLlmModel, aiActionsLlmSystemPrompt, aiActionsLlmTemperature, aiActionsLlmVerbosity, aiActionsSelectedInputFileIds, aiActionsSelectedVectorStoreIds]);
+  }, [aiActionSystemPrompts, aiActionsLlmEffort, aiActionsLlmMaxOutputTokens, aiActionsLlmModel, aiActionsLlmSystemPrompt, aiActionsLlmTemperature, aiActionsLlmVerbosity, aiActionsSelectedInputFileIds, aiActionsSelectedVectorStoreIds]);
 
   useEffect(() => {
     window.localStorage.setItem(GENERAL_SETTINGS_STORAGE_KEY, JSON.stringify({ enableHistoryNumbering, enableHistoryReferences, enableHistoryMetadata }));
@@ -635,9 +643,10 @@ const useGhostWriterLlm = ({
 
       setIsLoading(true);
       try {
+        const pensatasSystemPrompt = getActionSystemPrompt(aiActionSystemPrompts, "pensatas");
         const content = (
           await executeAiActionsLLMWithLog({
-            messages: [
+            messages: applySystemPromptOverride([
               {
                 role: "system",
                 content:
@@ -649,7 +658,7 @@ const useGhostWriterLlm = ({
                   `Localize pensatas afins ao termo abaixo e devolva apenas a lista final em Markdown numerado.\n\n` +
                   `Termo de busca: ${text}`,
               },
-            ],
+            ], pensatasSystemPrompt),
             vectorStoreIds,
             inputFileIds,
           })
@@ -688,7 +697,8 @@ const useGhostWriterLlm = ({
         ai_command: (value: string) => buildAiCommandPrompt(value, query),
       };
 
-      const messages = promptMap[type](text);
+      const specificSystemPrompt = getActionSystemPrompt(aiActionSystemPrompts, type);
+      const messages = applySystemPromptOverride(promptMap[type](text), specificSystemPrompt);
       if (type === "ai_command" && includeEditorContextInLlm && editorPlainTextContext.trim()) {
         const truncTag = editorContextTruncated ? " [TRUNCADO]" : "";
         messages.splice(1, 0, {
@@ -709,7 +719,7 @@ const useGhostWriterLlm = ({
     } finally {
       setIsLoading(false);
     }
-  }, [actionText, addResponse, aiCommandQuery, backendNotReadyMessage, currentFileId, documentText, executeAiActionsLLMWithLog, getEditorApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, setIsLoading, toast, translateLanguage]);
+  }, [actionText, addResponse, aiActionSystemPrompts, aiCommandQuery, backendNotReadyMessage, currentFileId, documentText, executeAiActionsLLMWithLog, getEditorApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, setIsLoading, toast, translateLanguage]);
 
   const handleOpenAiActionParameters = useCallback((type: AiActionId) => {
     setParameterPanelTarget({ section: getAiPanelScopeByAction(type), id: type });

@@ -1,7 +1,7 @@
 import { MouseEvent, useCallback, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BookOpen, Clock, Copy, FileText, Info, Languages, ListOrdered, Loader2, MessageSquare, PenLine, Repeat2, RotateCcw, Search, SendHorizontal, Settings, Trash2 } from "lucide-react";
+import { ArrowRight, BookOpen, Clock, Copy, FileText, Info, Languages, ListOrdered, Loader2, MessageSquare, Paperclip, PenLine, Repeat2, RotateCcw, Search, SendHorizontal, Settings, Trash2 } from "lucide-react";
 import { historyHtmlToPlainText, isHistorySearchResponseType, renderHistoryResponseAppendBodyHtml, renderHistoryResponseCopyHtml, renderHistoryResponseEditorHtml } from "@/features/ghost-writer/utils/historyResponseHtml";
 import { buttonsPrimarySolidBgClass, cardsBgClass, chatSectionBgClass, panelsBgClass, panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 import type { AIResponse } from "@/features/ghost-writer/types";
@@ -10,7 +10,7 @@ const HISTORY_FONT_DEFAULT = 0.75;
 const HISTORY_FONT_STEP = 0.05;
 const historyToolbarButtonBaseClass = "h-8 w-8";
 const historyToolbarButtonInactiveClass = "text-muted-foreground hover:text-foreground";
-const historyToolbarButtonActiveClass = "bg-green-200 text-blue-700 ring-1 ring-green-400/70 hover:bg-green-300 hover:text-blue-800";
+const historyToolbarButtonActiveClass = "bg-green-100 text-blue-700 ring-1 ring-green-300/70 hover:bg-green-200 hover:text-blue-800";
 const historyToolbarSeparatorClass = "mx-1.5 h-6 w-px bg-zinc-400/90 shadow-[0_0_0_1px_rgba(255,255,255,0.22)]";
 
 const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactNode }> = {
@@ -58,6 +58,9 @@ interface RightPanelProps {
   chatDisabled?: boolean;
   chatDisabledReason?: string;
   historyNotice?: string | null;
+  includeEditorContextInLlm?: boolean;
+  canToggleIncludeEditorContextInLlm?: boolean;
+  onToggleIncludeEditorContextInLlm?: () => void;
 }
 
 const RightPanel = ({
@@ -80,6 +83,9 @@ const RightPanel = ({
   chatDisabled = false,
   chatDisabledReason,
   historyNotice,
+  includeEditorContextInLlm = false,
+  canToggleIncludeEditorContextInLlm = true,
+  onToggleIncludeEditorContextInLlm,
 }: RightPanelProps) => {
   const [prompt, setPrompt] = useState("");
   const [historyFontScale, setHistoryFontScale] = useState(HISTORY_FONT_DEFAULT);
@@ -251,7 +257,7 @@ const RightPanel = ({
           <Button
             variant="ghost"
             size="icon"
-            className={`${historyToolbarButtonBaseClass} ${historyToolbarButtonInactiveClass} text-[11px] font-semibold`}
+            className={`${historyToolbarButtonBaseClass} ${historyToolbarButtonInactiveClass} text-sm font-bold`}
             onClick={decreaseHistoryFont}
             title="Diminuir fonte dos cards"
             disabled={historyFontScale <= historyFontMin}
@@ -261,7 +267,7 @@ const RightPanel = ({
           <Button
             variant="ghost"
             size="icon"
-            className={`${historyToolbarButtonBaseClass} ${historyToolbarButtonInactiveClass} text-[11px] font-semibold`}
+            className={`${historyToolbarButtonBaseClass} ${historyToolbarButtonInactiveClass} text-sm font-bold`}
             onClick={increaseHistoryFont}
             title="Aumentar fonte dos cards"
             disabled={historyFontScale >= historyFontMax}
@@ -386,6 +392,22 @@ const RightPanel = ({
           >
             <RotateCcw className="h-4 w-4" />
           </button>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className={`h-10 w-10 shrink-0 self-center rounded-lg border border-border shadow-sm ${
+              includeEditorContextInLlm
+                ? "bg-pink-200 text-pink-800 ring-1 ring-pink-300/80 hover:bg-pink-300 hover:text-pink-900"
+                : "bg-transparent text-muted-foreground hover:bg-white/30 hover:text-foreground"
+            }`}
+            title={canToggleIncludeEditorContextInLlm ? (includeEditorContextInLlm ? "Desativar envio do texto do editor para a LLM" : "Ativar envio do texto do editor para a LLM") : "Disponivel apenas com documento aberto no editor"}
+            aria-label={canToggleIncludeEditorContextInLlm ? (includeEditorContextInLlm ? "Desativar envio do texto do editor para a LLM" : "Ativar envio do texto do editor para a LLM") : "Disponivel apenas com documento aberto no editor"}
+            onClick={onToggleIncludeEditorContextInLlm}
+            disabled={isSending || !canToggleIncludeEditorContextInLlm}
+          >
+            <Paperclip className="h-3.5 w-3.5" />
+          </Button>
           <button
             type="button"
             onClick={() => void onToggleChatConfig?.()}

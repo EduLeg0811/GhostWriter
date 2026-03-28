@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import AiAssistantConfigPanel from "@/features/ghost-writer/components/AiAssistantConfigPanel";
 import BiblioExternaPanel from "@/features/ghost-writer/components/BiblioExternaPanel";
@@ -8,10 +10,12 @@ import InsertRefVerbetePanel from "@/features/ghost-writer/components/InsertRefV
 import SemanticSearchPanel from "@/features/ghost-writer/components/SemanticSearchPanel";
 import VerbeteSearchPanel from "@/features/ghost-writer/components/VerbeteSearchPanel";
 import VerbetografiaPanel from "@/features/ghost-writer/components/VerbetografiaPanel";
-import { parameterAppMeta } from "@/features/ghost-writer/config/metadata";
+import { getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
+import { APP_PANEL_ICONS, parameterAppMeta } from "@/features/ghost-writer/config/metadata";
 import type { AppActionId, AppPanelScope, SelectOption, SemanticIndexOption } from "@/features/ghost-writer/types";
 import type { BookCode } from "@/lib/bookCatalog";
 import type { UploadedLlmFile } from "@/lib/openai";
+import { sectionActionButtonClass } from "@/styles/buttonStyles";
 
 interface AppsParameterSectionProps {
   appId: AppActionId | null;
@@ -62,6 +66,8 @@ interface AppsParameterSectionProps {
   isRunningVerbeteSearch: boolean;
   verbetografiaTitle: string;
   verbetografiaSpecialty: string;
+  hasDocumentOpen: boolean;
+  includeEditorContextInLlm: boolean;
   isRunningVerbetografiaOpenTable: boolean;
   isRunningVerbeteDefinologia: boolean;
   isRunningVerbeteFraseEnfatica: boolean;
@@ -72,6 +78,7 @@ interface AppsParameterSectionProps {
   aiActionsLlmMaxOutputTokens: number;
   aiActionsLlmVerbosity: string;
   aiActionsLlmEffort: string;
+  aiActionSystemPrompts: Partial<Record<ActionSystemPromptId, string>>;
   aiActionsSelectedVectorStoreId: string;
   aiActionVectorStoreOptions: SelectOption[];
   uploadedChatFiles: UploadedLlmFile[];
@@ -128,6 +135,8 @@ interface AppsParameterSectionProps {
   onAiActionsLlmMaxOutputTokensChange: (value: number) => void;
   onAiActionsLlmVerbosityChange: (value: string) => void;
   onAiActionsLlmEffortChange: (value: string) => void;
+  onAiActionSystemPromptChange: (actionId: ActionSystemPromptId, value: string) => void;
+  onToggleIncludeEditorContextInLlm: () => void;
   onAiActionsSelectedVectorStoreIdChange: (value: string) => void;
   onUploadFiles: (files: File[]) => void | Promise<void>;
   onRemoveUploadedFile: (fileId: string) => void;
@@ -182,6 +191,8 @@ const AppsParameterSection = ({
   isRunningVerbeteSearch,
   verbetografiaTitle,
   verbetografiaSpecialty,
+  hasDocumentOpen,
+  includeEditorContextInLlm,
   isRunningVerbetografiaOpenTable,
   isRunningVerbeteDefinologia,
   isRunningVerbeteFraseEnfatica,
@@ -192,6 +203,7 @@ const AppsParameterSection = ({
   aiActionsLlmMaxOutputTokens,
   aiActionsLlmVerbosity,
   aiActionsLlmEffort,
+  aiActionSystemPrompts,
   aiActionsSelectedVectorStoreId,
   aiActionVectorStoreOptions,
   uploadedChatFiles,
@@ -248,10 +260,24 @@ const AppsParameterSection = ({
   onAiActionsLlmMaxOutputTokensChange,
   onAiActionsLlmVerbosityChange,
   onAiActionsLlmEffortChange,
+  onAiActionSystemPromptChange,
+  onToggleIncludeEditorContextInLlm,
   onAiActionsSelectedVectorStoreIdChange,
   onUploadFiles,
   onRemoveUploadedFile,
 }: AppsParameterSectionProps) => {
+  const [isTableAutomatedFormOpen, setIsTableAutomatedFormOpen] = useState(false);
+  const [isSemanticSearchFormOpen, setIsSemanticSearchFormOpen] = useState(false);
+
+  useEffect(() => {
+    if (appId === "app7") {
+      setIsTableAutomatedFormOpen(false);
+    }
+    if (appId === "app12") {
+      setIsSemanticSearchFormOpen(false);
+    }
+  }, [appId]);
+
   if (appId === "app1") {
     return (
       <InsertRefBookPanel
@@ -380,22 +406,43 @@ const AppsParameterSection = ({
   }
 
   if (appId === "app12") {
+    const SemanticSearchIcon = APP_PANEL_ICONS.app12;
+
     return (
-      <SemanticSearchPanel
-        title={parameterAppMeta.app12.title}
-        description={parameterAppMeta.app12.description}
-        selectedIndexId={selectedSemanticSearchIndexId}
-        availableIndexes={semanticSearchIndexes}
-        isLoadingIndexes={isLoadingSemanticSearchIndexes}
-        onSelectedIndexChange={onSelectedSemanticSearchIndexIdChange}
-        query={semanticSearchQuery}
-        maxResults={semanticSearchMaxResults}
-        onQueryChange={onSemanticSearchQueryChange}
-        onMaxResultsChange={onSemanticSearchMaxResultsChange}
-        onRunSearch={() => void onRunSemanticSearch()}
-        isRunning={isRunningSemanticSearch}
-        showPanelChrome={false}
-      />
+      <div className="flex h-full flex-col">
+        <div className="grid grid-cols-1 gap-2 p-4 pb-0">
+          <Button
+            variant="ghost"
+            className={sectionActionButtonClass}
+            onClick={() => setIsSemanticSearchFormOpen(true)}
+          >
+            <SemanticSearchIcon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block break-words text-sm font-medium text-foreground">Busca Semântica</span>
+              <span className="block break-words text-xs text-muted-foreground">{parameterAppMeta.app12.description}</span>
+            </span>
+          </Button>
+        </div>
+        {isSemanticSearchFormOpen ? (
+          <div className="min-h-0 flex-1">
+            <SemanticSearchPanel
+              title={parameterAppMeta.app12.title}
+              description={parameterAppMeta.app12.description}
+              selectedIndexId={selectedSemanticSearchIndexId}
+              availableIndexes={semanticSearchIndexes}
+              isLoadingIndexes={isLoadingSemanticSearchIndexes}
+              onSelectedIndexChange={onSelectedSemanticSearchIndexIdChange}
+              query={semanticSearchQuery}
+              maxResults={semanticSearchMaxResults}
+              onQueryChange={onSemanticSearchQueryChange}
+              onMaxResultsChange={onSemanticSearchMaxResultsChange}
+              onRunSearch={() => void onRunSemanticSearch()}
+              isRunning={isRunningSemanticSearch}
+              showPanelChrome={false}
+            />
+          </div>
+        ) : null}
+      </div>
     );
   }
 
@@ -461,11 +508,55 @@ const AppsParameterSection = ({
               : selectedVerbetografiaAction === "app10"
                 ? isRunningVerbeteFatologia
                 : false;
+    const selectedVerbetografiaSystemPrompt = (
+      selectedVerbetografiaAction === "app8"
+      || selectedVerbetografiaAction === "app9"
+      || selectedVerbetografiaAction === "app10"
+      || selectedVerbetografiaAction === "app11"
+    )
+      ? getActionSystemPrompt(aiActionSystemPrompts, selectedVerbetografiaAction)
+      : "";
+    const TableAutomatedIcon = APP_PANEL_ICONS.app7;
 
     return (
       <div className="flex h-full flex-col">
         <div className="min-h-0 flex-1">
           {selectedVerbetografiaAction ? (
+            selectedVerbetografiaAction === "app7" ? (
+              <div className="flex h-full flex-col">
+                <div className="grid grid-cols-1 gap-2 p-4 pb-0">
+                  <Button
+                    variant="ghost"
+                    className={sectionActionButtonClass}
+                    onClick={() => setIsTableAutomatedFormOpen(true)}
+                  >
+                    <TableAutomatedIcon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
+                    <span className="min-w-0 flex-1 text-left">
+                      <span className="block break-words text-sm font-medium text-foreground">{parameterAppMeta.app7.title}</span>
+                      <span className="block break-words text-xs text-muted-foreground">{parameterAppMeta.app7.description}</span>
+                    </span>
+                  </Button>
+                </div>
+                {isTableAutomatedFormOpen ? (
+                  <div className="min-h-0 flex-1">
+                    <VerbetografiaPanel
+                      title={parameterAppMeta.app7.title}
+                      description={parameterAppMeta.app7.description}
+                      actionLabel="Abre Tabela no Editor"
+                      verbeteTitle={verbetografiaTitle}
+                      specialty={verbetografiaSpecialty}
+                      onVerbeteTitleChange={onVerbetografiaTitleChange}
+                      onSpecialtyChange={onVerbetografiaSpecialtyChange}
+                      onRun={handleRunSelectedVerbetografiaAction}
+                      isRunning={isSelectedVerbetografiaActionRunning}
+                      showActionButton
+                      showActionSectionTitle={false}
+                      showPanelChrome={false}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : (
           <VerbetografiaPanel
             title={selectedVerbetografiaAction ? parameterAppMeta[selectedVerbetografiaAction].title : "Seções do Verbete"}
             description={selectedVerbetografiaAction ? parameterAppMeta[selectedVerbetografiaAction].description : "Informe Título e Especialidade para habilitar as ações."}
@@ -477,8 +568,10 @@ const AppsParameterSection = ({
             onRun={selectedVerbetografiaAction ? handleRunSelectedVerbetografiaAction : undefined}
             isRunning={isSelectedVerbetografiaActionRunning}
             showActionButton={Boolean(selectedVerbetografiaAction)}
+            showActionSectionTitle={false}
             showPanelChrome={false}
           />
+            )
           ) : (
             <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground" />
           )}
@@ -503,6 +596,34 @@ const AppsParameterSection = ({
               uploadedFiles={uploadedChatFiles}
               onRemoveUploadedFile={onRemoveUploadedFile}
               isUploadingFiles={isUploadingChatFiles}
+              includeEditorContextInLlm={includeEditorContextInLlm}
+              onToggleIncludeEditorContextInLlm={onToggleIncludeEditorContextInLlm}
+              canToggleIncludeEditorContextInLlm={hasDocumentOpen}
+              extraContent={(
+                selectedVerbetografiaAction === "app8"
+                || selectedVerbetografiaAction === "app9"
+                || selectedVerbetografiaAction === "app10"
+                || selectedVerbetografiaAction === "app11"
+              ) ? (
+                <div className="space-y-2">
+                  <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt da Ação</Label>
+                  <textarea
+                    value={selectedVerbetografiaSystemPrompt}
+                    onChange={(event) => {
+                      if (
+                        selectedVerbetografiaAction === "app8"
+                        || selectedVerbetografiaAction === "app9"
+                        || selectedVerbetografiaAction === "app10"
+                        || selectedVerbetografiaAction === "app11"
+                      ) {
+                        onAiActionSystemPromptChange(selectedVerbetografiaAction, event.target.value);
+                      }
+                    }}
+                    rows={10}
+                    className="w-full rounded-md border border-input bg-white px-3 py-2 text-[11px] text-foreground outline-none resize-none overflow-y-auto"
+                  />
+                </div>
+              ) : null}
             />
           </div>
         ) : null}

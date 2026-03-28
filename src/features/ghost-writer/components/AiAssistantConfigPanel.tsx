@@ -1,6 +1,8 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Paperclip } from "lucide-react";
 import UploadedFilesList from "@/features/ghost-writer/components/UploadedFilesList";
 import type { UploadedLlmFile } from "@/lib/openai";
 
@@ -24,6 +26,9 @@ interface AiAssistantConfigPanelProps {
   isUploadingFiles?: boolean;
   showVectorStore?: boolean;
   showUploadedFiles?: boolean;
+  includeEditorContextInLlm?: boolean;
+  onToggleIncludeEditorContextInLlm?: () => void;
+  canToggleIncludeEditorContextInLlm?: boolean;
   extraContent?: React.ReactNode;
 }
 
@@ -47,6 +52,9 @@ const AiAssistantConfigPanel = ({
   isUploadingFiles = false,
   showVectorStore = true,
   showUploadedFiles = true,
+  includeEditorContextInLlm = false,
+  onToggleIncludeEditorContextInLlm,
+  canToggleIncludeEditorContextInLlm = true,
   extraContent,
 }: AiAssistantConfigPanelProps) => (
   <div className="space-y-4">
@@ -95,6 +103,25 @@ const AiAssistantConfigPanel = ({
         </div>
       ) : null}
       {extraContent}
+      {typeof onToggleIncludeEditorContextInLlm === "function" ? (
+        <div className="pt-1">
+          <Button
+            type="button"
+            variant="ghost"
+            className={`h-9 w-full justify-start rounded-lg border border-border px-3 text-left text-[11px] font-semibold shadow-sm ${
+              includeEditorContextInLlm
+                ? "bg-pink-200 text-pink-800 ring-1 ring-pink-300/80 hover:bg-pink-300 hover:text-pink-900"
+                : "bg-white text-muted-foreground hover:bg-zinc-50 hover:text-foreground"
+            }`}
+            title={canToggleIncludeEditorContextInLlm ? (includeEditorContextInLlm ? "Desativar envio do texto do editor para a LLM" : "Ativar envio do texto do editor para a LLM") : "Disponivel apenas com documento aberto no editor"}
+            onClick={onToggleIncludeEditorContextInLlm}
+            disabled={!canToggleIncludeEditorContextInLlm}
+          >
+            <Paperclip className="mr-2 h-3.5 w-3.5 shrink-0" />
+            <span>Enviar texto do editor</span>
+          </Button>
+        </div>
+      ) : null}
     </div>
     {showUploadedFiles ? (
       <>

@@ -1,8 +1,10 @@
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Paperclip } from "lucide-react";
 import type { UploadedLlmFile } from "@/lib/openai";
 import UploadedFilesList from "@/features/ghost-writer/components/UploadedFilesList";
 
@@ -32,6 +34,9 @@ interface SourcesPanelProps {
   onLlmEffortChange: (value: string) => void;
   llmSystemPrompt: string;
   onLlmSystemPromptChange: (value: string) => void;
+  includeEditorContextInLlm: boolean;
+  onToggleIncludeEditorContextInLlm: () => void;
+  canToggleIncludeEditorContextInLlm?: boolean;
 }
 
 const SourcesPanel = ({
@@ -60,6 +65,9 @@ const SourcesPanel = ({
   onLlmEffortChange,
   llmSystemPrompt,
   onLlmSystemPromptChange,
+  includeEditorContextInLlm,
+  onToggleIncludeEditorContextInLlm,
+  canToggleIncludeEditorContextInLlm = true,
 }: SourcesPanelProps) => {
   const sourceBooks = bookSources;
 
@@ -145,6 +153,23 @@ const SourcesPanel = ({
             <div className="space-y-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt</Label>
               <textarea value={llmSystemPrompt} onChange={(e) => onLlmSystemPromptChange(e.target.value)} rows={8} className="w-full resize-none overflow-y-auto rounded-md border border-input bg-white px-3 py-2 text-[11px] text-foreground outline-none" />
+            </div>
+            <div className="pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                className={`h-9 w-full justify-start rounded-lg border border-border px-3 text-left text-[11px] font-semibold shadow-sm ${
+                  includeEditorContextInLlm
+                    ? "bg-pink-200 text-pink-800 ring-1 ring-pink-300/80 hover:bg-pink-300 hover:text-pink-900"
+                    : "bg-white text-muted-foreground hover:bg-zinc-50 hover:text-foreground"
+                }`}
+                title={canToggleIncludeEditorContextInLlm ? (includeEditorContextInLlm ? "Desativar envio do texto do editor para a LLM" : "Ativar envio do texto do editor para a LLM") : "Disponível apenas com documento aberto no editor"}
+                onClick={onToggleIncludeEditorContextInLlm}
+                disabled={!canToggleIncludeEditorContextInLlm}
+              >
+                <Paperclip className="mr-2 h-3.5 w-3.5 shrink-0" />
+                <span>Enviar texto do Editor</span>
+              </Button>
             </div>
           </div>
 

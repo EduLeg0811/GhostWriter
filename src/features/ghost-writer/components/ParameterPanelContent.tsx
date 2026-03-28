@@ -4,6 +4,7 @@ import DocumentParameterSection from "@/features/ghost-writer/components/Documen
 import AiActionsParameterSection from "@/features/ghost-writer/components/AiActionsParameterSection";
 import AppsParameterSection from "@/features/ghost-writer/components/AppsParameterSection";
 import ParameterPanelToolbar from "@/features/ghost-writer/components/ParameterPanelToolbar";
+import type { ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
 import { BOOK_SOURCE, MACRO1_HIGHLIGHT_COLORS, TRANSLATE_LANGUAGE_OPTIONS, VECTOR_STORES_SOURCE } from "@/features/ghost-writer/config/options";
 import type { TextStats } from "@/hooks/useTextStats";
 import type { BookCode } from "@/lib/bookCatalog";
@@ -49,6 +50,7 @@ interface ParameterPanelContentProps {
   aiActionsLlmMaxOutputTokens: number;
   aiActionsLlmVerbosity: string;
   aiActionsLlmEffort: string;
+  aiActionSystemPrompts: Partial<Record<ActionSystemPromptId, string>>;
   aiActionsSelectedVectorStoreIds: string[];
   aiActionVectorStoreOptions: SelectOption[];
   selectedRefBook: BookCode;
@@ -96,6 +98,7 @@ interface ParameterPanelContentProps {
   isRunningVerbeteSearch: boolean;
   verbetografiaTitle: string;
   verbetografiaSpecialty: string;
+  includeEditorContextInLlm: boolean;
   isRunningVerbetografiaOpenTable: boolean;
   isRunningVerbeteDefinologia: boolean;
   isRunningVerbeteFraseEnfatica: boolean;
@@ -137,6 +140,8 @@ interface ParameterPanelContentProps {
   onAiActionsLlmMaxOutputTokensChange: (value: number) => void;
   onAiActionsLlmVerbosityChange: (value: string) => void;
   onAiActionsLlmEffortChange: (value: string) => void;
+  onAiActionSystemPromptChange: (actionId: ActionSystemPromptId, value: string) => void;
+  onToggleIncludeEditorContextInLlm: () => void;
   onAiActionsSelectedVectorStoreIdsChange: (value: string[]) => void;
   onUploadSourceFiles: (files: File[]) => void | Promise<void>;
   onSelectRefBook: (value: BookCode) => void;
@@ -227,6 +232,7 @@ const ParameterPanelContent = ({
   aiActionsLlmMaxOutputTokens,
   aiActionsLlmVerbosity,
   aiActionsLlmEffort,
+  aiActionSystemPrompts,
   aiActionsSelectedVectorStoreIds,
   aiActionVectorStoreOptions,
   selectedRefBook,
@@ -274,6 +280,7 @@ const ParameterPanelContent = ({
   isRunningVerbeteSearch,
   verbetografiaTitle,
   verbetografiaSpecialty,
+  includeEditorContextInLlm,
   isRunningVerbetografiaOpenTable,
   isRunningVerbeteDefinologia,
   isRunningVerbeteFraseEnfatica,
@@ -315,6 +322,8 @@ const ParameterPanelContent = ({
   onAiActionsLlmMaxOutputTokensChange,
   onAiActionsLlmVerbosityChange,
   onAiActionsLlmEffortChange,
+  onAiActionSystemPromptChange,
+  onToggleIncludeEditorContextInLlm,
   onAiActionsSelectedVectorStoreIdsChange,
   onUploadSourceFiles,
   onSelectRefBook,
@@ -440,6 +449,9 @@ const ParameterPanelContent = ({
             onLlmEffortChange={onLlmEffortChange}
             llmSystemPrompt={llmSystemPrompt}
             onLlmSystemPromptChange={onLlmSystemPromptChange}
+            includeEditorContextInLlm={includeEditorContextInLlm}
+            onToggleIncludeEditorContextInLlm={onToggleIncludeEditorContextInLlm}
+            canToggleIncludeEditorContextInLlm={Boolean(currentFileId)}
           />
         ) : null}
 
@@ -461,11 +473,13 @@ const ParameterPanelContent = ({
             isLoading={isLoading}
             hasDocumentOpen={Boolean(currentFileId)}
             isConfigOpen={isAiActionsConfigOpen}
+            includeEditorContextInLlm={includeEditorContextInLlm}
             aiActionsLlmModel={aiActionsLlmModel}
             aiActionsLlmTemperature={aiActionsLlmTemperature}
             aiActionsLlmMaxOutputTokens={aiActionsLlmMaxOutputTokens}
             aiActionsLlmVerbosity={aiActionsLlmVerbosity}
             aiActionsLlmEffort={aiActionsLlmEffort}
+            aiActionSystemPrompts={aiActionSystemPrompts}
             aiActionsSelectedVectorStoreId={aiActionsSelectedVectorStoreId}
             aiActionVectorStoreOptions={aiActionVectorStoreOptions}
             uploadedChatFiles={uploadedChatFiles}
@@ -480,6 +494,8 @@ const ParameterPanelContent = ({
             onAiActionsLlmMaxOutputTokensChange={onAiActionsLlmMaxOutputTokensChange}
             onAiActionsLlmVerbosityChange={onAiActionsLlmVerbosityChange}
             onAiActionsLlmEffortChange={onAiActionsLlmEffortChange}
+            onAiActionSystemPromptChange={onAiActionSystemPromptChange}
+            onToggleIncludeEditorContextInLlm={onToggleIncludeEditorContextInLlm}
             onAiActionsSelectedVectorStoreIdChange={(value) => onAiActionsSelectedVectorStoreIdsChange(value ? [value] : [])}
             onUploadFiles={onUploadSourceFiles}
             onRemoveUploadedFile={onRemoveUploadedChatFile}
@@ -536,6 +552,8 @@ const ParameterPanelContent = ({
             isRunningVerbeteSearch={isRunningVerbeteSearch}
             verbetografiaTitle={verbetografiaTitle}
             verbetografiaSpecialty={verbetografiaSpecialty}
+            hasDocumentOpen={Boolean(currentFileId)}
+            includeEditorContextInLlm={includeEditorContextInLlm}
             isRunningVerbetografiaOpenTable={isRunningVerbetografiaOpenTable}
             isRunningVerbeteDefinologia={isRunningVerbeteDefinologia}
             isRunningVerbeteFraseEnfatica={isRunningVerbeteFraseEnfatica}
@@ -546,6 +564,7 @@ const ParameterPanelContent = ({
             aiActionsLlmMaxOutputTokens={aiActionsLlmMaxOutputTokens}
             aiActionsLlmVerbosity={aiActionsLlmVerbosity}
             aiActionsLlmEffort={aiActionsLlmEffort}
+            aiActionSystemPrompts={aiActionSystemPrompts}
             aiActionsSelectedVectorStoreId={aiActionsSelectedVectorStoreId}
             aiActionVectorStoreOptions={aiActionVectorStoreOptions}
             uploadedChatFiles={uploadedChatFiles}
@@ -602,6 +621,8 @@ const ParameterPanelContent = ({
             onAiActionsLlmMaxOutputTokensChange={onAiActionsLlmMaxOutputTokensChange}
             onAiActionsLlmVerbosityChange={onAiActionsLlmVerbosityChange}
             onAiActionsLlmEffortChange={onAiActionsLlmEffortChange}
+            onAiActionSystemPromptChange={onAiActionSystemPromptChange}
+            onToggleIncludeEditorContextInLlm={onToggleIncludeEditorContextInLlm}
             onAiActionsSelectedVectorStoreIdChange={(value) => onAiActionsSelectedVectorStoreIdsChange(value ? [value] : [])}
             onUploadFiles={onUploadSourceFiles}
             onRemoveUploadedFile={onRemoveUploadedChatFile}

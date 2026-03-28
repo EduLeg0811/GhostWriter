@@ -6,7 +6,7 @@ export const BOOK_OPTION_LABELS: Record<string, string> = BOOK_LABELS;
 
 export const ACTION_PANEL_BUTTONS_BY_SCOPE: Record<AiPanelScope, AiActionId[]> = {
   actions: ["define", "synonyms", "pensatas"],
-  rewriting: ["epigraph", "rewrite", "summarize"],
+  rewriting: ["rewrite", "summarize", "epigraph"],
   translation: ["translate"],
 };
 
@@ -14,7 +14,7 @@ export const APP_PANEL_BUTTONS_BY_SCOPE: Record<AppPanelScope, AppActionId[]> = 
   bibliografia: ["app1", "app2", "app3", "app6"],
   busca_termos: ["app4", "app5"],
   semantic_search: ["app12"],
-  verbetografia: ["app8", "app9", "app10", "app11", "app7"],
+  verbetografia: ["app8", "app9", "app10", "app11"],
 };
 
 export const MACRO_PANEL_BUTTONS: MacroActionId[] = ["macro1", "macro2"];
@@ -57,7 +57,7 @@ export const parameterAppMeta: Record<AppActionId, { title: string; description:
   app4: { title: "Busca em Livros", description: "Busca termos nos livros de Waldo Vieira." },
   app5: { title: "Busca em Verbetes", description: "Busca termos nos verbetes em geral." },
   app6: { title: "Bibliografia Externa", description: "Busca referências externas na internet." },
-  app12: { title: "Semantic Search", description: "Busca semântica nas bases vetoriais disponíveis." },
+  app12: { title: "Semantic Search", description: "Busca semântica nas bases vetoriais." },
   app7: { title: "Tabela Automatizada", description: "Abre tabela Word e editor HTML." },
   app8: { title: "Definologia", description: "Gera Definologia do verbete." },
   app9: { title: "Sinonimologia", description: "Gera Sinonimologia do verbete." },
@@ -72,7 +72,7 @@ export const parameterMacroMeta: Record<MacroActionId, { title: string; descript
 
 export const parameterActionMeta: Record<AiActionId, { title: string; description: string }> = {
   define: { title: "Definir", description: "Definologia conscienciológica." },
-  synonyms: { title: "Sinonímia", description: "Sinonimologia." },
+  synonyms: { title: "Sinonímia", description: "Lista de sinônimos." },
   epigraph: { title: "Epígrafe", description: "Sugere epígrafe." },
   rewrite: { title: "Reescrever", description: "Melhora clareza e fluidez." },
   summarize: { title: "Resumir", description: "Síntese concisa." },
@@ -112,7 +112,7 @@ export const getParameterPanelHeaderMeta = (
       if (target.id === "app12") return { title: "Semantic Search", description: "Busca por afinidade semantica" };
       if (target.id === "app7") return { title: "Tabela Automatizada", description: "Abre tabela Word e editor HTML" };
       if (appScope === "busca_termos") return { title: "Lexical Search", description: "Busca lexica nos livros e verbetes" };
-      if (appScope === "verbetografia") return { title: "Verbetografia IA", description: "Tabela automatizada de verbete" };
+      if (appScope === "verbetografia") return { title: "Seções do Verbete", description: "Escreve seções com auxílio da IA" };
       return { title: "Bibliografia", description: "Busca as referencias bibliograficas" };
     default:
       return { title: "Parameters", description: "" };

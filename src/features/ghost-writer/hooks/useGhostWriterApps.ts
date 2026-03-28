@@ -3,6 +3,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { biblioExternaApp, biblioGeralApp, insertRefBookMacro, insertRefVerbeteApp, listLexicalBooksApp, listSemanticIndexesApp, openVerbetografiaTableApp, randomPensataApp, searchLexicalBookApp, searchVerbeteApp, semanticSearchPensatasApp } from "@/lib/backend-api";
 import { executeLLM, buildPensataAnalysisPrompt, buildVerbeteDefinologiaPrompt, buildVerbeteFatologiaPrompt, buildVerbeteFraseEnfaticaPrompt, buildVerbeteSinonimologiaPrompt } from "@/lib/openai";
 import { BOOK_LABELS, type BookCode } from "@/lib/bookCatalog";
+import { applySystemPromptOverride, getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
 import { normalizeIdList } from "@/features/ghost-writer/config/metadata";
 import type { AIResponse, AppActionId, AppPanelScope, LlmLogEntry, ParameterPanelTarget, SemanticIndexOption } from "@/features/ghost-writer/types";
 import { buildLexicalSearchHistoryResponsePayload, buildSemanticSearchHistoryResponsePayload } from "@/features/ghost-writer/utils/historySearchResponses";
@@ -74,6 +75,7 @@ interface UseGhostWriterAppsParams {
   biblioExternaLlmVerbosity: string;
   biblioExternaLlmEffort: string;
   biblioExternaLlmSystemPrompt: string;
+  aiActionSystemPrompts: Partial<Record<ActionSystemPromptId, string>>;
   documentText: string;
   openAiReady: boolean;
   isLoading: boolean;
@@ -194,6 +196,7 @@ const useGhostWriterApps = ({
   biblioExternaLlmVerbosity,
   biblioExternaLlmEffort,
   biblioExternaLlmSystemPrompt,
+  aiActionSystemPrompts,
   documentText,
   openAiReady,
   isLoading,
@@ -538,7 +541,10 @@ const useGhostWriterApps = ({
     try {
       const { vectorStoreIds, inputFileIds, editorContextTruncated, editorPlainTextContext } = await buildVerbetografiaQueryContext();
       const query = `Escreva uma Definologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
-      const messages = buildVerbeteDefinologiaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm);
+      const messages = applySystemPromptOverride(
+        buildVerbeteDefinologiaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm),
+        getActionSystemPrompt(aiActionSystemPrompts, "app8"),
+      );
       const result = (await executeAiActionsLLMWithLog({ messages, systemPrompt: "", vectorStoreIds, inputFileIds })).content.trim();
       addResponse("app_verbete_definologia", `Título: ${title} | Especialidade: ${specialty}`, result || "Sem conteudo retornado pela IA.");
     } catch (err: unknown) {
@@ -548,7 +554,7 @@ const useGhostWriterApps = ({
     } finally {
       setIsRunningVerbeteDefinologia(false);
     }
-  }, [addResponse, backendNotReadyMessage, buildVerbetografiaQueryContext, executeAiActionsLLMWithLog, includeEditorContextInLlm, openAiReady, setIsRunningVerbeteDefinologia, toast, verbetografiaSpecialty, verbetografiaTitle]);
+  }, [addResponse, aiActionSystemPrompts, backendNotReadyMessage, buildVerbetografiaQueryContext, executeAiActionsLLMWithLog, includeEditorContextInLlm, openAiReady, setIsRunningVerbeteDefinologia, toast, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunVerbeteFraseEnfatica = useCallback(async () => {
     if (!openAiReady) {
@@ -570,7 +576,10 @@ const useGhostWriterApps = ({
     try {
       const { vectorStoreIds, inputFileIds, editorContextTruncated, editorPlainTextContext } = await buildVerbetografiaQueryContext();
       const query = `Escreva uma Frase Enfática do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
-      const messages = buildVerbeteFraseEnfaticaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm);
+      const messages = applySystemPromptOverride(
+        buildVerbeteFraseEnfaticaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm),
+        getActionSystemPrompt(aiActionSystemPrompts, "app11"),
+      );
       const result = (await executeAiActionsLLMWithLog({ messages, systemPrompt: "", vectorStoreIds, inputFileIds })).content.trim();
       addResponse("app_verbete_frase_enfatica", `Título: ${title} | Especialidade: ${specialty}`, result || "Sem conteudo retornado pela IA.");
     } catch (err: unknown) {
@@ -580,7 +589,7 @@ const useGhostWriterApps = ({
     } finally {
       setIsRunningVerbeteFraseEnfatica(false);
     }
-  }, [addResponse, backendNotReadyMessage, buildVerbetografiaQueryContext, executeAiActionsLLMWithLog, includeEditorContextInLlm, openAiReady, setIsRunningVerbeteFraseEnfatica, toast, verbetografiaSpecialty, verbetografiaTitle]);
+  }, [addResponse, aiActionSystemPrompts, backendNotReadyMessage, buildVerbetografiaQueryContext, executeAiActionsLLMWithLog, includeEditorContextInLlm, openAiReady, setIsRunningVerbeteFraseEnfatica, toast, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunVerbeteSinonimologia = useCallback(async () => {
     if (!openAiReady) {
@@ -602,7 +611,10 @@ const useGhostWriterApps = ({
     try {
       const { vectorStoreIds, inputFileIds, editorContextTruncated, editorPlainTextContext } = await buildVerbetografiaQueryContext();
       const query = `Escreva uma Sinonimologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
-      const messages = buildVerbeteSinonimologiaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm);
+      const messages = applySystemPromptOverride(
+        buildVerbeteSinonimologiaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm),
+        getActionSystemPrompt(aiActionSystemPrompts, "app9"),
+      );
       const result = (await executeAiActionsLLMWithLog({ messages, systemPrompt: "", vectorStoreIds, inputFileIds })).content.trim();
       addResponse("app_verbete_sinonimologia", `Título: ${title} | Especialidade: ${specialty}`, result || "Sem conteudo retornado pela IA.");
     } catch (err: unknown) {
@@ -612,7 +624,7 @@ const useGhostWriterApps = ({
     } finally {
       setIsRunningVerbeteSinonimologia(false);
     }
-  }, [addResponse, backendNotReadyMessage, buildVerbetografiaQueryContext, executeAiActionsLLMWithLog, includeEditorContextInLlm, openAiReady, setIsRunningVerbeteSinonimologia, toast, verbetografiaSpecialty, verbetografiaTitle]);
+  }, [addResponse, aiActionSystemPrompts, backendNotReadyMessage, buildVerbetografiaQueryContext, executeAiActionsLLMWithLog, includeEditorContextInLlm, openAiReady, setIsRunningVerbeteSinonimologia, toast, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunVerbeteFatologia = useCallback(async () => {
     if (!openAiReady) {
@@ -634,7 +646,10 @@ const useGhostWriterApps = ({
     try {
       const { vectorStoreIds, inputFileIds, editorContextTruncated, editorPlainTextContext } = await buildVerbetografiaQueryContext();
       const query = `Escreva uma Fatologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
-      const messages = buildVerbeteFatologiaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm);
+      const messages = applySystemPromptOverride(
+        buildVerbeteFatologiaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm),
+        getActionSystemPrompt(aiActionSystemPrompts, "app10"),
+      );
       const result = (await executeAiActionsLLMWithLog({ messages, systemPrompt: "", vectorStoreIds, inputFileIds })).content.trim();
       addResponse("app_verbete_fatologia", `Título: ${title} | Especialidade: ${specialty}`, result || "Sem conteudo retornado pela IA.");
     } catch (err: unknown) {
@@ -644,7 +659,7 @@ const useGhostWriterApps = ({
     } finally {
       setIsRunningVerbeteFatologia(false);
     }
-  }, [addResponse, backendNotReadyMessage, buildVerbetografiaQueryContext, executeAiActionsLLMWithLog, includeEditorContextInLlm, openAiReady, setIsRunningVerbeteFatologia, toast, verbetografiaSpecialty, verbetografiaTitle]);
+  }, [addResponse, aiActionSystemPrompts, backendNotReadyMessage, buildVerbetografiaQueryContext, executeAiActionsLLMWithLog, includeEditorContextInLlm, openAiReady, setIsRunningVerbeteFatologia, toast, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleSelectVerbetografiaAction = useCallback((type: "app7" | "app8" | "app11" | "app9" | "app10") => {
     setAppPanelScope("verbetografia");

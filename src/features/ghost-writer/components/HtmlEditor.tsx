@@ -292,7 +292,7 @@ const HtmlEditor = ({
           type="button"
           size="icon"
           variant="ghost"
-          className={`h-8 w-8 ${includeEditorContextInLlm ? "bg-green-200 text-blue-700 ring-1 ring-green-400/70 hover:bg-green-300 hover:text-blue-800" : "text-muted-foreground hover:text-foreground"}`}
+          className={`h-8 w-8 ${includeEditorContextInLlm ? "bg-pink-200 text-pink-800 ring-1 ring-pink-300/80 hover:bg-pink-300 hover:text-pink-900" : "bg-transparent text-muted-foreground hover:bg-white/30 hover:text-foreground"}`}
           title={canToggleIncludeEditorContextInLlm ? (includeEditorContextInLlm ? "Desativar envio do texto do editor para a LLM" : "Ativar envio do texto do editor para a LLM") : "Disponivel apenas com documento aberto no editor"}
           onClick={onToggleIncludeEditorContextInLlm}
           disabled={!canToggleIncludeEditorContextInLlm}
@@ -318,4 +318,3 @@ const HtmlEditor = ({
 };
 
 export default HtmlEditor;
-

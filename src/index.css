@@ -125,17 +125,17 @@
   /* Ajuste de listas compactas no editor: 0.05em reduz o espacamento vertical ao minimo visual sem colar as linhas; 1.05 define altura de linha minima legivel para itens de lista. */
   margin: 0.05em 0 0.05em 1.25em;
   list-style: revert;
-  line-height: 1.05;
+  line-height: 1.2;
 }
 
 .ProseMirror li {
   margin: 0.05em 0;
-  line-height: 1.05;
+  line-height: 1.2;
 }
 
 .ProseMirror p.manual-tight-list-item {
   margin: 0.05em 0;
-  line-height: 1.05;
+  line-height: 1.2;
 }
 
 .ProseMirror p.tight-list-intro {
