@@ -14,6 +14,7 @@ export interface HistorySearchCardInput {
 
 export interface HistorySearchRenderOptions {
   applyNumbering: boolean;
+  showSourceLine?: boolean;
   showMetadata: boolean;
 }
 
@@ -213,7 +214,7 @@ export function renderHistorySearchCardsHtml(markdown: string, options: HistoryS
     wrapper.style.marginBottom = "0.2em";
 
     const mainLine = doc.createElement("div");
-    const mainLineHtml = (itemLines[0] || "").replaceAll(MAIN_LINE_BREAK_TOKEN, "<br/>").trim();
+    const mainLineHtml = (itemLines[0] || "").split(MAIN_LINE_BREAK_TOKEN).join("<br/>").trim();
     if (options.applyNumbering) {
       const normalizedIndex = shouldPad && index + 1 < 10 ? `0${index + 1}` : String(index + 1);
       const numberHtml = `<strong style="color:#1d4ed8;font-weight:700;">${escapeAttribute(normalizedIndex)}.</strong>&nbsp;&nbsp;`;
@@ -228,14 +229,16 @@ export function renderHistorySearchCardsHtml(markdown: string, options: HistoryS
     mainLine.style.marginBottom = "0.15em";
     wrapper.appendChild(mainLine);
 
-    const sourceRefLine = doc.createElement("div");
-    sourceRefLine.innerHTML = itemLines[1] || buildSourceRefLine({});
-    applySearchSubLineStyle(sourceRefLine, options.applyNumbering);
-    sourceRefLine.style.marginTop = "0";
-    sourceRefLine.style.marginBottom = "0.1em";
-    sourceRefLine.style.fontSize = "0.9em";
-    sourceRefLine.style.color = "rgba(115,115,115,0.5)";
-    wrapper.appendChild(sourceRefLine);
+    if (options.showSourceLine !== false) {
+      const sourceRefLine = doc.createElement("div");
+      sourceRefLine.innerHTML = itemLines[1] || buildSourceRefLine({});
+      applySearchSubLineStyle(sourceRefLine, options.applyNumbering);
+      sourceRefLine.style.marginTop = "0";
+      sourceRefLine.style.marginBottom = "0.1em";
+      sourceRefLine.style.fontSize = "0.9em";
+      sourceRefLine.style.color = "rgba(115,115,115,0.5)";
+      wrapper.appendChild(sourceRefLine);
+    }
 
     const metadataLineHtml = itemLines.slice(2).join("<br/>").trim();
     if (options.showMetadata && metadataLineHtml) {
@@ -245,7 +248,7 @@ export function renderHistorySearchCardsHtml(markdown: string, options: HistoryS
       metadataLine.style.marginTop = "0";
       metadataLine.style.marginBottom = "0";
       metadataLine.style.fontSize = "0.9em";
-      metadataLine.style.color = "#15803d";
+      metadataLine.style.color = "#ff0000ae";
       wrapper.appendChild(metadataLine);
     }
 

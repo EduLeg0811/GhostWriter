@@ -2,7 +2,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Loader2, Play, X } from "lucide-react";
-import { Textarea } from "./ui/textarea";
+import { Textarea } from "@/components/ui/textarea";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 import { BOOK_ORDER, BOOK_LABELS, type BookCode } from "@/lib/bookCatalog";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";

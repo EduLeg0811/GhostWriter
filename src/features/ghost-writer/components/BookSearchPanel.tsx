@@ -3,31 +3,21 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Loader2, Play, X } from "lucide-react";
-import { Textarea } from "./ui/textarea";
-import { Input } from "./ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
+import { BOOK_OPTION_LABELS } from "@/features/ghost-writer/config/metadata";
 
-interface SemanticIndexOption {
-  id: string;
-  label: string;
-  sourceRows: number;
-  model: string;
-  dimensions: number;
-  embeddingDtype: string;
-}
-
-interface SemanticSearchPanelProps {
+interface BookSearchPanelProps {
   title: string;
   description: string;
-  selectedIndexId: string;
-  availableIndexes: SemanticIndexOption[];
-  isLoadingIndexes: boolean;
-  onSelectedIndexChange: (value: string) => void;
-  query: string;
+  bookOptions: string[];
+  selectedBook: string;
+  term: string;
   maxResults: number;
-  onQueryChange: (value: string) => void;
+  onSelectBook: (value: string) => void;
+  onTermChange: (value: string) => void;
   onMaxResultsChange: (value: number) => void;
   onRunSearch: () => void;
   isRunning: boolean;
@@ -35,35 +25,38 @@ interface SemanticSearchPanelProps {
   showPanelChrome?: boolean;
 }
 
-const SemanticSearchPanel = ({
+const BookSearchPanel = ({
   title,
   description,
-  selectedIndexId,
-  availableIndexes,
-  isLoadingIndexes,
-  onSelectedIndexChange,
-  query,
+  bookOptions,
+  selectedBook,
+  term,
   maxResults,
-  onQueryChange,
+  onSelectBook,
+  onTermChange,
   onMaxResultsChange,
   onRunSearch,
   isRunning,
   onClose,
   showPanelChrome = true,
-}: SemanticSearchPanelProps) => {
-  const queryTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const selectedIndex = availableIndexes.find((item) => item.id === selectedIndexId) ?? null;
+}: BookSearchPanelProps) => {
+  const termTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const resizeQueryTextarea = () => {
-    const el = queryTextareaRef.current;
+  const resizeTermTextarea = () => {
+    const el = termTextareaRef.current;
     if (!el) return;
-    el.style.height = "72px";
+    el.style.height = "36px";
     el.style.height = `${el.scrollHeight}px`;
   };
 
   useEffect(() => {
-    resizeQueryTextarea();
-  }, [query]);
+    resizeTermTextarea();
+  }, [term]);
+
+  const orderedBookOptions = [
+    ...Object.keys(BOOK_OPTION_LABELS).filter((key) => bookOptions.includes(key)),
+    ...bookOptions.filter((option) => !(option in BOOK_OPTION_LABELS)),
+  ];
 
   const content = (
     <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
@@ -78,41 +71,35 @@ const SemanticSearchPanel = ({
         <Separator />
 
         <div className="space-y-2">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Base Vetorial</Label>
-          <Select value={selectedIndexId} onValueChange={onSelectedIndexChange} disabled={isLoadingIndexes || availableIndexes.length <= 0}>
-            <SelectTrigger className="h-9 bg-white text-xs">
-              <SelectValue placeholder={isLoadingIndexes ? "Carregando bases..." : "Selecione uma base"} />
-            </SelectTrigger>
-            <SelectContent>
-              {availableIndexes.map((item) => (
-                <SelectItem key={item.id} value={item.id} className="text-xs">
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {selectedIndex ? (
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
-              {selectedIndex.sourceRows} itens | {selectedIndex.model} | {selectedIndex.dimensions} dims | {selectedIndex.embeddingDtype}
-            </p>
-          ) : (
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
-              {isLoadingIndexes ? "Carregando indices semanticos disponiveis." : "Nenhum indice semantico disponivel."}
-            </p>
-          )}
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Livro</Label>
+          <div className="space-y-2">
+            {orderedBookOptions.map((option) => (
+              <label key={option} className="flex cursor-pointer items-center gap-2 text-xs text-foreground">
+                <input
+                  type="radio"
+                  name="book-search"
+                  value={option}
+                  checked={selectedBook === option}
+                  onChange={() => onSelectBook(option)}
+                />
+                <span>{BOOK_OPTION_LABELS[option] ?? option}</span>
+              </label>
+            ))}
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Query</Label>
+        <div className="flex items-center gap-2">
+          <Label className="w-16 shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Termo</Label>
           <Textarea
-            ref={queryTextareaRef}
-            className="min-h-[72px] resize-none rounded-md border border-input bg-white px-3 py-2 text-xs leading-relaxed text-foreground"
-            rows={3}
-            value={query}
+            ref={termTextareaRef}
+            className="h-8 min-h-8 flex-1 resize-none overflow-hidden rounded-md border border-input bg-white px-3 py-1 text-xs leading-relaxed text-foreground"
+            rows={1}
+            value={term}
             onChange={(e) => {
-              onQueryChange(e.target.value);
-              resizeQueryTextarea();
+              onTermChange(e.target.value);
+              resizeTermTextarea();
             }}
+            //placeholder="Digite uma palavra ou termo"
           />
         </div>
 
@@ -121,11 +108,11 @@ const SemanticSearchPanel = ({
           <Input
             type="number"
             min={1}
-            max={50}
+            max={100}
             value={String(maxResults)}
             onChange={(e) => {
-              const raw = Number.parseInt(e.target.value || "10", 10);
-              const next = Number.isFinite(raw) ? Math.max(1, Math.min(50, raw)) : 10;
+              const raw = Number.parseInt(e.target.value || "1", 10);
+              const next = Number.isFinite(raw) ? Math.max(1, Math.min(100, raw)) : 1;
               onMaxResultsChange(next);
             }}
             className="h-8 bg-white !text-xs text-right"
@@ -138,7 +125,7 @@ const SemanticSearchPanel = ({
             size="sm"
             className={primaryActionButtonClass}
             onClick={onRunSearch}
-            disabled={isRunning || !selectedIndexId}
+            disabled={isRunning}
           >
             {isRunning ? (
               <>
@@ -172,4 +159,4 @@ const SemanticSearchPanel = ({
   );
 };
 
-export default SemanticSearchPanel;
+export default BookSearchPanel;

@@ -90,6 +90,26 @@ describe("historySearchCards", () => {
     expect(html).not.toContain("#22");
   });
 
+  it("hides source line when source toggle is disabled and keeps metadata when enabled", () => {
+    const markdown = buildHistorySearchCardsMarkdown([
+      {
+        textParagraphs: ["Texto"],
+        metadata: {
+          sourcebook: "EC",
+          title: "Verbete",
+          area: "Paradireitologia",
+          number: "22",
+        },
+      },
+    ]);
+
+    const html = renderHistorySearchCardsHtml(markdown, { applyNumbering: false, showSourceLine: false, showMetadata: true });
+
+    expect(html).not.toContain("<strong>EC</strong>; Verbete");
+    expect(html).toContain("area: Paradireitologia");
+    expect(html).toContain("#22");
+  });
+
   it("pads numbering with leading zero when there are ten or more items", () => {
     const markdown = buildHistorySearchCardsMarkdown(
       Array.from({ length: 10 }, (_, index) => ({

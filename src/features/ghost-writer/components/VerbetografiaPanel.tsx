@@ -1,21 +1,26 @@
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Loader2, Play, Settings, X } from "lucide-react";
-import { primaryActionButtonClass } from "@/styles/buttonStyles";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
+import { primaryActionButtonClass } from "@/styles/buttonStyles";
 
 interface VerbetografiaPanelProps {
   title: string;
   description: string;
   verbeteTitle: string;
   specialty: string;
+  actionLabel?: string;
+  onRun?: () => void;
+  isRunning?: boolean;
+  showActionButton?: boolean;
+  secondaryActionTitle?: string;
+  secondaryActionLabel?: string;
+  onSecondaryRun?: () => void;
+  isSecondaryRunning?: boolean;
+  showSecondaryActionButton?: boolean;
   onVerbeteTitleChange: (value: string) => void;
   onSpecialtyChange: (value: string) => void;
-  onRunAction: () => void;
-  actionLabelIdle?: string;
-  actionLabelRunning?: string;
-  isRunning: boolean;
   showConfigButton?: boolean;
   onToggleConfig?: () => void;
   isConfigOpen?: boolean;
@@ -28,18 +33,26 @@ const VerbetografiaPanel = ({
   description,
   verbeteTitle,
   specialty,
+  actionLabel = title,
+  onRun,
+  isRunning = false,
+  showActionButton = false,
+  secondaryActionTitle,
+  secondaryActionLabel,
+  onSecondaryRun,
+  isSecondaryRunning = false,
+  showSecondaryActionButton = false,
   onVerbeteTitleChange,
   onSpecialtyChange,
-  onRunAction,
-  actionLabelIdle = "Abrir Tabela",
-  actionLabelRunning = "Abrindo",
-  isRunning,
   showConfigButton = false,
   onToggleConfig,
   isConfigOpen = false,
   onClose,
   showPanelChrome = true,
 }: VerbetografiaPanelProps) => {
+  const canRun = Boolean(verbeteTitle.trim() && specialty.trim() && onRun);
+  const canRunSecondary = Boolean(verbeteTitle.trim() && specialty.trim() && onSecondaryRun);
+
   const content = (
     <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
       <div className="space-y-4">
@@ -84,25 +97,59 @@ const VerbetografiaPanel = ({
           />
         </div>
 
-        <Button
-          variant="secondary"
-          size="sm"
-          className={primaryActionButtonClass}
-          onClick={onRunAction}
-          disabled={isRunning}
-        >
-          {isRunning ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin text-black relative z-10" />
-              <span className="relative z-10 text-blue-500">{actionLabelRunning}</span>
-            </>
-          ) : (
-            <>
-              <Play className="mr-2 h-4 w-4 text-black relative z-10" />
-              <span className="relative z-10 text-blue-500">{actionLabelIdle}</span>
-            </>
-          )}
-        </Button>
+        {showActionButton ? (
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</p>
+            <div className="grid grid-cols-1 gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                className={primaryActionButtonClass}
+                onClick={onRun}
+                disabled={!canRun || isRunning}
+              >
+                {isRunning ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin text-black relative z-10" />
+                    <span className="relative z-10 text-blue-500">{actionLabel}</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-4 w-4 text-black relative z-10" />
+                    <span className="relative z-10 text-blue-500">{actionLabel}</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {showSecondaryActionButton ? (
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{secondaryActionTitle}</p>
+            <div className="grid grid-cols-1 gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                className={primaryActionButtonClass}
+                onClick={onSecondaryRun}
+                disabled={!canRunSecondary || isSecondaryRunning}
+              >
+                {isSecondaryRunning ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin text-black relative z-10" />
+                    <span className="relative z-10 text-blue-500">{secondaryActionLabel || secondaryActionTitle}</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-4 w-4 text-black relative z-10" />
+                    <span className="relative z-10 text-blue-500">{secondaryActionLabel || secondaryActionTitle}</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

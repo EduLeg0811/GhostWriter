@@ -22,6 +22,7 @@ interface AiActionParametersPanelProps {
   selectedLanguage?: string;
   onSelectedLanguageChange?: (value: string) => void;
   showApplyButton?: boolean;
+  applyButtonDisabled?: boolean;
   showConfigButton?: boolean;
   onToggleConfig?: () => void;
   isConfigOpen?: boolean;
@@ -46,6 +47,7 @@ const AiActionParametersPanel = ({
   selectedLanguage = "",
   onSelectedLanguageChange,
   showApplyButton = true,
+  applyButtonDisabled = false,
   showConfigButton = false,
   onToggleConfig,
   isConfigOpen = false,
@@ -78,12 +80,34 @@ const AiActionParametersPanel = ({
     resizeQueryTextarea();
   }, [queryText]);
 
+  const applyButton = showApplyButton ? (
+    <Button
+      variant="secondary"
+      size="sm"
+      className={primaryActionButtonClass}
+      onClick={onApply}
+      disabled={isLoading || applyButtonDisabled}
+    >
+      {isLoading ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin text-black relative z-10" />
+          <span className="relative z-10 text-blue-500">{title}</span>
+        </>
+      ) : (
+        <>
+          <Play className="mr-2 h-4 w-4 text-black relative z-10" />
+          <span className="relative z-10 text-blue-500">{title}</span>
+        </>
+      )}
+    </Button>
+  ) : null;
+
   const content = (
     <div className="flex h-full flex-col">
       <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
-        <div className="space-y-5">
+        <div className="space-y-4">
           {showConfigButton ? (
-            <div className="flex justify-end">
+            <div className="mb-1 flex justify-end">
               <button
                 type="button"
                 onClick={() => void onToggleConfig?.()}
@@ -95,7 +119,6 @@ const AiActionParametersPanel = ({
               </button>
             </div>
           ) : null}
-
           {showPanelChrome ? (
             <div className="space-y-1">
               <p className="text-sm font-semibold text-foreground">{title}</p>
@@ -104,12 +127,12 @@ const AiActionParametersPanel = ({
           ) : null}
 
           {showLanguageSelect && (
-            <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Idioma de Saida</Label>
+            <div className="flex items-center gap-2">
+              <Label className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Idioma</Label>
               <select
                 value={selectedLanguage}
                 onChange={(e) => onSelectedLanguageChange?.(e.target.value)}
-                className="h-8 w-full rounded-md border border-border bg-white px-3 text-xs outline-none focus:border-primary"
+                className="ml-auto h-8 w-[30ch] rounded-md border border-border bg-white px-3 text-xs outline-none focus:border-primary"
               >
                 {languageOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -122,7 +145,7 @@ const AiActionParametersPanel = ({
 
           {typeof onQueryTextChange === "function" && (
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Query</Label>
+              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Query</Label>
               <textarea
                 ref={queryTextareaRef}
                 rows={3}
@@ -135,28 +158,6 @@ const AiActionParametersPanel = ({
                 className="min-h-[80px] w-full overflow-hidden resize-none rounded-md border border-border bg-white px-3 py-2 text-xs outline-none focus:border-primary"
               />
             </div>
-          )}
-
-          {showApplyButton && (
-            <Button
-              variant="secondary"
-              size="sm"
-              className={primaryActionButtonClass}
-              onClick={onApply}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin text-black relative z-10" />
-                  <span className="relative z-10 text-blue-500">{title}</span>
-                </>
-              ) : (
-                <>
-                  <Play className="mr-2 h-4 w-4 text-black relative z-10" />
-                  <span className="relative z-10 text-blue-500">{title}</span>
-                </>
-              )}
-            </Button>
           )}
 
           {showActionTextArea ? (
@@ -186,6 +187,8 @@ const AiActionParametersPanel = ({
               />
             </div>
           ) : null}
+
+          {applyButton}
         </div>
       </div>
     </div>

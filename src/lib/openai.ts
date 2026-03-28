@@ -283,9 +283,10 @@ export function buildVerbeteDefinologiaPrompt(
     {
       role: "system",
       content: `Voce e um redator especializado em Conscienciologia para escrita de verbetes. 
-      Tarefa: escrever uma Definologia objetiva e tecnicamente adequada ao tema solicitado, com base na seção 'Definologia' dos verbetes da Enciclopédia da Conscienciologia.
+      Tarefa: escrever uma Definologia objetiva e tecnicamente adequada ao título enviado, com base na seção 'Definologia' dos verbetes da Enciclopédia da Conscienciologia.
       Regras:
-      1) Forneça **uma definição de um termo** exclusivamente no contexto da Conscienciologia.
+      1) Forneça uma definição de um TITULO exclusivamente no contexto da Conscienciologia.
+      2) Concentre o escopo na área da ESPECIALIDADE indicada, no contexto da Conscienciologia.
       2) Nao invente fontes, citacoes ou fatos nao sustentados pelo contexto.
       3) Use termos e expressões já existentes nos verbetes da Enciclopédia da Conscienciologia.
       4) Se o contexto for insuficiente, explicite a limitacao de forma breve e ainda proponha a melhor Definologia possivel.
@@ -293,7 +294,7 @@ export function buildVerbeteDefinologiaPrompt(
       6) Entregue apenas o texto final da Definologia, sem metacomentarios.
 
       Formato final de saída: 
-     '**Definologia.** O *{termo}* é ...' para termos masculinos; e '**Definologia.** A *{termo}* é ...' para termos femininos.
+     '**Definologia.** O *{título}* é ...' para termos masculinos; e '**Definologia.** A *{título}* é ...' para termos femininos.
       `,
     },
   ];

@@ -13,3 +13,13 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: () => {},
   }),
 });
+
+Object.defineProperty(HTMLMediaElement.prototype, "play", {
+  writable: true,
+  value: () => Promise.resolve(),
+});
+
+Object.defineProperty(HTMLMediaElement.prototype, "pause", {
+  writable: true,
+  value: () => {},
+});

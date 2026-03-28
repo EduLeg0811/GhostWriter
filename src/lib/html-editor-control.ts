@@ -286,6 +286,7 @@ export class HtmlEditorControlApi {
     if (!htmlContent && !textContent) throw new Error("Conteudo vazio para inserir.");
 
     const contentToInsert = htmlContent ? applyBlueColorToHtml(htmlContent) : convertPlainTextToBlueHtml(textContent);
+    const wrappedContentToInsert = `<p> </p>${contentToInsert}<p> </p>`;
     const { state } = this.editor;
     const selection = state.selection;
     const hasSelectionAnchor =
@@ -298,10 +299,8 @@ export class HtmlEditorControlApi {
     this.editor
       .chain()
       .focus(insertAt)
-      // Insere 1 linha em branco antes e depois do conteudo na posicao atual da selecao/cursor.
-      .insertContent("<p> </p>")
-      .insertContent(contentToInsert)
-      .insertContent("<p> </p>")
+      // Insere o bloco completo de uma vez para preservar multiplos paragrafos/cards no append.
+      .insertContent(wrappedContentToInsert)
       .run();
     this.emitSelectionChange();
   }

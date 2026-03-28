@@ -1,28 +1,25 @@
-/* eslint-disable react-refresh/only-export-components */
 import { useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Loader2, Play, X } from "lucide-react";
-import { Textarea } from "./ui/textarea";
-import { Input } from "./ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
-import { BOOK_LABELS } from "@/lib/bookCatalog";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
+import type { SemanticIndexOption } from "@/features/ghost-writer/types";
 
-
-
-export const BOOK_OPTION_LABELS: Record<string, string> = BOOK_LABELS;
-
-interface BookSearchPanelProps {
+interface SemanticSearchPanelProps {
   title: string;
   description: string;
-  bookOptions: string[];
-  selectedBook: string;
-  term: string;
+  selectedIndexId: string;
+  availableIndexes: SemanticIndexOption[];
+  isLoadingIndexes: boolean;
+  onSelectedIndexChange: (value: string) => void;
+  query: string;
   maxResults: number;
-  onSelectBook: (value: string) => void;
-  onTermChange: (value: string) => void;
+  onQueryChange: (value: string) => void;
   onMaxResultsChange: (value: number) => void;
   onRunSearch: () => void;
   isRunning: boolean;
@@ -30,38 +27,35 @@ interface BookSearchPanelProps {
   showPanelChrome?: boolean;
 }
 
-const BookSearchPanel = ({
+const SemanticSearchPanel = ({
   title,
   description,
-  bookOptions,
-  selectedBook,
-  term,
+  selectedIndexId,
+  availableIndexes,
+  isLoadingIndexes,
+  onSelectedIndexChange,
+  query,
   maxResults,
-  onSelectBook,
-  onTermChange,
+  onQueryChange,
   onMaxResultsChange,
   onRunSearch,
   isRunning,
   onClose,
   showPanelChrome = true,
-}: BookSearchPanelProps) => {
-  const termTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+}: SemanticSearchPanelProps) => {
+  const queryTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const selectedIndex = availableIndexes.find((item) => item.id === selectedIndexId) ?? null;
 
-  const resizeTermTextarea = () => {
-    const el = termTextareaRef.current;
+  const resizeQueryTextarea = () => {
+    const el = queryTextareaRef.current;
     if (!el) return;
-    el.style.height = "36px";
+    el.style.height = "72px";
     el.style.height = `${el.scrollHeight}px`;
   };
 
   useEffect(() => {
-    resizeTermTextarea();
-  }, [term]);
-
-  const orderedBookOptions = [
-    ...Object.keys(BOOK_OPTION_LABELS).filter((key) => bookOptions.includes(key)),
-    ...bookOptions.filter((option) => !(option in BOOK_OPTION_LABELS)),
-  ];
+    resizeQueryTextarea();
+  }, [query]);
 
   const content = (
     <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
@@ -76,35 +70,41 @@ const BookSearchPanel = ({
         <Separator />
 
         <div className="space-y-2">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Livro</Label>
-          <div className="space-y-2">
-            {orderedBookOptions.map((option) => (
-              <label key={option} className="flex cursor-pointer items-center gap-2 text-xs text-foreground">
-                <input
-                  type="radio"
-                  name="book-search"
-                  value={option}
-                  checked={selectedBook === option}
-                  onChange={() => onSelectBook(option)}
-                />
-                <span>{BOOK_OPTION_LABELS[option] ?? option}</span>
-              </label>
-            ))}
-          </div>
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Base Vetorial</Label>
+          <Select value={selectedIndexId} onValueChange={onSelectedIndexChange} disabled={isLoadingIndexes || availableIndexes.length <= 0}>
+            <SelectTrigger className="h-9 bg-white text-xs">
+              <SelectValue placeholder={isLoadingIndexes ? "Carregando bases..." : "Selecione uma base"} />
+            </SelectTrigger>
+            <SelectContent>
+              {availableIndexes.map((item) => (
+                <SelectItem key={item.id} value={item.id} className="text-xs">
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedIndex ? (
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {selectedIndex.sourceRows} itens | {selectedIndex.model} | {selectedIndex.dimensions} dims | {selectedIndex.embeddingDtype}
+            </p>
+          ) : (
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {isLoadingIndexes ? "Carregando indices semanticos disponiveis." : "Nenhum indice semantico disponivel."}
+            </p>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Label className="w-16 shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Termo</Label>
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Query</Label>
           <Textarea
-            ref={termTextareaRef}
-            className="h-8 min-h-8 flex-1 resize-none overflow-hidden rounded-md border border-input bg-white px-3 py-1 text-xs leading-relaxed text-foreground"
-            rows={1}
-            value={term}
+            ref={queryTextareaRef}
+            className="min-h-[72px] resize-none rounded-md border border-input bg-white px-3 py-2 text-xs leading-relaxed text-foreground"
+            rows={3}
+            value={query}
             onChange={(e) => {
-              onTermChange(e.target.value);
-              resizeTermTextarea();
+              onQueryChange(e.target.value);
+              resizeQueryTextarea();
             }}
-            //placeholder="Digite uma palavra ou termo"
           />
         </div>
 
@@ -113,11 +113,11 @@ const BookSearchPanel = ({
           <Input
             type="number"
             min={1}
-            max={100}
+            max={50}
             value={String(maxResults)}
             onChange={(e) => {
-              const raw = Number.parseInt(e.target.value || "1", 10);
-              const next = Number.isFinite(raw) ? Math.max(1, Math.min(100, raw)) : 1;
+              const raw = Number.parseInt(e.target.value || "10", 10);
+              const next = Number.isFinite(raw) ? Math.max(1, Math.min(50, raw)) : 10;
               onMaxResultsChange(next);
             }}
             className="h-8 bg-white !text-xs text-right"
@@ -130,7 +130,7 @@ const BookSearchPanel = ({
             size="sm"
             className={primaryActionButtonClass}
             onClick={onRunSearch}
-            disabled={isRunning}
+            disabled={isRunning || !selectedIndexId}
           >
             {isRunning ? (
               <>
@@ -164,5 +164,4 @@ const BookSearchPanel = ({
   );
 };
 
-export default BookSearchPanel;
-
+export default SemanticSearchPanel;

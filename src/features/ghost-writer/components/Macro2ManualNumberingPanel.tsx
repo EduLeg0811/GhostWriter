@@ -4,8 +4,7 @@ import { ListOrdered, Loader2, X } from "lucide-react";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 import { Separator } from "@/components/ui/separator";
-
-export type Macro2SpacingMode = "normal_single" | "normal_double" | "nbsp_single" | "nbsp_double";
+import type { Macro2SpacingMode } from "@/features/ghost-writer/types";
 
 interface Macro2ManualNumberingPanelProps {
   title: string;
