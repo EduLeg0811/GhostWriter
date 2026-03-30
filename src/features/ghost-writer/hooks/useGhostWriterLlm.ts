@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { healthCheck } from "@/lib/backend-api";
+import { healthCheck, searchOnlineDictionaryApp } from "@/lib/backend-api";
 import {
   buildAiCommandPrompt,
   buildChatPrompt,
+  buildDictionaryPrompt,
   buildDefinePrompt,
+  buildEtymologyPrompt,
   buildEpigraphPrompt,
   buildRewritePrompt,
   buildSummarizePrompt,
@@ -36,16 +38,16 @@ import type {
 } from "@/features/ghost-writer/types";
 import {
   AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY,
-  BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT,
   BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY,
   CHAT_EDITOR_CONTEXT_MAX_CHARS,
   GENERAL_SETTINGS_STORAGE_KEY,
   LLM_SETTINGS_STORAGE_KEY,
   NO_VECTOR_STORE_ID,
 } from "@/features/ghost-writer/config/constants";
-import { applySystemPromptOverride, getActionSystemPrompt, sanitizeStoredActionSystemPrompts, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
+import { applySystemPromptOverride, getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
 import { BOOK_SOURCE, VECTOR_STORES_SOURCE } from "@/features/ghost-writer/config/options";
 import { getAiPanelScopeByAction, normalizeIdList } from "@/features/ghost-writer/config/metadata";
+import { buildOnlineDictionaryHistoryResponsePayload } from "@/features/ghost-writer/utils/historyDictionaryResponse";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 
 interface ToastApi {
@@ -382,11 +384,10 @@ const useGhostWriterLlm = ({
       if (typeof parsed.editorContextMaxChars === "number" && Number.isFinite(parsed.editorContextMaxChars)) setLlmEditorContextMaxChars(Math.max(500, Math.floor(parsed.editorContextMaxChars)));
       if (typeof parsed.gpt5Verbosity === "string") setLlmVerbosity(parsed.gpt5Verbosity);
       if (typeof parsed.gpt5Effort === "string") setLlmEffort(parsed.gpt5Effort);
-      if (typeof parsed.systemPrompt === "string") setLlmSystemPrompt(parsed.systemPrompt);
     } catch {
       // Keep defaults on invalid storage.
     }
-  }, [setLlmEditorContextMaxChars, setLlmEffort, setLlmMaxNumResults, setLlmMaxOutputTokens, setLlmModel, setLlmSystemPrompt, setLlmTemperature, setLlmVerbosity]);
+  }, [setLlmEditorContextMaxChars, setLlmEffort, setLlmMaxNumResults, setLlmMaxOutputTokens, setLlmModel, setLlmTemperature, setLlmVerbosity]);
 
   useEffect(() => {
     try {
@@ -408,14 +409,12 @@ const useGhostWriterLlm = ({
       if (typeof parsed.maxOutputTokens === "number" && Number.isFinite(parsed.maxOutputTokens)) setAiActionsLlmMaxOutputTokens(Math.max(1, Math.floor(parsed.maxOutputTokens)));
       if (typeof parsed.gpt5Verbosity === "string") setAiActionsLlmVerbosity(parsed.gpt5Verbosity);
       if (typeof parsed.gpt5Effort === "string") setAiActionsLlmEffort(parsed.gpt5Effort);
-      if (typeof parsed.systemPrompt === "string") setAiActionsLlmSystemPrompt(parsed.systemPrompt);
-      setAiActionSystemPrompts((prev) => ({ ...prev, ...sanitizeStoredActionSystemPrompts(parsed.actionSystemPrompts) }));
       if (Array.isArray(parsed.vectorStoreIds)) setAiActionsSelectedVectorStoreIds(normalizeIdList(parsed.vectorStoreIds.filter((value): value is string => typeof value === "string")));
       if (Array.isArray(parsed.inputFileIds)) setAiActionsSelectedInputFileIds(normalizeIdList(parsed.inputFileIds.filter((value): value is string => typeof value === "string")));
     } catch {
       // Keep defaults on invalid storage.
     }
-  }, [setAiActionSystemPrompts, setAiActionsLlmEffort, setAiActionsLlmMaxOutputTokens, setAiActionsLlmModel, setAiActionsLlmSystemPrompt, setAiActionsLlmTemperature, setAiActionsLlmVerbosity, setAiActionsSelectedInputFileIds, setAiActionsSelectedVectorStoreIds]);
+  }, [setAiActionsLlmEffort, setAiActionsLlmMaxOutputTokens, setAiActionsLlmModel, setAiActionsLlmTemperature, setAiActionsLlmVerbosity, setAiActionsSelectedInputFileIds, setAiActionsSelectedVectorStoreIds]);
 
   useEffect(() => {
     try {
@@ -443,7 +442,6 @@ const useGhostWriterLlm = ({
       editorContextMaxChars: safeEditorContextMaxChars,
       gpt5Verbosity: llmVerbosity,
       gpt5Effort: llmEffort,
-      systemPrompt: llmSystemPrompt,
     }));
   }, [llmEditorContextMaxChars, llmEffort, llmMaxNumResults, llmMaxOutputTokens, llmModel, llmSystemPrompt, llmTemperature, llmVerbosity]);
 
@@ -454,8 +452,6 @@ const useGhostWriterLlm = ({
       maxOutputTokens: Number.isFinite(aiActionsLlmMaxOutputTokens) ? Math.max(1, Math.floor(aiActionsLlmMaxOutputTokens)) : (CHAT_MAX_OUTPUT_TOKENS ?? 500),
       gpt5Verbosity: aiActionsLlmVerbosity,
       gpt5Effort: aiActionsLlmEffort,
-      systemPrompt: aiActionsLlmSystemPrompt,
-      actionSystemPrompts: aiActionSystemPrompts,
       vectorStoreIds: normalizeIdList(aiActionsSelectedVectorStoreIds),
       inputFileIds: normalizeIdList(aiActionsSelectedInputFileIds),
     }));
@@ -482,12 +478,10 @@ const useGhostWriterLlm = ({
       if (typeof parsed.maxOutputTokens === "number" && Number.isFinite(parsed.maxOutputTokens)) setBiblioExternaLlmMaxOutputTokens(Math.max(1, Math.floor(parsed.maxOutputTokens)));
       if (typeof parsed.gpt5Verbosity === "string") setBiblioExternaLlmVerbosity(parsed.gpt5Verbosity);
       if (typeof parsed.gpt5Effort === "string") setBiblioExternaLlmEffort(parsed.gpt5Effort);
-      if (typeof parsed.systemPrompt === "string" && parsed.systemPrompt.trim()) setBiblioExternaLlmSystemPrompt(parsed.systemPrompt);
-      else setBiblioExternaLlmSystemPrompt(BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT);
     } catch {
       // Keep defaults on invalid storage.
     }
-  }, [setBiblioExternaLlmEffort, setBiblioExternaLlmMaxOutputTokens, setBiblioExternaLlmModel, setBiblioExternaLlmSystemPrompt, setBiblioExternaLlmTemperature, setBiblioExternaLlmVerbosity]);
+  }, [setBiblioExternaLlmEffort, setBiblioExternaLlmMaxOutputTokens, setBiblioExternaLlmModel, setBiblioExternaLlmTemperature, setBiblioExternaLlmVerbosity]);
 
   useEffect(() => {
     window.localStorage.setItem(BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY, JSON.stringify({
@@ -496,7 +490,6 @@ const useGhostWriterLlm = ({
       maxOutputTokens: Number.isFinite(biblioExternaLlmMaxOutputTokens) ? Math.max(1, Math.floor(biblioExternaLlmMaxOutputTokens)) : 500,
       gpt5Verbosity: biblioExternaLlmVerbosity,
       gpt5Effort: biblioExternaLlmEffort,
-      systemPrompt: biblioExternaLlmSystemPrompt,
     }));
   }, [biblioExternaLlmEffort, biblioExternaLlmMaxOutputTokens, biblioExternaLlmModel, biblioExternaLlmSystemPrompt, biblioExternaLlmTemperature, biblioExternaLlmVerbosity]);
 
@@ -630,6 +623,23 @@ const useGhostWriterLlm = ({
       toast.error("Informe a Query do Comando IA.");
       return;
     }
+    if (type === "dict_lookup") {
+      setIsLoading(true);
+      try {
+        const data = await searchOnlineDictionaryApp({ term: text });
+        if ((data.result.sources_ok || 0) <= 0) {
+          toast.info("Nenhuma definição útil encontrada nas fontes consultadas.");
+          return;
+        }
+        const payload = buildOnlineDictionaryHistoryResponsePayload(data.result);
+        addResponse("dict_lookup", payload.querySummary, payload.markdown);
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : "Falha ao executar Consulta Dict.");
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
     if (!openAiReady) {
       toast.error(backendNotReadyMessage());
       return;
@@ -690,6 +700,8 @@ const useGhostWriterLlm = ({
       const promptMap = {
         define: (value: string) => buildDefinePrompt(value),
         synonyms: (value: string) => buildSynonymsPrompt(value),
+        etymology: (value: string) => buildEtymologyPrompt(value),
+        dictionary: (value: string) => buildDictionaryPrompt(value),
         epigraph: (value: string) => buildEpigraphPrompt(value),
         rewrite: buildRewritePrompt,
         summarize: buildSummarizePrompt,
@@ -712,7 +724,8 @@ const useGhostWriterLlm = ({
       if (type === "translate" && effectiveVectorStoreIds.length === 0) {
         throw new Error("Selecione ao menos 1 Vector Store na configuracao de Acoes IA.");
       }
-      const result = (await executeAiActionsLLMWithLog({ messages, vectorStoreIds: effectiveVectorStoreIds, inputFileIds })).content;
+      const tools = type === "etymology" ? [{ type: "web_search" }] : undefined;
+      const result = (await executeAiActionsLLMWithLog({ messages, vectorStoreIds: effectiveVectorStoreIds, inputFileIds, tools })).content;
       addResponse(type, type === "ai_command" ? query : text.slice(0, 80), result);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erro na chamada a IA.");

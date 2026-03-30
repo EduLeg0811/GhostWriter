@@ -171,6 +171,10 @@ class SemanticSearchRequest(BaseModel):
     limit: int = 10
 
 
+class OnlineDictionarySearchRequest(BaseModel):
+    term: str = ""
+
+
 class HighlightRequest(BaseModel):
     term: str
 
@@ -1179,6 +1183,28 @@ def api_semantic_search(payload: SemanticSearchRequest) -> dict[str, Any]:
             "matches": matches,
         },
     }
+
+
+@app.post("/api/apps/online-dictionary/search")
+def api_online_dictionary_search(payload: OnlineDictionarySearchRequest) -> dict[str, Any]:
+    term = (payload.term or "").strip()
+    if not term:
+        raise HTTPException(status_code=400, detail="Parametro 'term' e obrigatorio.")
+
+    try:
+        from backend.functions.online_dictionary_service import search_online_dictionaries
+    except Exception:
+        from functions.online_dictionary_service import search_online_dictionaries
+
+    try:
+        result = search_online_dictionaries(term)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Falha ao executar Consulta Dict: {exc}")
+
+    return {"ok": True, "result": result}
+
 
 @app.post("/api/files/upload")
 async def api_files_upload(file: UploadFile = File(...)) -> dict[str, Any]:

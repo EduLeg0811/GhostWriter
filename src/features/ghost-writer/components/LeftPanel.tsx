@@ -166,7 +166,7 @@ const LeftPanel = ({
                 )}
                 <span className="min-w-0 flex-1 text-left">
                   <span className="block break-words text-sm font-medium text-foreground">Termos & Conceitos</span>
-                  <span className="block break-words text-xs text-muted-foreground">Definir e listar sinônimos</span>
+                  <span className="block break-words text-xs text-muted-foreground">Definir, listar sinônimos e etimologia</span>
                 </span>
               </Button>
 

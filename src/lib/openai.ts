@@ -152,7 +152,12 @@ export async function uploadLlmSourceFiles(files: File[]): Promise<UploadedLlmFi
 
 export function buildDefinePrompt(text: string, ragContext?: string): ChatMessage[] {
   const systemBase =
-    "Voce e um dicionario especializado em Conscienciologia. Busque nos textos da Conscienciologia fornecidos se ha uma Definologia ou Definicao ja pronta para o termo ou expressao. Caso haja, copie ipsis litteris. Caso nao haja, escreva a definicao clara e concisa. O formato de saida deve ser: <strong>Definologia.</strong> {artigo definido O, Os ou A, As dependendo do genero e do numero do termo de entrada} <em>{termo de entrada}</em> e {definologia ou definicao do termo}.";
+    ` Você é um dicionario especializado em Conscienciologia. 
+    Busque nos textos da Conscienciologia fornecidos se ha uma Definologia ou Definicao ja pronta para o termo ou expressao. 
+    Caso haja, copie ipsis litteris. Caso nao haja, escreva a definicao clara e concisa. 
+    O formato de saida deve ser: <strong>Definologia.</strong> {artigo definido O, Os ou A, As dependendo do genero e do numero do termo de entrada} <em>{termo de entrada}</em> e {definologia ou definicao do termo}. 
+    `
+
 
   const system = ragContext
     ? `${systemBase}\n\nContexto de referencia:\n${ragContext}`
@@ -175,6 +180,95 @@ export function buildSynonymsPrompt(text: string, ragContext?: string): ChatMess
   return [
     { role: "system", content: system },
     { role: "user", content: `Liste 10 sinonimos para: "${text}"` },
+  ];
+}
+
+export function buildEtymologyPrompt(text: string, ragContext?: string): ChatMessage[] {
+  const systemBase =
+    `Voce e um dicionario especializado em Etimologia e Conscienciologia. 
+    Busque nos textos da Conscienciologia fornecidos se ha uma Etimologia ja pronta para o termo ou expressao informado. 
+    Caso haja, copie ipsis litteris. Caso nao haja, escreva a Etimologia clara e concisa. 
+    Se necessario, busque na internet em sites e bases confiaveis de referencia. 
+    O formato de saida deve ser: <strong>Etimologia.</strong> {etimologia do termo de entrada}. 
+    Utilize marcacao Markdown para destacar palavras ou termos relevantes.
+    ______________________________________________________________________
+    Além disso, acrescente em seguida (em paragrafo separado após a Etimologia, com 1 linha em branco de separação) as seguintes informações para cada termo entrado:
+    1. Identifique a língua de origem
+    2. Forneça a forma original
+    3. Descreva a evolução fonética e semântica
+    4. Indique raízes proto-linguísticas (se aplicável)
+    5. Liste variantes em outras línguas
+    6. Cite fontes quando possível
+    Formato (título antes dos dois pontos em negrito):
+    - **Palavra**:
+    - **Origem**:
+    - **Forma original**:
+    - **Evolução**:
+    - **Raiz**:
+    - **Cognatos**:
+    - **Observações**: `;
+
+  const system = ragContext
+    ? `${systemBase}\n\nContexto de referencia:\n${ragContext}`
+    : systemBase;
+
+  return [
+    { role: "system", content: system },
+    { role: "user", content: `Escreva a Etimologia para: "${text}"` },
+  ];
+}
+
+// Prompt default da acao "Dicionario". Se o comportamento do botao mudar,
+// este e o ponto do codigo a ser editado.
+export function buildDictionaryPrompt(text: string, ragContext?: string): ChatMessage[] {
+  const systemBase = 
+  `
+  Você é um assistente especializado em lexicografia da língua portuguesa.
+
+  Sua tarefa é fornecer definições de dicionários para o termo ou expressão informada.
+
+  Procedimento:
+
+  1. Busque, prioritariamente, nos textos fornecidos (caso existam), definições (ou Definologia) já estabelecidas.
+  2. Caso não haja definição disponível, utilize conhecimento lexicográfico confiável para reconstruir definições consistentes com dicionários tradicionais.
+  3. Sempre forneça exatamente 3 definições distintas, como se fossem provenientes de diferentes dicionários.
+  4. As definições devem apresentar pequenas variações de enfoque (ex.: mais técnica, mais geral, mais contextual).
+
+  Regras importantes:
+
+  - NÃO invente fontes específicas se não tiver certeza.
+  - NÃO use linguagem opinativa.
+  - NÃO misture etimologia (a menos que seja parte essencial da definição).
+  - Priorize linguagem clara, precisa e de padrão dicionarístico.
+
+  Formato de saída:
+
+  <strong>Definições.</strong>
+
+  **1.** {definição 1}  
+  **2.** {definição 2}  
+  **3.** {definição 3}  
+
+  ______________________________________________________________________
+
+  Em seguida, apresente um quadro comparativo sintético das definições:
+
+  - **Termo**:  
+  - **Classe gramatical**:  
+  - **Campo semântico**:  
+  - **Diferenças principais**: (explique brevemente o que muda entre as definições)  
+  - **Observações**: (ambiguidade, polissemia, uso técnico, etc.)
+  `;
+
+  
+
+  const system = ragContext
+    ? `${systemBase}\n\nContexto de referencia:\n${ragContext}`
+    : systemBase;
+
+  return [
+    { role: "system", content: system },
+    { role: "user", content: `Consulte o Dicionario para: "${text}"` },
   ];
 }
 

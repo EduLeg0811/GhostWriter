@@ -34,6 +34,7 @@ const ParameterPanelToolbar = ({
     parameterPanelTarget.section === "actions"
     || parameterPanelTarget.section === "rewriting"
     || parameterPanelTarget.section === "translation";
+  const supportsAiConfig = isAiActionSection && parameterPanelTarget.id !== "dict_lookup";
   const isAiCommandSection = parameterPanelTarget.section === "actions" && parameterPanelTarget.id === "ai_command";
   const isVerbetografiaTablePanel = parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app7";
   const showToolbar = parameterPanelTarget.section !== "document"
@@ -49,17 +50,19 @@ const ParameterPanelToolbar = ({
       <div className="grid grid-cols-1 gap-2">
         {isAiActionSection ? (
           <>
-            <div className="mb-1 flex justify-end">
-              <button
-                type="button"
-                onClick={onToggleAiActionsConfig}
-                title={isAiActionsConfigOpen ? "Ocultar configurações IA" : "Mostrar configurações IA"}
-                aria-label={isAiActionsConfigOpen ? "Ocultar configurações IA" : "Mostrar configurações IA"}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-white text-muted-foreground shadow-sm transition hover:bg-zinc-50 hover:text-foreground"
-              >
-                <Settings className="h-4 w-4" />
-              </button>
-            </div>
+            {supportsAiConfig ? (
+              <div className="mb-1 flex justify-end">
+                <button
+                  type="button"
+                  onClick={onToggleAiActionsConfig}
+                  title={isAiActionsConfigOpen ? "Ocultar configurações IA" : "Mostrar configurações IA"}
+                  aria-label={isAiActionsConfigOpen ? "Ocultar configurações IA" : "Mostrar configurações IA"}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-white text-muted-foreground shadow-sm transition hover:bg-zinc-50 hover:text-foreground"
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
+              </div>
+            ) : null}
             {isAiCommandSection ? (
               <Button
                 variant="ghost"

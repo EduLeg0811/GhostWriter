@@ -290,6 +290,47 @@ export async function semanticSearchPensatasApp(payload: {
   });
 }
 
+export async function searchOnlineDictionaryApp(payload: {
+  term: string;
+}): Promise<{
+  ok: boolean;
+  result: {
+    term: string;
+    sources_total: number;
+    sources_ok: number;
+    sources_failed: number;
+    elapsed_ms: number;
+    summary: {
+      definitions: string[];
+      synonyms: string[];
+      examples: string[];
+      etymology: string | null;
+    };
+    results: Array<{
+      source: string;
+      ok: boolean;
+      url: string | null;
+      elapsed_ms: number;
+      quality_score: number;
+      definitions: string[];
+      synonyms: string[];
+      examples: string[];
+      etymology: string | null;
+      query_term: string | null;
+      retry_without_accents: boolean;
+      error: string | null;
+    }>;
+    request_id: string;
+  };
+}> {
+  return fetchJsonWithRetry(apiUrl("/api/apps/online-dictionary/search"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+}
+
 export async function listSemanticIndexesApp(): Promise<{
   ok: boolean;
   result: {

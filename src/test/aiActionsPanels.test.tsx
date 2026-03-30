@@ -3,6 +3,44 @@ import { describe, expect, it, vi } from "vitest";
 import ParameterPanelToolbar from "@/features/ghost-writer/components/ParameterPanelToolbar";
 import AiActionsParameterSection from "@/features/ghost-writer/components/AiActionsParameterSection";
 
+const buildSectionProps = () => ({
+  section: "actions" as const,
+  actionId: null,
+  isAiCommandSelectionPending: false,
+  actionText: "",
+  aiCommandQuery: "",
+  translateLanguage: "en" as const,
+  isLoading: false,
+  hasDocumentOpen: true,
+  isConfigOpen: false,
+  includeEditorContextInLlm: false,
+  aiActionsLlmModel: "gpt-5.4",
+  aiActionsLlmTemperature: 0,
+  aiActionsLlmMaxOutputTokens: 500,
+  aiActionsLlmVerbosity: "low",
+  aiActionsLlmEffort: "none",
+  aiActionSystemPrompts: {},
+  aiActionsSelectedVectorStoreId: "",
+  aiActionVectorStoreOptions: [],
+  uploadedChatFiles: [],
+  isUploadingChatFiles: false,
+  onActionTextChange: vi.fn(),
+  onAiCommandQueryChange: vi.fn(),
+  onTranslateLanguageChange: vi.fn(),
+  onRetrieveSelectedText: vi.fn(),
+  onApplyAction: vi.fn(),
+  onAiActionsLlmModelChange: vi.fn(),
+  onAiActionsLlmTemperatureChange: vi.fn(),
+  onAiActionsLlmMaxOutputTokensChange: vi.fn(),
+  onAiActionsLlmVerbosityChange: vi.fn(),
+  onAiActionsLlmEffortChange: vi.fn(),
+  onAiActionSystemPromptChange: vi.fn(),
+  onToggleIncludeEditorContextInLlm: vi.fn(),
+  onAiActionsSelectedVectorStoreIdChange: vi.fn(),
+  onUploadFiles: vi.fn(),
+  onRemoveUploadedFile: vi.fn(),
+});
+
 describe("AI actions panels", () => {
   it("uses the command toolbar button as a selector instead of executing immediately", () => {
     const onOpenAiActionParameters = vi.fn();
@@ -27,42 +65,47 @@ describe("AI actions panels", () => {
     expect(onOpenAiActionParameters).toHaveBeenCalledWith("ai_command");
   });
 
-  it("keeps the AI action body empty until an action is selected", () => {
+  it("shows translate first and consulta dict second in the translation toolbar", () => {
     render(
-      <AiActionsParameterSection
-        section="actions"
-        actionId={null}
-        isAiCommandSelectionPending={false}
-        actionText=""
-        aiCommandQuery=""
-        translateLanguage="en"
+      <ParameterPanelToolbar
+        parameterPanelTarget={{ section: "translation", id: "translate" }}
+        appPanelScope={null}
         isLoading={false}
-        hasDocumentOpen={true}
-        isConfigOpen={false}
-        aiActionsLlmModel="gpt-5.4"
-        aiActionsLlmTemperature={0}
-        aiActionsLlmMaxOutputTokens={500}
-        aiActionsLlmVerbosity="low"
-        aiActionsLlmEffort="none"
-        aiActionsSelectedVectorStoreId=""
-        aiActionVectorStoreOptions={[]}
-        uploadedChatFiles={[]}
-        isUploadingChatFiles={false}
-        onActionTextChange={vi.fn()}
-        onAiCommandQueryChange={vi.fn()}
-        onTranslateLanguageChange={vi.fn()}
-        onRetrieveSelectedText={vi.fn()}
-        onApplyAction={vi.fn()}
-        onAiActionsLlmModelChange={vi.fn()}
-        onAiActionsLlmTemperatureChange={vi.fn()}
-        onAiActionsLlmMaxOutputTokensChange={vi.fn()}
-        onAiActionsLlmVerbosityChange={vi.fn()}
-        onAiActionsLlmEffortChange={vi.fn()}
-        onAiActionsSelectedVectorStoreIdChange={vi.fn()}
-        onUploadFiles={vi.fn()}
-        onRemoveUploadedFile={vi.fn()}
+        isAiActionsConfigOpen={false}
+        hasVerbetografiaRequiredFields={false}
+        onToggleAiActionsConfig={vi.fn()}
+        onOpenAiActionParameters={vi.fn()}
+        onSelectVerbetografiaAction={vi.fn()}
+        onRunAppAction={vi.fn()}
       />,
     );
+
+    const translateButton = screen.getByRole("button", { name: /^traduzir\b/i });
+    const dictButton = screen.getByRole("button", { name: /^consulta dict\b/i });
+
+    expect(translateButton.compareDocumentPosition(dictButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("hides the AI config button when consulta dict is selected", () => {
+    render(
+      <ParameterPanelToolbar
+        parameterPanelTarget={{ section: "translation", id: "dict_lookup" }}
+        appPanelScope={null}
+        isLoading={false}
+        isAiActionsConfigOpen={false}
+        hasVerbetografiaRequiredFields={false}
+        onToggleAiActionsConfig={vi.fn()}
+        onOpenAiActionParameters={vi.fn()}
+        onSelectVerbetografiaAction={vi.fn()}
+        onRunAppAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByLabelText(/configurações ia/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps the AI action body empty until an action is selected", () => {
+    render(<AiActionsParameterSection {...buildSectionProps()} />);
 
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
@@ -70,36 +113,10 @@ describe("AI actions panels", () => {
 
   it("shows the command form only after the top selector is chosen", () => {
     const props = {
+      ...buildSectionProps(),
       section: "actions" as const,
       actionId: "ai_command" as const,
-      actionText: "",
       aiCommandQuery: "Teste",
-      translateLanguage: "en" as const,
-      isLoading: false,
-      hasDocumentOpen: true,
-      isConfigOpen: false,
-      aiActionsLlmModel: "gpt-5.4",
-      aiActionsLlmTemperature: 0,
-      aiActionsLlmMaxOutputTokens: 500,
-      aiActionsLlmVerbosity: "low",
-      aiActionsLlmEffort: "none",
-      aiActionsSelectedVectorStoreId: "",
-      aiActionVectorStoreOptions: [],
-      uploadedChatFiles: [],
-      isUploadingChatFiles: false,
-      onActionTextChange: vi.fn(),
-      onAiCommandQueryChange: vi.fn(),
-      onTranslateLanguageChange: vi.fn(),
-      onRetrieveSelectedText: vi.fn(),
-      onApplyAction: vi.fn(),
-      onAiActionsLlmModelChange: vi.fn(),
-      onAiActionsLlmTemperatureChange: vi.fn(),
-      onAiActionsLlmMaxOutputTokensChange: vi.fn(),
-      onAiActionsLlmVerbosityChange: vi.fn(),
-      onAiActionsLlmEffortChange: vi.fn(),
-      onAiActionsSelectedVectorStoreIdChange: vi.fn(),
-      onUploadFiles: vi.fn(),
-      onRemoveUploadedFile: vi.fn(),
     };
 
     const { rerender } = render(
@@ -125,40 +142,30 @@ describe("AI actions panels", () => {
     expect(submitButton.className).toContain("border-green-300");
   });
 
+  it("renders consulta dict without language select or AI config footer", () => {
+    render(
+      <AiActionsParameterSection
+        {...buildSectionProps()}
+        section="translation"
+        actionId="dict_lookup"
+        actionText="casa"
+        isConfigOpen={true}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /consulta dict/i })).toBeInTheDocument();
+    expect(screen.getByDisplayValue("casa")).toBeInTheDocument();
+    expect(screen.queryByText(/idioma/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/system prompt da ação/i)).not.toBeInTheDocument();
+  });
+
   it("renders the green action button after the text input area", () => {
     render(
       <AiActionsParameterSection
+        {...buildSectionProps()}
         section="rewriting"
         actionId="rewrite"
-        isAiCommandSelectionPending={false}
         actionText="Texto base"
-        aiCommandQuery=""
-        translateLanguage="en"
-        isLoading={false}
-        hasDocumentOpen={true}
-        isConfigOpen={false}
-        aiActionsLlmModel="gpt-5.4"
-        aiActionsLlmTemperature={0}
-        aiActionsLlmMaxOutputTokens={500}
-        aiActionsLlmVerbosity="low"
-        aiActionsLlmEffort="none"
-        aiActionsSelectedVectorStoreId=""
-        aiActionVectorStoreOptions={[]}
-        uploadedChatFiles={[]}
-        isUploadingChatFiles={false}
-        onActionTextChange={vi.fn()}
-        onAiCommandQueryChange={vi.fn()}
-        onTranslateLanguageChange={vi.fn()}
-        onRetrieveSelectedText={vi.fn()}
-        onApplyAction={vi.fn()}
-        onAiActionsLlmModelChange={vi.fn()}
-        onAiActionsLlmTemperatureChange={vi.fn()}
-        onAiActionsLlmMaxOutputTokensChange={vi.fn()}
-        onAiActionsLlmVerbosityChange={vi.fn()}
-        onAiActionsLlmEffortChange={vi.fn()}
-        onAiActionsSelectedVectorStoreIdChange={vi.fn()}
-        onUploadFiles={vi.fn()}
-        onRemoveUploadedFile={vi.fn()}
       />,
     );
 

@@ -5,9 +5,9 @@ import type { AiActionId, AiPanelScope, AppActionId, AppPanelScope, MacroActionI
 export const BOOK_OPTION_LABELS: Record<string, string> = BOOK_LABELS;
 
 export const ACTION_PANEL_BUTTONS_BY_SCOPE: Record<AiPanelScope, AiActionId[]> = {
-  actions: ["define", "synonyms", "pensatas"],
+  actions: ["define", "synonyms", "etymology", "dictionary", "pensatas"],
   rewriting: ["rewrite", "summarize", "epigraph"],
-  translation: ["translate"],
+  translation: ["translate", "dict_lookup"],
 };
 
 export const APP_PANEL_BUTTONS_BY_SCOPE: Record<AppPanelScope, AppActionId[]> = {
@@ -22,11 +22,14 @@ export const MACRO_PANEL_BUTTONS: MacroActionId[] = ["macro1", "macro2"];
 export const ACTION_PANEL_ICONS: Record<AiActionId, LucideIcon> = {
   define: BookOpen,
   synonyms: Repeat2,
+  etymology: Search,
+  dictionary: BookOpen,
   epigraph: Search,
   pensatas: Search,
   rewrite: PenLine,
   summarize: FileText,
   translate: Languages,
+  dict_lookup: Search,
   ai_command: PenLine,
 };
 
@@ -73,11 +76,14 @@ export const parameterMacroMeta: Record<MacroActionId, { title: string; descript
 export const parameterActionMeta: Record<AiActionId, { title: string; description: string }> = {
   define: { title: "Definir", description: "Definologia conscienciológica." },
   synonyms: { title: "Sinonímia", description: "Lista de sinônimos." },
+  etymology: { title: "Etimologia", description: "Busca ou escreve a etimologia do termo." },
+  dictionary: { title: "Dicionário", description: "Consulta dicionarizada do termo." },
   epigraph: { title: "Epígrafe", description: "Sugere epígrafe." },
   rewrite: { title: "Reescrever", description: "Melhora clareza e fluidez." },
   summarize: { title: "Resumir", description: "Síntese concisa." },
   pensatas: { title: "Pensatas LO", description: "Pensatas afins." },
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
+  dict_lookup: { title: "Consulta Dict", description: "Consulta termos em dicionários online." },
   ai_command: { title: "Comando IA", description: "Envia uma query livre para a LLM." },
 };
 
@@ -101,7 +107,7 @@ export const getParameterPanelHeaderMeta = (
       return { title: "LLM Sources", description: "Vector stores e arquivos" };
     case "actions":
       if (target.id === "ai_command") return { title: "Comando IA", description: "Envia uma query livre para a LLM" };
-      return { title: "Termos & Conceitos", description: "Definir e listar sinonimos" };
+      return { title: "Termos & Conceitos", description: "Definir, listar sinonimos, etimologia e dicionario" };
     case "rewriting":
       return { title: "Paragrafos & Trechos", description: "Reescrever, resumir e criar epigrafe" };
     case "translation":

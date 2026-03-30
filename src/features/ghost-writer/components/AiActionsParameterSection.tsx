@@ -38,7 +38,7 @@ interface AiActionsParameterSectionProps {
   onAiActionsLlmMaxOutputTokensChange: (value: number) => void;
   onAiActionsLlmVerbosityChange: (value: string) => void;
   onAiActionsLlmEffortChange: (value: string) => void;
-  onAiActionSystemPromptChange: (actionId: AiActionId, value: string) => void;
+  onAiActionSystemPromptChange: (actionId: ActionSystemPromptId, value: string) => void;
   onToggleIncludeEditorContextInLlm: () => void;
   onAiActionsSelectedVectorStoreIdChange: (value: string) => void;
   onUploadFiles: (files: File[]) => void | Promise<void>;
@@ -83,7 +83,10 @@ const AiActionsParameterSection = ({
   onRemoveUploadedFile,
 }: AiActionsParameterSectionProps) => {
   const shouldShowActionPanel = Boolean(actionId) && !(actionId === "ai_command" && isAiCommandSelectionPending);
-  const selectedActionSystemPrompt = actionId ? getActionSystemPrompt(aiActionSystemPrompts, actionId) : "";
+  const supportsAiConfig = Boolean(actionId && actionId !== "dict_lookup");
+  const selectedActionSystemPrompt = supportsAiConfig
+    ? getActionSystemPrompt(aiActionSystemPrompts, actionId as ActionSystemPromptId)
+    : "";
 
   return (
     <div className="flex h-full flex-col">
@@ -102,7 +105,7 @@ const AiActionsParameterSection = ({
             }}
             isLoading={isLoading}
             hasDocumentOpen={hasDocumentOpen}
-            showLanguageSelect={actionId === "translate" || section === "translation"}
+            showLanguageSelect={actionId === "translate"}
             languageOptions={TRANSLATE_LANGUAGE_OPTIONS.map((option) => ({ ...option }))}
             selectedLanguage={translateLanguage}
             onSelectedLanguageChange={(value) => onTranslateLanguageChange(value as (typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"])}
@@ -117,7 +120,7 @@ const AiActionsParameterSection = ({
           <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground" />
         )}
       </div>
-      {isConfigOpen ? (
+      {isConfigOpen && supportsAiConfig ? (
         <div className="border-t border-border p-4">
           <AiAssistantConfigPanel
             llmModel={aiActionsLlmModel}
@@ -140,13 +143,15 @@ const AiActionsParameterSection = ({
             includeEditorContextInLlm={includeEditorContextInLlm}
             onToggleIncludeEditorContextInLlm={onToggleIncludeEditorContextInLlm}
             canToggleIncludeEditorContextInLlm={hasDocumentOpen}
-            extraContent={actionId ? (
+            extraContent={supportsAiConfig ? (
               <div className="space-y-2">
                 <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt da Ação</Label>
                 <textarea
                   value={selectedActionSystemPrompt}
                   onChange={(event) => {
-                    if (actionId) onAiActionSystemPromptChange(actionId, event.target.value);
+                    if (supportsAiConfig && actionId && actionId !== "dict_lookup") {
+                      onAiActionSystemPromptChange(actionId as ActionSystemPromptId, event.target.value);
+                    }
                   }}
                   rows={10}
                   className="w-full rounded-md border border-input bg-white px-3 py-2 text-[11px] text-foreground outline-none resize-none overflow-y-auto"

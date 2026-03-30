@@ -1,7 +1,9 @@
 import type { AiActionId } from "@/features/ghost-writer/types";
 import {
   buildAiCommandPrompt,
+  buildDictionaryPrompt,
   buildDefinePrompt,
+  buildEtymologyPrompt,
   buildEpigraphPrompt,
   buildRewritePrompt,
   buildSummarizePrompt,
@@ -14,14 +16,18 @@ import {
   type ChatMessage,
 } from "@/lib/openai";
 
-export type ActionSystemPromptId = AiActionId | "app8" | "app9" | "app10" | "app11";
+export type ActionSystemPromptId = Exclude<AiActionId, "dict_lookup"> | "app8" | "app9" | "app10" | "app11";
 
-const getFirstSystemPrompt = (messages: ChatMessage[]): string =>
-  messages.find((message) => message.role === "system")?.content ?? "";
+const getFirstSystemPrompt = (messages: ChatMessage[] | unknown): string => {
+  if (!Array.isArray(messages)) return "";
+  return messages.find((message) => message?.role === "system")?.content ?? "";
+};
 
 export const DEFAULT_ACTION_SYSTEM_PROMPTS: Record<ActionSystemPromptId, string> = {
   define: getFirstSystemPrompt(buildDefinePrompt("texto")),
   synonyms: getFirstSystemPrompt(buildSynonymsPrompt("texto")),
+  etymology: getFirstSystemPrompt(buildEtymologyPrompt("texto")),
+  dictionary: getFirstSystemPrompt(buildDictionaryPrompt("texto")),
   epigraph: getFirstSystemPrompt(buildEpigraphPrompt("texto")),
   rewrite: getFirstSystemPrompt(buildRewritePrompt("texto")),
   summarize: getFirstSystemPrompt(buildSummarizePrompt("texto")),
@@ -35,11 +41,11 @@ export const DEFAULT_ACTION_SYSTEM_PROMPTS: Record<ActionSystemPromptId, string>
 };
 
 export const getActionSystemPrompt = (
-  prompts: Partial<Record<ActionSystemPromptId, string>>,
+  prompts: Partial<Record<ActionSystemPromptId, string>> | undefined,
   actionId: ActionSystemPromptId | null,
 ): string => {
   if (!actionId) return "";
-  return prompts[actionId] ?? DEFAULT_ACTION_SYSTEM_PROMPTS[actionId] ?? "";
+  return prompts?.[actionId] ?? DEFAULT_ACTION_SYSTEM_PROMPTS[actionId] ?? "";
 };
 
 export const sanitizeStoredActionSystemPrompts = (value: unknown): Partial<Record<ActionSystemPromptId, string>> => {

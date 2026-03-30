@@ -4,7 +4,7 @@ export type MacroActionId = "macro1" | "macro2";
 export type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7" | "app8" | "app9" | "app10" | "app11" | "app12";
 export type AppPanelScope = "bibliografia" | "busca_termos" | "semantic_search" | "verbetografia";
 export type AiPanelScope = "actions" | "rewriting" | "translation";
-export type AiActionId = "define" | "synonyms" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate" | "ai_command";
+export type AiActionId = "define" | "synonyms" | "etymology" | "dictionary" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate" | "dict_lookup" | "ai_command";
 export type ParameterPanelSection = "document" | "sources" | "actions" | "rewriting" | "translation" | "apps" | "applications";
 export type ParameterPanelTarget =
   | { section: "document"; id: MacroActionId | null }
@@ -46,10 +46,13 @@ export interface AIResponse {
   type:
     | "define"
     | "synonyms"
+    | "etymology"
+    | "dictionary"
     | "epigraph"
     | "rewrite"
     | "summarize"
     | "translate"
+    | "dict_lookup"
     | "ai_command"
     | "chat"
     | "pensatas"
