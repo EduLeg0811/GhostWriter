@@ -60,7 +60,7 @@ import { sectionActionButtonClass } from "@/styles/buttonStyles";
 import type { BookCode } from "@/lib/bookCatalog";
 import type { AIResponse, AiActionId, AiPanelScope, AppActionId, AppPanelScope, BackendStatus, Macro2SpacingMode, MacroActionId, MobilePanelId, ParameterPanelHeaderMeta, ParameterPanelSection, ParameterPanelTarget, SelectOption, SemanticIndexOption, SourcesPanelView } from "@/features/ghost-writer/types";
 import { ACTION_PANEL_BUTTONS_BY_SCOPE, ACTION_PANEL_ICONS, APP_PANEL_BUTTONS_BY_SCOPE, APP_PANEL_ICONS, getAiPanelScopeByAction, getParameterPanelHeaderMeta, normalizeIdList, parameterActionMeta, parameterAppMeta, parameterMacroMeta } from "@/features/ghost-writer/config/metadata";
-import { AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY, BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT, BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY, CHAT_EDITOR_CONTEXT_MAX_CHARS, DEFAULT_BOOK_SEARCH_MAX_RESULTS, DEFAULT_LOG_FONT_SIZE_PX, GENERAL_SETTINGS_STORAGE_KEY, LLM_LOG_FONT_MAX, LLM_LOG_FONT_MIN, LLM_LOG_FONT_STEP, LLM_SETTINGS_STORAGE_KEY, NO_VECTOR_STORE_ID, PANEL_SIZES } from "@/features/ghost-writer/config/constants";
+import { AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY, BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT, BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY, CHAT_EDITOR_CONTEXT_MAX_CHARS, DEFAULT_BOOK_SEARCH_MAX_RESULTS, DEFAULT_LOG_FONT_SIZE_PX, GENERAL_SETTINGS_STORAGE_KEY, LLM_LOG_FONT_MAX, LLM_LOG_FONT_MIN, LLM_LOG_FONT_STEP, LLM_SETTINGS_STORAGE_KEY, NO_VECTOR_STORE_ID, PANEL_SIZES, getDefaultDesktopPanelLayout } from "@/features/ghost-writer/config/constants";
 import { BOOK_SOURCE, DEFAULT_BOOK_SOURCE_ID, MACRO1_HIGHLIGHT_COLORS, TRANSLATE_LANGUAGE_OPTIONS, VECTOR_STORES_SOURCE } from "@/features/ghost-writer/config/options";
 import useGhostWriterLayout from "@/features/ghost-writer/hooks/useGhostWriterLayout";
 import useGhostWriterDocument from "@/features/ghost-writer/hooks/useGhostWriterDocument";
@@ -328,6 +328,11 @@ const Index = () => {
     ? getParameterPanelHeaderMeta(parameterPanelTarget, appPanelScope)
     : null;
   const hasVerbetografiaRequiredFields = Boolean(verbetografiaTitle.trim() && verbetografiaSpecialty.trim());
+  const defaultDesktopPanelLayout = getDefaultDesktopPanelLayout({
+    hasCenterPanel,
+    hasJsonPanel,
+    hasEditorPanel,
+  });
   const {
     llmLogFontStyle,
     latestLlmMeta,
@@ -376,7 +381,7 @@ const Index = () => {
           <ResizablePanel
             id="left-panel"
             order={1}
-            defaultSize={PANEL_SIZES.left.default}
+            defaultSize={defaultDesktopPanelLayout.left}
             minSize={PANEL_SIZES.left.min}
             maxSize={PANEL_SIZES.left.max}
             className="min-h-0 border-r border-border bg-card"
@@ -405,7 +410,7 @@ const Index = () => {
             <ResizablePanel
               id="parameter-panel"
               order={2}
-              defaultSize={PANEL_SIZES.parameter.default}
+              defaultSize={defaultDesktopPanelLayout.parameter ?? PANEL_SIZES.parameter.default}
               minSize={PANEL_SIZES.parameter.min}
               maxSize={PANEL_SIZES.parameter.max}
               className={`min-h-0 border-r border-border ${sidePanelClass}`}
@@ -614,13 +619,7 @@ const Index = () => {
           <ResizablePanel
             id="right-panel"
             order={hasCenterPanel ? 3 : 2}
-            defaultSize={
-              hasEditorPanel
-                ? PANEL_SIZES.right.default
-                : hasCenterPanel
-                  ? 100 - PANEL_SIZES.left.default - PANEL_SIZES.parameter.default
-                  : 100 - PANEL_SIZES.left.default
-            }
+            defaultSize={defaultDesktopPanelLayout.right}
             minSize={PANEL_SIZES.right.min}
             maxSize={
               hasEditorPanel
@@ -674,7 +673,7 @@ const Index = () => {
             <ResizablePanel
               id="json-log-panel"
               order={hasCenterPanel ? 4 : 3}
-              defaultSize={PANEL_SIZES.editor.default}
+              defaultSize={defaultDesktopPanelLayout.json ?? PANEL_SIZES.editor.default}
               minSize={PANEL_SIZES.editor.min}
               maxSize={PANEL_SIZES.editor.max}
               className={`min-h-0 border-l border-border ${sidePanelClass}`}
@@ -726,7 +725,7 @@ const Index = () => {
             <ResizablePanel
               id="editor-panel"
               order={hasCenterPanel ? (showJsonPanel ? 5 : 4) : (showJsonPanel ? 4 : 3)}
-              defaultSize={PANEL_SIZES.editor.default}
+              defaultSize={defaultDesktopPanelLayout.editor ?? PANEL_SIZES.editor.default}
               minSize={PANEL_SIZES.editor.min}
               maxSize={PANEL_SIZES.editor.max}
             >

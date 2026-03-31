@@ -2,6 +2,7 @@ import AiActionParametersPanel from "@/features/ghost-writer/components/AiAction
 import AiAssistantConfigPanel from "@/features/ghost-writer/components/AiAssistantConfigPanel";
 import { Label } from "@/components/ui/label";
 import { getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
+import { CONFIG_PROMPT_ROWS } from "@/features/ghost-writer/config/constants";
 import { parameterActionMeta } from "@/features/ghost-writer/config/metadata";
 import { TRANSLATE_LANGUAGE_OPTIONS } from "@/features/ghost-writer/config/options";
 import type { AiActionId, AiPanelScope, SelectOption } from "@/features/ghost-writer/types";
@@ -121,7 +122,7 @@ const AiActionsParameterSection = ({
         )}
       </div>
       {isConfigOpen && supportsAiConfig ? (
-        <div className="border-t border-border p-4">
+        <div className="min-h-0 overflow-y-auto border-t border-border p-4 pr-3">
           <AiAssistantConfigPanel
             llmModel={aiActionsLlmModel}
             onLlmModelChange={onAiActionsLlmModelChange}
@@ -153,7 +154,7 @@ const AiActionsParameterSection = ({
                       onAiActionSystemPromptChange(actionId as ActionSystemPromptId, event.target.value);
                     }
                   }}
-                  rows={10}
+                  rows={CONFIG_PROMPT_ROWS}
                   className="w-full rounded-md border border-input bg-white px-3 py-2 text-[11px] text-foreground outline-none resize-none overflow-y-auto"
                 />
               </div>

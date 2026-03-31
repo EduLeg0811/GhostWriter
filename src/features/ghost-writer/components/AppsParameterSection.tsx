@@ -11,6 +11,7 @@ import SemanticSearchPanel from "@/features/ghost-writer/components/SemanticSear
 import VerbeteSearchPanel from "@/features/ghost-writer/components/VerbeteSearchPanel";
 import VerbetografiaPanel from "@/features/ghost-writer/components/VerbetografiaPanel";
 import { getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
+import { CONFIG_PROMPT_ROWS } from "@/features/ghost-writer/config/constants";
 import { APP_PANEL_ICONS, parameterAppMeta } from "@/features/ghost-writer/config/metadata";
 import type { AppActionId, AppPanelScope, SelectOption, SemanticIndexOption } from "@/features/ghost-writer/types";
 import type { BookCode } from "@/lib/bookCatalog";
@@ -376,7 +377,7 @@ const AppsParameterSection = ({
             extraContent={(
               <div className="space-y-2">
                 <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt</Label>
-                <textarea value={biblioExternaLlmSystemPrompt} onChange={(event) => onBiblioExternaLlmSystemPromptChange(event.target.value)} rows={10} className="w-full rounded-md border border-input bg-white px-3 py-2 text-[11px] text-foreground outline-none resize-none overflow-y-auto" />
+                <textarea value={biblioExternaLlmSystemPrompt} onChange={(event) => onBiblioExternaLlmSystemPromptChange(event.target.value)} rows={CONFIG_PROMPT_ROWS} className="w-full rounded-md border border-input bg-white px-3 py-2 text-[11px] text-foreground outline-none resize-none overflow-y-auto" />
               </div>
             )}
           />
@@ -577,7 +578,7 @@ const AppsParameterSection = ({
           )}
         </div>
         {isAiActionsConfigOpen ? (
-          <div className="border-t border-border p-4">
+          <div className="min-h-0 overflow-y-auto border-t border-border p-4 pr-3">
             <AiAssistantConfigPanel
               llmModel={aiActionsLlmModel}
               onLlmModelChange={onAiActionsLlmModelChange}
@@ -619,7 +620,7 @@ const AppsParameterSection = ({
                         onAiActionSystemPromptChange(selectedVerbetografiaAction, event.target.value);
                       }
                     }}
-                    rows={10}
+                    rows={CONFIG_PROMPT_ROWS}
                     className="w-full rounded-md border border-input bg-white px-3 py-2 text-[11px] text-foreground outline-none resize-none overflow-y-auto"
                   />
                 </div>

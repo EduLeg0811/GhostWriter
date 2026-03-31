@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Paperclip } from "lucide-react";
 import type { UploadedLlmFile } from "@/lib/openai";
 import UploadedFilesList from "@/features/ghost-writer/components/UploadedFilesList";
+import { CONFIG_PROMPT_ROWS } from "@/features/ghost-writer/config/constants";
 
 interface SourcesPanelProps {
   onUploadFiles: (files: File[]) => void;
@@ -107,7 +108,7 @@ const SourcesPanel = ({
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-border pt-3">
+      <div className="min-h-0 overflow-y-auto border-t border-border pt-3 pr-1">
         <div className="space-y-4">
           <div className="space-y-3">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações LLM Chat</Label>
@@ -152,7 +153,7 @@ const SourcesPanel = ({
             </div>
             <div className="space-y-2">
               <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt</Label>
-              <textarea value={llmSystemPrompt} onChange={(e) => onLlmSystemPromptChange(e.target.value)} rows={8} className="w-full resize-none overflow-y-auto rounded-md border border-input bg-white px-3 py-2 text-[11px] text-foreground outline-none" />
+              <textarea value={llmSystemPrompt} onChange={(e) => onLlmSystemPromptChange(e.target.value)} rows={CONFIG_PROMPT_ROWS} className="w-full resize-none overflow-y-auto rounded-md border border-input bg-white px-3 py-2 text-[11px] text-foreground outline-none" />
             </div>
             <div className="pt-1">
               <Button

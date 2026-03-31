@@ -40,12 +40,56 @@ Saída:
 export const DEFAULT_LOG_FONT_SIZE_PX = 9;
 export const DEFAULT_LOG_LINE_HEIGHT_RATIO = 1.1;
 export const DEFAULT_DOLLAR_TOKEN = 5.5;
+export const CONFIG_PROMPT_ROWS = 5;
 export const PANEL_SIZES = {
   left: { default: 10, min: 10, max: 20 },
-  parameter: { default: 12, min: 12, max: 20 },
-  editor: { default: 50, min: 20, max: 70 },
+  parameter: { default: 10, min: 10, max: 20 },
+  editor: { default: 30, min: 20, max: 70 },
   right: { default: 50, min: 20, max: 70 },
 } as const;
+
+interface DefaultDesktopPanelLayoutOptions {
+  hasCenterPanel: boolean;
+  hasJsonPanel: boolean;
+  hasEditorPanel: boolean;
+}
+
+interface DefaultDesktopPanelLayout {
+  left: number;
+  parameter: number | null;
+  right: number;
+  json: number | null;
+  editor: number | null;
+}
+
+const roundPanelSize = (value: number) => Number(value.toFixed(3));
+
+export const getDefaultDesktopPanelLayout = ({
+  hasCenterPanel,
+  hasJsonPanel,
+  hasEditorPanel,
+}: DefaultDesktopPanelLayoutOptions): DefaultDesktopPanelLayout => {
+  const left = PANEL_SIZES.left.default;
+  const parameter = hasCenterPanel ? PANEL_SIZES.parameter.default : null;
+  const visibleFlexiblePanels = [
+    { id: "right", weight: PANEL_SIZES.right.default },
+    ...(hasJsonPanel ? [{ id: "json", weight: PANEL_SIZES.editor.default }] : []),
+    ...(hasEditorPanel ? [{ id: "editor", weight: PANEL_SIZES.editor.default }] : []),
+  ] as const;
+  const available = 100 - left - (parameter ?? 0);
+  const totalWeight = visibleFlexiblePanels.reduce((sum, panel) => sum + panel.weight, 0);
+  const scaledSizes = Object.fromEntries(
+    visibleFlexiblePanels.map((panel) => [panel.id, roundPanelSize((available * panel.weight) / totalWeight)]),
+  ) as Record<(typeof visibleFlexiblePanels)[number]["id"], number>;
+
+  return {
+    left,
+    parameter,
+    right: scaledSizes.right,
+    json: hasJsonPanel ? scaledSizes.json : null,
+    editor: hasEditorPanel ? scaledSizes.editor : null,
+  };
+};
 export const DEFAULT_BOOK_SEARCH_MAX_RESULTS = 10;
 export const PDF_HEADER_SIGNATURE_RE = /enciclop(?:é|e)dia\s+da\s+conscienciologia/i;
 export const CHAT_EDITOR_CONTEXT_MAX_CHARS = 10000;

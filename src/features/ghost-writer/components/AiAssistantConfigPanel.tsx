@@ -57,7 +57,7 @@ const AiAssistantConfigPanel = ({
   canToggleIncludeEditorContextInLlm = true,
   extraContent,
 }: AiAssistantConfigPanelProps) => (
-  <div className="space-y-4">
+  <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
     <div className="space-y-3">
       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações LLM</Label>
       <div className="flex items-center gap-2">
