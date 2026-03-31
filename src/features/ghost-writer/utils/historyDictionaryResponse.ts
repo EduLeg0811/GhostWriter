@@ -50,12 +50,12 @@ const summarizeDefinitions = (definitions: string[], limit: number): string => {
 export const buildOnlineDictionaryHistoryResponsePayload = (
   result: OnlineDictionaryResult,
 ): HistoryDictionaryResponsePayload => {
-  const summaryDefinitions = asBulletList(result.summary.definitions, 6);
-  const summarySynonyms = asBulletList(result.summary.synonyms, 10);
-  const summaryExamples = asBulletList(result.summary.examples, 4);
+  const summaryDefinitions = asBulletList(result.summary.definitions, 5);
+  const summarySynonyms = asBulletList(result.summary.synonyms, 3);
+  const summaryExamples = asBulletList(result.summary.examples, 2);
 
   const sections: string[] = [
-    `**Consulta Dict**`,
+    `**Consulta Dicionários**`,
     `- **Termo**: ${result.term}`,
     `- **Fontes válidas**: ${result.sources_ok}/${result.sources_total}`,
     `- **Latência total**: ${result.elapsed_ms} ms`,

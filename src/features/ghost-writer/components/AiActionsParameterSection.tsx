@@ -83,7 +83,7 @@ const AiActionsParameterSection = ({
   onRemoveUploadedFile,
 }: AiActionsParameterSectionProps) => {
   const shouldShowActionPanel = Boolean(actionId) && !(actionId === "ai_command" && isAiCommandSelectionPending);
-  const supportsAiConfig = Boolean(actionId && actionId !== "dict_lookup");
+  const supportsAiConfig = Boolean(actionId && section !== "translation" && actionId !== "dict_lookup");
   const selectedActionSystemPrompt = supportsAiConfig
     ? getActionSystemPrompt(aiActionSystemPrompts, actionId as ActionSystemPromptId)
     : "";

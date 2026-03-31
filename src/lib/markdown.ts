@@ -95,7 +95,7 @@ const tableAlignToCss = (align: "left" | "center" | "right"): string => {
 const renderMarkdownTable = (table: MarkdownTable): string => {
   const wrapperStyle = "margin:0.75em 0;overflow-x:auto;";
   const tableStyle = "width:100%;border-collapse:collapse;border-spacing:0;font-size:0.95em;line-height:1.45;border:1px solid rgba(34,197,94,0.22);border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.78);";
-  const headCellStyle = "padding:8px 10px;background:rgba(220,252,231,0.75);border-bottom:1px solid rgba(34,197,94,0.22);font-weight:600;color:rgb(21,128,61);";
+  const headCellStyle = "padding:8px 10px;background:rgba(115,115,115,0.5);border-bottom:1px solid rgba(34,197,94,0.22);font-weight:600;color:rgb(255,255,255);";
   const bodyCellStyle = "padding:8px 10px;vertical-align:top;border-top:1px solid rgba(24,24,27,0.08);";
 
   const headerHtml = table.headers

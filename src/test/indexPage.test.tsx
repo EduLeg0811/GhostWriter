@@ -234,19 +234,19 @@ describe("Index page", () => {
     render(<Index />);
 
     fireEvent.click(await screen.findByRole("button", { name: /trad.*dicion/i }));
-    fireEvent.click(screen.getAllByRole("button", { name: /^consulta dict\b/i })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^consulta dicionários\b/i })[0]);
 
     await waitFor(() => {
-      expect(screen.getAllByText("Consulta Dict")[0]).toBeInTheDocument();
+      expect(screen.getAllByText("Consulta Dicionários")[0]).toBeInTheDocument();
     });
 
     fireEvent.change(screen.getByPlaceholderText("Write a word, phrase or text"), {
       target: { value: "casa" },
     });
-    fireEvent.click(screen.getAllByRole("button", { name: /^consulta dict\b/i })[1]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^consulta dicionários\b/i })[1]);
 
     await waitFor(() => {
-      expect(screen.getAllByText("Consulta Dict")[1]).toBeInTheDocument();
+      expect(screen.getAllByText("Consulta Dicionários")[1]).toBeInTheDocument();
     });
 
     expect((await screen.findAllByText(/Moradia habitual/i)).length).toBeGreaterThan(0);

@@ -14,7 +14,7 @@ const historyToolbarButtonActiveClass = "bg-green-100 text-blue-700 ring-1 ring-
 const historyToolbarSeparatorClass = "mx-1.5 h-6 w-px bg-zinc-400/90 shadow-[0_0_0_1px_rgba(255,255,255,0.22)]";
 
 const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactNode }> = {
-  define: { label: "Definir", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
+  define: { label: "Definologia", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
   synonyms: { label: "Sinonímia", icon: <Repeat2 className="h-3.5 w-3.5 text-primary" /> },
   etymology: { label: "Etimologia", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   dictionary: { label: "Dicionário", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
@@ -22,7 +22,7 @@ const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactN
   rewrite: { label: "Reescrever", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
   summarize: { label: "Resumir", icon: <FileText className="h-3.5 w-3.5 text-primary" /> },
   translate: { label: "Traduzir", icon: <Languages className="h-3.5 w-3.5 text-primary" /> },
-  dict_lookup: { label: "Consulta Dict", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
+  dict_lookup: { label: "Consulta Dicionários", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   ai_command: { label: "Comando IA", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
   analogies: { label: "Analogias", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
   comparisons: { label: "Comparações", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },

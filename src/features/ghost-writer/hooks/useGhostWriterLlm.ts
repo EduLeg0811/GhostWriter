@@ -25,7 +25,6 @@ import {
   CHAT_SYSTEM_PROMPT,
   CHAT_TEMPERATURE,
   executeLLM,
-  LLM_VECTOR_STORE_TRANSLATE_RAG,
   uploadLlmSourceFiles,
   type ChatMessage,
   type UploadedLlmFile,
@@ -169,6 +168,14 @@ interface AiActionsLlmConfigRefValue {
   inputFileIds: string[];
 }
 
+const TRANSLATE_FIXED_VECTOR_STORE_IDS = ["vs_69931da436e48191b43453e845e63bd3"];
+const TRANSLATE_FIXED_INPUT_FILE_IDS: string[] = [];
+const TRANSLATE_FIXED_MODEL = "gpt-4.1-mini";
+const TRANSLATE_FIXED_TEMPERATURE = 0;
+const TRANSLATE_FIXED_MAX_OUTPUT_TOKENS = 5000;
+const TRANSLATE_FIXED_VERBOSITY: "low" | "medium" | "high" = "low";
+const TRANSLATE_FIXED_EFFORT: "none" | "low" | "medium" | "high" = "none";
+
 const normalizeVerbosity = (value: string | undefined): "low" | "medium" | "high" | undefined => {
   if (!value) return undefined;
   const normalized = value.trim().toLowerCase();
@@ -310,7 +317,7 @@ const useGhostWriterLlm = ({
 
   const aiActionVectorStoreOptions: SelectOption[] = useMemo(() => {
     const items: SelectOption[] = [...BOOK_SOURCE, ...VECTOR_STORES_SOURCE].map((item) => ({ id: item.id, label: item.label }));
-    const translateRagId = LLM_VECTOR_STORE_TRANSLATE_RAG?.trim() || "";
+    const translateRagId = TRANSLATE_FIXED_VECTOR_STORE_IDS[0] || "";
     const allItems = translateRagId ? [...items, { id: translateRagId, label: "Translate RAG" }] : items;
     const seen = new Set<string>();
     return allItems.filter((item) => {
@@ -556,11 +563,11 @@ const useGhostWriterLlm = ({
     const currentConfig = aiActionsLlmConfigRef.current;
     const mergedPayload: Parameters<typeof executeLLM>[0] = {
       ...payload,
-      model: currentConfig.model,
-      temperature: currentConfig.temperature,
-      maxOutputTokens: currentConfig.maxOutputTokens,
-      gpt5Verbosity: normalizeVerbosity(currentConfig.gpt5Verbosity),
-      gpt5Effort: normalizeEffort(currentConfig.gpt5Effort),
+      model: payload.model ?? currentConfig.model,
+      temperature: payload.temperature ?? currentConfig.temperature,
+      maxOutputTokens: payload.maxOutputTokens ?? currentConfig.maxOutputTokens,
+      gpt5Verbosity: payload.gpt5Verbosity ?? normalizeVerbosity(currentConfig.gpt5Verbosity),
+      gpt5Effort: payload.gpt5Effort ?? normalizeEffort(currentConfig.gpt5Effort),
     };
     const id = crypto.randomUUID();
     const at = new Date().toISOString();
@@ -615,10 +622,7 @@ const useGhostWriterLlm = ({
     const currentConfig = aiActionsLlmConfigRef.current;
     const inputFileIds = normalizeIdList(currentConfig.inputFileIds);
     const vectorStoreIds = normalizeIdList(currentConfig.vectorStoreIds);
-    const translateVectorStoreIds = normalizeIdList([
-      ...vectorStoreIds,
-      ...(LLM_VECTOR_STORE_TRANSLATE_RAG?.trim() ? [LLM_VECTOR_STORE_TRANSLATE_RAG.trim()] : []),
-    ]);
+    const translateVectorStoreIds = TRANSLATE_FIXED_VECTOR_STORE_IDS;
 
     if (type !== "ai_command" && !text) {
       toast.error("Selecione um trecho no documento ou escreva na caixa de texto.");
@@ -639,7 +643,7 @@ const useGhostWriterLlm = ({
         const payload = buildOnlineDictionaryHistoryResponsePayload(data.result);
         addResponse("dict_lookup", payload.querySummary, payload.markdown);
       } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : "Falha ao executar Consulta Dict.");
+        toast.error(err instanceof Error ? err.message : "Falha ao executar Consulta Dicionários.");
       } finally {
         setIsLoading(false);
       }
@@ -731,11 +735,19 @@ const useGhostWriterLlm = ({
         });
       }
       const effectiveVectorStoreIds = type === "translate" ? translateVectorStoreIds : vectorStoreIds;
-      if (type === "translate" && effectiveVectorStoreIds.length === 0) {
-        throw new Error("Selecione ao menos 1 Vector Store na configuracao de Acoes IA.");
-      }
+      const effectiveInputFileIds = type === "translate" ? TRANSLATE_FIXED_INPUT_FILE_IDS : inputFileIds;
       const tools = type === "etymology" ? [{ type: "web_search" }] : undefined;
-      const result = (await executeAiActionsLLMWithLog({ messages, vectorStoreIds: effectiveVectorStoreIds, inputFileIds, tools })).content;
+      const result = (await executeAiActionsLLMWithLog({
+        messages,
+        vectorStoreIds: effectiveVectorStoreIds,
+        inputFileIds: effectiveInputFileIds,
+        model: type === "translate" ? TRANSLATE_FIXED_MODEL : undefined,
+        temperature: type === "translate" ? TRANSLATE_FIXED_TEMPERATURE : undefined,
+        maxOutputTokens: type === "translate" ? TRANSLATE_FIXED_MAX_OUTPUT_TOKENS : undefined,
+        gpt5Verbosity: type === "translate" ? TRANSLATE_FIXED_VERBOSITY : undefined,
+        gpt5Effort: type === "translate" ? TRANSLATE_FIXED_EFFORT : undefined,
+        tools,
+      })).content;
       addResponse(type, type === "ai_command" ? query : text.slice(0, 80), result);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erro na chamada a IA.");

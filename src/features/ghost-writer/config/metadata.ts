@@ -80,16 +80,16 @@ export const parameterMacroMeta: Record<MacroActionId, { title: string; descript
 };
 
 export const parameterActionMeta: Record<AiActionId, { title: string; description: string }> = {
-  define: { title: "Definir", description: "Definologia conscienciológica." },
+  define: { title: "Definologia", description: "Definologia conscienciológica." },
   synonyms: { title: "Sinonímia", description: "Lista de sinônimos." },
-  etymology: { title: "Etimologia", description: "Busca ou escreve a etimologia do termo." },
-  dictionary: { title: "Dicionário", description: "Consulta dicionarizada do termo." },
-  epigraph: { title: "Epígrafe", description: "Sugere epígrafe." },
+  etymology: { title: "Etimologia", description: "Etimologia do termo." },
+  dictionary: { title: "Dicionário", description: "Definição dicionarizada." },
+  epigraph: { title: "Epígrafe", description: "Sugere epígrafe do termo." },
   rewrite: { title: "Reescrever", description: "Melhora clareza e fluidez." },
   summarize: { title: "Resumir", description: "Síntese concisa." },
   pensatas: { title: "Pensatas LO", description: "Pensatas afins." },
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
-  dict_lookup: { title: "Consulta Dict", description: "Consulta termos em dicionários online." },
+  dict_lookup: { title: "Consulta Dicionários", description: "Consulta termos em dicionários online." },
   ai_command: { title: "Comando IA", description: "Envia uma query livre para a LLM." },
   analogies: { title: "Analogias", description: "Elabora analogias do texto com a Conscienciologia." },
   comparisons: { title: "Comparações", description: "Compara o texto com termos relevantes da Conscienciologia." },

@@ -177,7 +177,7 @@ describe("historyResponseHtml", () => {
       "dict_lookup",
       "Termo: casa | Fontes válidas: 1/2",
       [
-        "**Consulta Dict**",
+        "**Consulta Dicionários**",
         "",
         "**Fontes consultadas**",
         "",
