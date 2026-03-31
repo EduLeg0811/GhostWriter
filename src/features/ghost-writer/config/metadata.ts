@@ -8,6 +8,7 @@ export const ACTION_PANEL_BUTTONS_BY_SCOPE: Record<AiPanelScope, AiActionId[]> =
   actions: ["define", "synonyms", "etymology", "dictionary", "pensatas"],
   rewriting: ["rewrite", "summarize", "epigraph"],
   translation: ["translate", "dict_lookup"],
+  customized_prompts: ["analogies", "comparisons", "examples", "counterpoints", "neoparadigma"],
 };
 
 export const APP_PANEL_BUTTONS_BY_SCOPE: Record<AppPanelScope, AppActionId[]> = {
@@ -31,6 +32,11 @@ export const ACTION_PANEL_ICONS: Record<AiActionId, LucideIcon> = {
   translate: Languages,
   dict_lookup: Search,
   ai_command: PenLine,
+  analogies: PenLine,
+  comparisons: PenLine,
+  examples: PenLine,
+  counterpoints: PenLine,
+  neoparadigma: PenLine,
 };
 
 export const APP_PANEL_ICONS: Record<AppActionId, LucideIcon> = {
@@ -85,6 +91,11 @@ export const parameterActionMeta: Record<AiActionId, { title: string; descriptio
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
   dict_lookup: { title: "Consulta Dict", description: "Consulta termos em dicionários online." },
   ai_command: { title: "Comando IA", description: "Envia uma query livre para a LLM." },
+  analogies: { title: "Analogias", description: "Elabora analogias do texto com a Conscienciologia." },
+  comparisons: { title: "Comparações", description: "Compara o texto com termos relevantes da Conscienciologia." },
+  examples: { title: "Exemplos", description: "Lista 5 exemplos do texto segundo a Conscienciologia." },
+  counterpoints: { title: "Contrapontos", description: "Lista 5 contrapontos do texto no contexto da Conscienciologia." },
+  neoparadigma: { title: "Neoparadigma", description: "Analisa o conceito no Neoparadigma Consciencial." },
 };
 
 export const getAiPanelScopeByAction = (id: AiActionId): AiPanelScope =>
@@ -92,6 +103,8 @@ export const getAiPanelScopeByAction = (id: AiActionId): AiPanelScope =>
     ? "rewriting"
     : ACTION_PANEL_BUTTONS_BY_SCOPE.translation.includes(id)
       ? "translation"
+      : ACTION_PANEL_BUTTONS_BY_SCOPE.customized_prompts.includes(id)
+        ? "customized_prompts"
       : "actions";
 
 export const getParameterPanelHeaderMeta = (
@@ -112,6 +125,8 @@ export const getParameterPanelHeaderMeta = (
       return { title: "Paragrafos & Trechos", description: "Reescrever, resumir e criar epigrafe" };
     case "translation":
       return { title: "Traducao & Dicionario", description: "Traduzir texto e consultar termos" };
+    case "customized_prompts":
+      return { title: "Customized Prompts", description: "Painel de prompts customizados" };
     case "applications":
       return { title: "Aplicativos", description: "Cons-IA, Bibliomancia, Canal de Videos, PDFs" };
     case "apps":

@@ -7,7 +7,7 @@ import { sectionActionButtonClass } from "@/styles/buttonStyles";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 
 interface LeftPanelProps {
-  onOpenParameterSection: (section: "document" | "sources" | "actions" | "rewriting" | "translation" | "apps" | "applications") => void;
+  onOpenParameterSection: (section: "document" | "sources" | "actions" | "rewriting" | "translation" | "customized_prompts" | "apps" | "applications") => void;
   onOpenAiCommand: () => void;
   onOpenVerbetografiaTable: () => void;
   onOpenBookSearch: () => void;
@@ -18,7 +18,7 @@ interface LeftPanelProps {
   isLoading: boolean;
 }
 
-type LeftPanelActionId = "document" | "sources" | "actions" | "rewriting" | "translation" | "ai_command" | "verbetografia_table" | "apps" | "applications";
+type LeftPanelActionId = "document" | "sources" | "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command" | "verbetografia_table" | "apps" | "applications";
 
 const GHOST_VIDEO_PLAYBACK_RATE = 0.50;
 const GHOST_VIDEO_REPLAY_DELAY_MS = 30000;
@@ -207,6 +207,26 @@ const LeftPanel = ({
                 <span className="min-w-0 flex-1 text-left">
                   <span className="block break-words text-sm font-medium text-foreground">Tradução & Dicionário</span>
                   <span className="block break-words text-xs text-muted-foreground">Traduzir texto e consultar termos</span>
+                </span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                className={`${sectionActionButtonClass} border-0 shadow-none`}
+                onClick={() => {
+                  setActiveActionId("customized_prompts");
+                  onOpenParameterSection("customized_prompts");
+                }}
+                disabled={actionDisabled}
+              >
+                {isLoading && activeActionId === "customized_prompts" ? (
+                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <PenLine className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                )}
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Customized Prompts</span>
+                  <span className="block break-words text-xs text-muted-foreground">Prompts customizados por botao</span>
                 </span>
               </Button>
 

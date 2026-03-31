@@ -171,4 +171,32 @@ describe("historyResponseHtml", () => {
     expect(withoutMetadata).not.toContain("argumento:");
     expect(withoutMetadata).not.toContain("#1");
   });
+
+  it("renders markdown tables from consulta dict as html table", () => {
+    const response = buildResponse(
+      "dict_lookup",
+      "Termo: casa | Fontes válidas: 1/2",
+      [
+        "**Consulta Dict**",
+        "",
+        "**Fontes consultadas**",
+        "",
+        "| Nome da Fonte | Score | Definições (resumo) |",
+        "| --- | ---: | --- |",
+        "| Aulete | 108.40 | Moradia habitual. |",
+      ].join("\n"),
+    );
+
+    const html = renderHistoryResponseEditorHtml(response, {
+      applyNumbering: true,
+      applyReferences: true,
+      applyMetadata: true,
+    });
+
+    expect(html).toContain("<table");
+    expect(html).toContain("<thead>");
+    expect(html).toContain("<tbody>");
+    expect(html).toContain("Aulete");
+    expect(html).toContain("Moradia habitual.");
+  });
 });

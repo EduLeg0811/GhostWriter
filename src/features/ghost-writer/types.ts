@@ -3,15 +3,16 @@ import type { BookCode } from "@/lib/bookCatalog";
 export type MacroActionId = "macro1" | "macro2";
 export type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7" | "app8" | "app9" | "app10" | "app11" | "app12";
 export type AppPanelScope = "bibliografia" | "busca_termos" | "semantic_search" | "verbetografia";
-export type AiPanelScope = "actions" | "rewriting" | "translation";
-export type AiActionId = "define" | "synonyms" | "etymology" | "dictionary" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate" | "dict_lookup" | "ai_command";
-export type ParameterPanelSection = "document" | "sources" | "actions" | "rewriting" | "translation" | "apps" | "applications";
+export type AiPanelScope = "actions" | "rewriting" | "translation" | "customized_prompts";
+export type AiActionId = "define" | "synonyms" | "etymology" | "dictionary" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate" | "dict_lookup" | "ai_command" | "analogies" | "comparisons" | "examples" | "counterpoints" | "neoparadigma";
+export type ParameterPanelSection = "document" | "sources" | "actions" | "rewriting" | "translation" | "customized_prompts" | "apps" | "applications";
 export type ParameterPanelTarget =
   | { section: "document"; id: MacroActionId | null }
   | { section: "sources"; id: null }
   | { section: "actions"; id: AiActionId | null }
   | { section: "rewriting"; id: AiActionId | null }
   | { section: "translation"; id: AiActionId | null }
+  | { section: "customized_prompts"; id: AiActionId | null }
   | { section: "apps"; id: AppActionId | null }
   | { section: "applications"; id: null }
   | null;
@@ -54,6 +55,11 @@ export interface AIResponse {
     | "translate"
     | "dict_lookup"
     | "ai_command"
+    | "analogies"
+    | "comparisons"
+    | "examples"
+    | "counterpoints"
+    | "neoparadigma"
     | "chat"
     | "pensatas"
     | "app_ref_book"

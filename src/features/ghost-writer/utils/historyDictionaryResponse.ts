@@ -34,6 +34,19 @@ type HistoryDictionaryResponsePayload = {
 const asBulletList = (items: string[], limit: number): string[] =>
   items.slice(0, limit).map((item) => `- ${item}`);
 
+const escapeMarkdownTableCell = (value: string): string =>
+  value.replace(/\|/g, "\\|").replace(/\r?\n/g, " ").trim();
+
+const summarizeDefinitions = (definitions: string[], limit: number): string => {
+  const summary = definitions
+    .slice(0, limit)
+    .map((definition) => escapeMarkdownTableCell(definition))
+    .filter(Boolean)
+    .join(" ; ");
+
+  return summary || "Nenhuma definição aproveitável.";
+};
+
 export const buildOnlineDictionaryHistoryResponsePayload = (
   result: OnlineDictionaryResult,
 ): HistoryDictionaryResponsePayload => {
@@ -61,38 +74,21 @@ export const buildOnlineDictionaryHistoryResponsePayload = (
     sections.push("", `**Exemplos**`, ...summaryExamples);
   }
 
-  sections.push("", `**Fontes consultadas**`);
-
-  for (const item of result.results) {
-    sections.push("", `### ${item.source}`);
-    sections.push(`- **Status**: ${item.ok ? "OK" : "Falha"}`);
-    sections.push(`- **Score**: ${item.quality_score}`);
-    sections.push(`- **Latência**: ${item.elapsed_ms} ms`);
-    if (item.query_term) {
-      sections.push(`- **Termo consultado**: ${item.query_term}${item.retry_without_accents ? " (retry sem acento)" : ""}`);
-    }
-
-    if (item.ok) {
-      const sourceDefinitions = asBulletList(item.definitions, 3);
-      sections.push(`- **Definições**:`);
-      sections.push(...(sourceDefinitions.length > 0 ? sourceDefinitions : ["- Nenhuma definição aproveitável."]));
-      if (item.synonyms.length > 0) {
-        sections.push(`- **Sinônimos**: ${item.synonyms.slice(0, 8).join(", ")}`);
-      }
-      if (item.etymology) {
-        sections.push(`- **Etimologia**: ${item.etymology}`);
-      }
-      if (item.examples.length > 0) {
-        sections.push(`- **Exemplos**: ${item.examples.slice(0, 3).join(" | ")}`);
-      }
-    } else {
-      sections.push(`- **Falha na consulta**: ${item.error || "nenhuma definição extraída"}`);
-    }
-
-    if (item.url) {
-      sections.push(`- **URL**: ${item.url}`);
-    }
-  }
+  sections.push(
+    "",
+    `**Fontes consultadas**`,
+    "",
+    `| Nome da Fonte | Score | Definições (resumo) |`,
+    `| --- | ---: | --- |`,
+    ...result.results.map((item) => {
+      const sourceName = escapeMarkdownTableCell(item.source);
+      const score = Number.isFinite(item.quality_score) ? item.quality_score.toFixed(2) : "-";
+      const definitionsSummary = item.ok
+        ? summarizeDefinitions(item.definitions, 3)
+        : `Falha: ${escapeMarkdownTableCell(item.error || "nenhuma definição extraída")}`;
+      return `| ${sourceName} | ${score} | ${definitionsSummary} |`;
+    }),
+  );
 
   return {
     querySummary: `Termo: ${result.term} | Fontes válidas: ${result.sources_ok}/${result.sources_total}`,

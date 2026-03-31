@@ -1,0 +1,4 @@
+Customized Prompts:
+Comparações => Texto do Prompt Comparações
+Exemplos => Texto do Prompt Exemplos
+Contrapontos => Texto do Prompt Contrapontos

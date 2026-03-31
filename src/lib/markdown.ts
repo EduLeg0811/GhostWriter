@@ -1,5 +1,11 @@
-export const DEFAULT_MARKDOWN_PLACEHOLDER_HTML =""
+export const DEFAULT_MARKDOWN_PLACEHOLDER_HTML = ""
   // "<span class='text-muted-foreground'>A resposta da macro aparece aqui.</span>";
+
+type MarkdownTable = {
+  headers: string[];
+  aligns: Array<"left" | "center" | "right">;
+  rows: string[][];
+};
 
 export function renderBasicMarkdown(text: string): string {
   const escaped = (text || "")
@@ -18,7 +24,6 @@ function renderInlineMarkdown(text: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    // suporte basico a links markdown: [label](https://...)
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
 
   return escaped
@@ -30,21 +35,131 @@ function renderInlineMarkdown(text: string): string {
     .replace(/(?<!\w)_(?!\s)(.*?)(?<!\s)_(?!\w)/g, "<em>$1</em>");
 }
 
+const splitMarkdownTableRow = (line: string): string[] =>
+  line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split(/(?<!\\)\|/g)
+    .map((cell) => cell.replace(/\\\|/g, "|").trim());
+
+const parseAlignmentCell = (cell: string): "left" | "center" | "right" | null => {
+  const normalized = cell.replace(/\s+/g, "");
+  if (!/^:?-{3,}:?$/.test(normalized)) return null;
+  if (normalized.startsWith(":") && normalized.endsWith(":")) return "center";
+  if (normalized.endsWith(":")) return "right";
+  return "left";
+};
+
+const parseMarkdownTable = (lines: string[], startIndex: number): { table: MarkdownTable; nextIndex: number } | null => {
+  const headerLine = lines[startIndex]?.trim() || "";
+  const separatorLine = lines[startIndex + 1]?.trim() || "";
+  if (!headerLine.includes("|") || !separatorLine.includes("|")) return null;
+
+  const headers = splitMarkdownTableRow(headerLine);
+  const separatorCells = splitMarkdownTableRow(separatorLine);
+  if (headers.length === 0 || headers.length !== separatorCells.length) return null;
+
+  const aligns = separatorCells.map(parseAlignmentCell);
+  if (aligns.some((align) => align === null)) return null;
+
+  const rows: string[][] = [];
+  let cursor = startIndex + 2;
+  while (cursor < lines.length) {
+    const rawLine = lines[cursor];
+    const trimmed = rawLine.trim();
+    if (!trimmed || !trimmed.includes("|")) break;
+
+    const cells = splitMarkdownTableRow(trimmed);
+    if (cells.length !== headers.length) break;
+    rows.push(cells);
+    cursor += 1;
+  }
+
+  return {
+    table: {
+      headers,
+      aligns: aligns as Array<"left" | "center" | "right">,
+      rows,
+    },
+    nextIndex: cursor,
+  };
+};
+
+const tableAlignToCss = (align: "left" | "center" | "right"): string => {
+  if (align === "center") return "center";
+  if (align === "right") return "right";
+  return "left";
+};
+
+const renderMarkdownTable = (table: MarkdownTable): string => {
+  const wrapperStyle = "margin:0.75em 0;overflow-x:auto;";
+  const tableStyle = "width:100%;border-collapse:collapse;border-spacing:0;font-size:0.95em;line-height:1.45;border:1px solid rgba(34,197,94,0.22);border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.78);";
+  const headCellStyle = "padding:8px 10px;background:rgba(220,252,231,0.75);border-bottom:1px solid rgba(34,197,94,0.22);font-weight:600;color:rgb(21,128,61);";
+  const bodyCellStyle = "padding:8px 10px;vertical-align:top;border-top:1px solid rgba(24,24,27,0.08);";
+
+  const headerHtml = table.headers
+    .map((header, index) => `<th style="${headCellStyle}text-align:${tableAlignToCss(table.aligns[index])};">${renderInlineMarkdown(header)}</th>`)
+    .join("");
+
+  const rowsHtml = table.rows
+    .map((row, rowIndex) => {
+      const rowBackground = rowIndex % 2 === 0 ? "background:rgba(255,255,255,0.92);" : "background:rgba(248,250,252,0.92);";
+      const cellsHtml = row
+        .map((cell, index) => `<td style="${bodyCellStyle}${rowBackground}text-align:${tableAlignToCss(table.aligns[index])};">${renderInlineMarkdown(cell)}</td>`)
+        .join("");
+      return `<tr>${cellsHtml}</tr>`;
+    })
+    .join("");
+
+  return `<div style="${wrapperStyle}"><table style="${tableStyle}"><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+};
+
 export function markdownToEditorHtml(text: string): string {
   const raw = (text || "").replace(/\r\n/g, "\n").trim();
   if (!raw) return "";
 
   const lines = raw.split("\n");
-  const htmlLines = lines.map((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return "<br/>";
-    if (/^###\s+/.test(trimmed)) return `<h3>${renderInlineMarkdown(trimmed.replace(/^###\s+/, ""))}</h3>`;
-    if (/^##\s+/.test(trimmed)) return `<h2>${renderInlineMarkdown(trimmed.replace(/^##\s+/, ""))}</h2>`;
-    if (/^#\s+/.test(trimmed)) return `<h1>${renderInlineMarkdown(trimmed.replace(/^#\s+/, ""))}</h1>`;
-    return `<p>${renderInlineMarkdown(trimmed)}</p>`;
-  });
+  const htmlParts: string[] = [];
 
-  return htmlLines.join("");
+  for (let index = 0; index < lines.length;) {
+    const line = lines[index];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      htmlParts.push("<br/>");
+      index += 1;
+      continue;
+    }
+
+    const parsedTable = parseMarkdownTable(lines, index);
+    if (parsedTable) {
+      htmlParts.push(renderMarkdownTable(parsedTable.table));
+      index = parsedTable.nextIndex;
+      continue;
+    }
+
+    if (/^###\s+/.test(trimmed)) {
+      htmlParts.push(`<h3>${renderInlineMarkdown(trimmed.replace(/^###\s+/, ""))}</h3>`);
+      index += 1;
+      continue;
+    }
+    if (/^##\s+/.test(trimmed)) {
+      htmlParts.push(`<h2>${renderInlineMarkdown(trimmed.replace(/^##\s+/, ""))}</h2>`);
+      index += 1;
+      continue;
+    }
+    if (/^#\s+/.test(trimmed)) {
+      htmlParts.push(`<h1>${renderInlineMarkdown(trimmed.replace(/^#\s+/, ""))}</h1>`);
+      index += 1;
+      continue;
+    }
+
+    htmlParts.push(`<p>${renderInlineMarkdown(trimmed)}</p>`);
+    index += 1;
+  }
+
+  return htmlParts.join("");
 }
 
 export function plainTextToEditorHtml(text: string): string {

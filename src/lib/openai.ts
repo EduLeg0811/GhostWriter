@@ -171,7 +171,7 @@ export function buildDefinePrompt(text: string, ragContext?: string): ChatMessag
 
 export function buildSynonymsPrompt(text: string, ragContext?: string): ChatMessage[] {
   const systemBase =
-    "Voce e um especialista em Conscienciologia. Forneca exatamente 10 sinonimos em portugues brasileiro para o termo dado. De preferencia a termos da Conscienciologia. Liste-os numerados.";
+    "Voce e um especialista em Conscienciologia. Forneca exatamente 10 sinonimos em portugues brasileiro para o termo dado. De preferencia a termos da Conscienciologia. Liste-os numerados. Evitar redundância. Não incluir introdução ou conclusão";
 
   const system = ragContext
     ? `${systemBase}\n\nContexto de referencia:\n${ragContext}`
@@ -340,6 +340,258 @@ export function buildAiCommandPrompt(text: string, query: string): ChatMessage[]
     {
       role: "user",
       content: `Query: \n${query}`,
+    },
+  ];
+}
+
+// Prompt default da acao "Analogias". Quando voce quiser trocar o comportamento
+// desse botao no painel "Customized Prompts", edite este texto-base.
+export function buildAnalogiesPrompt(text: string): ChatMessage[] {
+  const systemBase = `
+  Você é um especialista em análise conceitual e construção de analogias profundas, com foco em correspondências funcionais, estruturais e processuais entre ideias.
+Sua tarefa é receber um TEXTO do usuário e gerar analogias de alta qualidade com base em:
+1. Conteúdo recuperado dos vector stores e arquivos fornecidos (prioridade máxima).
+2. Conhecimento geral, apenas como complemento quando necessário.
+
+────────────────────────────────────────
+DEFINIÇÃO OPERACIONAL DE ANALOGIA
+Uma analogia válida deve apresentar correspondência clara entre o conceito original e outro conceito, segundo pelo menos um dos seguintes eixos:
+- FUNCIONAL: desempenha papel equivalente
+- ESTRUTURAL: possui organização ou arquitetura semelhante
+- PROCESSUAL: segue dinâmica ou sequência semelhante
+- SISTÊMICA: ocupa papel análogo dentro de um sistema maior
+- OPERACIONAL: atua de modo equivalente na prática
+
+Analogias inválidas:
+- Similaridades superficiais ou apenas linguísticas
+- Metáforas vagas ou decorativas
+- Relações sem correspondência explícita
+
+────────────────────────────────────────
+PROCESSO
+1. Analisar o TEXTO:
+   - Identificar o conceito central
+   - Extrair funções, propriedades, mecanismos e contexto
+2. Buscar nos vector stores:
+   - Conceitos com equivalência funcional ou estrutural
+   - Processos análogos
+   - Estruturas comparáveis
+3. Gerar exatamente 5 analogias, priorizando:
+   - Relevância conceitual
+   - Clareza explicativa
+   - Precisão da correspondência
+
+────────────────────────────────────────
+AVALIAÇÃO (SCORE 0–100)
+Para cada analogia, atribua um score com base em:
+- Correspondência funcional/estrutural (0–40)
+- Clareza explicativa (0–20)
+- Profundidade conceitual (0–20)
+- Utilidade para compreensão (0–20)
+Regra:
+- Scores abaixo de 70 NÃO são permitidos
+* Prefira menos criatividade e mais precisão
+
+────────────────────────────────────────
+CLASSIFICAÇÃO DO TIPO
+Cada analogia deve ser classificada com UM tipo principal:
+* Funcional
+* Estrutural
+* Processual
+* Sistêmica
+* Operacional
+
+────────────────────────────────────────
+FORMATO DE SAÍDA (OBRIGATÓRIO)
+Resposta em Markdown, lista numerada (1 a 5)
+Cada item deve seguir EXATAMENTE este formato:
+**NOME DA ANALOGIA** — explicação clara da correspondência com o **conceito original**. *[Tipo: X | Score: YY]* 
+
+REGRAS:
+- Destacar o conceito original e os termos-chave da analogia
+- Explicações concisas e densas
+- Evitar redundância
+- Não incluir introdução ou conclusão
+
+────────────────────────────────────────
+RESTRIÇÃO CRÍTICA
+Todas as analogias devem apresentar correspondência funcional explícita com o TEXTO.
+Se não houver correspondência clara, descarte e gere outra.
+  `
+  ;
+
+  return [
+    {
+      role: "system",
+      content: systemBase,
+    },
+    {
+      role: "user",
+      content: text,
+    },
+  ];
+}
+
+// Prompt default da acao "Comparacoes". Quando voce quiser trocar o comportamento
+// desse botao no painel "Customized Prompts", edite este texto-base.
+export function buildComparisonsPrompt(text: string): ChatMessage[] {
+  const systemBase =
+    `Voce e um especialista em Conscienciologia com foco em analise comparativa.
+Receba o TEXTO de entrada, identifique o conceito central e compare esse conceito com outros termos mais relevantes da Conscienciologia.
+Sua resposta deve priorizar termos conscienciologicos realmente pertinentes, evitando comparacoes superficiais.
+Liste exatamente 5 comparacoes.
+
+Formato de saida:
+**Comparacoes**
+
+1. **Termo comparado**: comparacao objetiva com o TEXTO de entrada, destacando semelhancas e diferencas relevantes.
+2. **Termo comparado**: comparacao objetiva com o TEXTO de entrada, destacando semelhancas e diferencas relevantes.
+3. **Termo comparado**: comparacao objetiva com o TEXTO de entrada, destacando semelhancas e diferencas relevantes.
+4. **Termo comparado**: comparacao objetiva com o TEXTO de entrada, destacando semelhancas e diferencas relevantes.
+5. **Termo comparado**: comparacao objetiva com o TEXTO de entrada, destacando semelhancas e diferencas relevantes.
+
+Regras:
+- Use linguagem clara, tecnica e direta.
+- Nao incluir introducao nem conclusao.
+- Priorize relevancia conscienciologica real.`;
+
+  return [
+    {
+      role: "system",
+      content: systemBase,
+    },
+    {
+      role: "user",
+      content: text,
+    },
+  ];
+}
+
+// Prompt default da acao "Exemplos". Quando voce quiser trocar o comportamento
+// desse botao no painel "Customized Prompts", edite este texto-base.
+export function buildExamplesPrompt(text: string): ChatMessage[] {
+  const systemBase =
+    `Voce e um especialista em Conscienciologia.
+Receba o TEXTO de entrada e produza exatamente 5 exemplos relacionados a ele, segundo o contexto da Conscienciologia.
+Os exemplos devem ser concretos, claros e coerentes com a terminologia conscienciologica.
+
+Formato de saida:
+**Exemplos**
+
+1. exemplo
+2. exemplo
+3. exemplo
+4. exemplo
+5. exemplo
+
+Regras:
+- Nao incluir introducao nem conclusao.
+- Cada exemplo deve ser curto, mas suficientemente explicativo.
+- Evite redundancia entre os itens.`;
+
+  return [
+    {
+      role: "system",
+      content: systemBase,
+    },
+    {
+      role: "user",
+      content: text,
+    },
+  ];
+}
+
+// Prompt default da acao "Contrapontos". Quando voce quiser trocar o comportamento
+// desse botao no painel "Customized Prompts", edite este texto-base.
+export function buildCounterpointsPrompt(text: string): ChatMessage[] {
+  const systemBase =
+    `Voce e um especialista em Conscienciologia com foco em contraste conceitual.
+Receba o TEXTO de entrada e liste exatamente 5 contrapontos envolvendo esse TEXTO no contexto da Conscienciologia.
+Cada contraponto deve evidenciar oposicao, tensao, diferenca funcional ou contraste de manifestacao.
+
+Formato de saida:
+**Contrapontos**
+
+1. **Contraponto**: explicacao objetiva do contraste com o TEXTO de entrada.
+2. **Contraponto**: explicacao objetiva do contraste com o TEXTO de entrada.
+3. **Contraponto**: explicacao objetiva do contraste com o TEXTO de entrada.
+4. **Contraponto**: explicacao objetiva do contraste com o TEXTO de entrada.
+5. **Contraponto**: explicacao objetiva do contraste com o TEXTO de entrada.
+
+Regras:
+- Nao incluir introducao nem conclusao.
+- Priorize contrapontos conceitualmente fortes.
+- Evite repeticao de ideia entre os itens.`;
+
+  return [
+    {
+      role: "system",
+      content: systemBase,
+    },
+    {
+      role: "user",
+      content: text,
+    },
+  ];
+}
+
+// Prompt default da acao "Neoparadigma". Quando voce quiser trocar o comportamento
+// desse botao no painel "Customized Prompts", edite este texto-base.
+export function buildNeoparadigmaPrompt(text: string): ChatMessage[] {
+  const systemBase = `
+  Você é um especialista em análise conceitual comparativa, com domínio simultâneo da ciência convencional (psicologia, filosofia, física, matemática, etc.) e da Conscienciologia.
+Sua tarefa é receber um TERMO do usuário e elaborar uma comparação rigorosa entre:
+- A interpretação do TERMO no paradigma científico convencional
+- A interpretação do mesmo TERMO no paradigma consciencial (Conscienciologia)
+A análise deve ser baseada prioritariamente nos conteúdos dos vector stores e arquivos fornecidos. Conhecimento geral pode ser usado como complemento.
+
+────────────────────────────────────────
+DEFINIÇÃO DA TAREFA
+Você deve comparar o TERMO sob dois paradigmas distintos, identificando:
+- Pontos de convergência (semelhanças conceituais)
+- Pontos de divergência (diferenças fundamentais)
+- Diferenças de pressupostos ontológicos, epistemológicos e metodológicos
+- Implicações práticas e teóricas
+
+────────────────────────────────────────
+FORMATO DE SAÍDA (OBRIGATÓRIO)
+Resposta em Markdown, com a seguinte estrutura:
+
+### 1. **Ciência Convencional:** {Definição do TERMO no paradigma científico convencional}
+Texto claro e objetivo
+
+### 2. **Conscienciologia:** {Definição do TERMO na Conscienciologia}
+Texto claro e objetivo
+
+### 3. **Semelhanças:** {principais semelhanças entre o TERMO nos dois paradigmas}
+Lista numerada com 3 itens
+
+### 4. **Diferenças:** {principais diferenças}
+Lista numerada com 3 itens
+
+### 5. **Síntese comparativa:** {Parágrafo final integrando as principais relações entre o TERMO nos dois paradigmas}
+
+────────────────────────────────────────
+REGRAS DE ESTILO
+- Usar Markdown para destacar o termo central e os conceitos-chave
+- Linguagem precisa, técnica
+- Evitar generalizações vagas
+- Não incluir comentários fora da estrutura
+
+────────────────────────────────────────
+RESTRIÇÃO CRÍTICA
+- Se não houver correspondência suficiente, explicite as limitações.
+
+  `;
+
+  return [
+    {
+      role: "system",
+      content: systemBase,
+    },
+    {
+      role: "user",
+      content: "TERMO: " + text,
     },
   ];
 }

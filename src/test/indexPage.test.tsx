@@ -51,6 +51,11 @@ vi.mock("@/lib/openai", () => ({
   buildSummarizePrompt: vi.fn(() => "summarize"),
   buildTranslatePrompt: vi.fn(() => "translate"),
   buildAiCommandPrompt: vi.fn(() => "command"),
+  buildAnalogiesPrompt: vi.fn(() => "analogies"),
+  buildComparisonsPrompt: vi.fn(() => "comparisons"),
+  buildExamplesPrompt: vi.fn(() => "examples"),
+  buildCounterpointsPrompt: vi.fn(() => "counterpoints"),
+  buildNeoparadigmaPrompt: vi.fn(() => "neoparadigma"),
   buildChatPrompt: vi.fn(() => "chat"),
   buildVerbeteDefinologiaPrompt: vi.fn(() => "definologia"),
   buildVerbeteFraseEnfaticaPrompt: vi.fn(() => "frase"),
@@ -245,6 +250,46 @@ describe("Index page", () => {
     });
 
     expect((await screen.findAllByText(/Moradia habitual/i)).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("heading", { name: /Aulete/i })[0]).toBeInTheDocument();
+    expect(screen.getByText(/Nome da Fonte/i)).toBeInTheDocument();
+    expect(screen.getByText(/Definições \(resumo\)/i)).toBeInTheDocument();
+    expect((await screen.findAllByText(/Aulete/i)).length).toBeGreaterThan(0);
+  });
+  it("opens customized prompts and runs analogias with the standard parameter panel", async () => {
+    const openai = await import("@/lib/openai");
+    vi.mocked(openai.executeLLM).mockResolvedValue({ content: "Resposta de analogias." });
+
+    render(<Index />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /customized prompts/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^analogias\b/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Analogias")[0]).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("button", { name: /select & import/i })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Write a word, phrase or text")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("Write a word, phrase or text"), {
+      target: { value: "Texto base" },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: /^analogias\b/i })[1]);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Analogias")[1]).toBeInTheDocument();
+    });
+
+    expect(await screen.findByText(/Resposta de analogias/i)).toBeInTheDocument();
+  });
+
+  it("shows the new customized prompt buttons", async () => {
+    render(<Index />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /customized prompts/i }));
+
+    expect(screen.getByRole("button", { name: /^analogias\b/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^comparações\b/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^exemplos\b/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^contrapontos\b/i })).toBeInTheDocument();
   });
 });

@@ -3,10 +3,15 @@ import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { healthCheck, searchOnlineDictionaryApp } from "@/lib/backend-api";
 import {
   buildAiCommandPrompt,
+  buildAnalogiesPrompt,
   buildChatPrompt,
+  buildComparisonsPrompt,
+  buildCounterpointsPrompt,
   buildDictionaryPrompt,
   buildDefinePrompt,
   buildEtymologyPrompt,
+  buildExamplesPrompt,
+  buildNeoparadigmaPrompt,
   buildEpigraphPrompt,
   buildRewritePrompt,
   buildSummarizePrompt,
@@ -707,6 +712,11 @@ const useGhostWriterLlm = ({
         summarize: buildSummarizePrompt,
         translate: (value: string) => buildTranslatePrompt(value, translateLanguage),
         ai_command: (value: string) => buildAiCommandPrompt(value, query),
+        analogies: (value: string) => buildAnalogiesPrompt(value),
+        comparisons: (value: string) => buildComparisonsPrompt(value),
+        examples: (value: string) => buildExamplesPrompt(value),
+        counterpoints: (value: string) => buildCounterpointsPrompt(value),
+        neoparadigma: (value: string) => buildNeoparadigmaPrompt(value),
       };
 
       const specificSystemPrompt = getActionSystemPrompt(aiActionSystemPrompts, type);

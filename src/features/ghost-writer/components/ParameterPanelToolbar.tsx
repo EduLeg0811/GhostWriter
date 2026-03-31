@@ -33,7 +33,8 @@ const ParameterPanelToolbar = ({
   const isAiActionSection =
     parameterPanelTarget.section === "actions"
     || parameterPanelTarget.section === "rewriting"
-    || parameterPanelTarget.section === "translation";
+    || parameterPanelTarget.section === "translation"
+    || parameterPanelTarget.section === "customized_prompts";
   const supportsAiConfig = isAiActionSection && parameterPanelTarget.id !== "dict_lookup";
   const isAiCommandSection = parameterPanelTarget.section === "actions" && parameterPanelTarget.id === "ai_command";
   const isVerbetografiaTablePanel = parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app7";
