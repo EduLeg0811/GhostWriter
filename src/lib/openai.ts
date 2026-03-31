@@ -443,12 +443,7 @@ Liste exatamente 5 comparacoes.
 
 Formato de saida:
 **Comparacoes**
-
-1. **Termo comparado**: comparacao objetiva com o TEXTO de entrada, destacando semelhancas e diferencas relevantes.
-2. **Termo comparado**: comparacao objetiva com o TEXTO de entrada, destacando semelhancas e diferencas relevantes.
-3. **Termo comparado**: comparacao objetiva com o TEXTO de entrada, destacando semelhancas e diferencas relevantes.
-4. **Termo comparado**: comparacao objetiva com o TEXTO de entrada, destacando semelhancas e diferencas relevantes.
-5. **Termo comparado**: comparacao objetiva com o TEXTO de entrada, destacando semelhancas e diferencas relevantes.
+Lista numerada de 5 itens com comparacao objetiva com o TEXTO de entrada, destacando semelhancas e diferencas relevantes.
 
 Regras:
 - Use linguagem clara, tecnica e direta.
@@ -477,7 +472,6 @@ Os exemplos devem ser concretos, claros e coerentes com a terminologia conscienc
 
 Formato de saida:
 **Exemplos**
-
 1. exemplo
 2. exemplo
 3. exemplo
@@ -511,12 +505,7 @@ Cada contraponto deve evidenciar oposicao, tensao, diferenca funcional ou contra
 
 Formato de saida:
 **Contrapontos**
-
-1. **Contraponto**: explicacao objetiva do contraste com o TEXTO de entrada.
-2. **Contraponto**: explicacao objetiva do contraste com o TEXTO de entrada.
-3. **Contraponto**: explicacao objetiva do contraste com o TEXTO de entrada.
-4. **Contraponto**: explicacao objetiva do contraste com o TEXTO de entrada.
-5. **Contraponto**: explicacao objetiva do contraste com o TEXTO de entrada.
+Lista numerada de 5 itens
 
 Regras:
 - Nao incluir introducao nem conclusao.
