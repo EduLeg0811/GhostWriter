@@ -95,7 +95,7 @@ export const parameterActionMeta: Record<AiActionId, { title: string; descriptio
   comparisons: { title: "Comparações", description: "Compara o texto com termos relevantes da Conscienciologia." },
   examples: { title: "Exemplos", description: "Lista 5 exemplos do texto segundo a Conscienciologia." },
   counterpoints: { title: "Contrapontos", description: "Lista 5 contrapontos do texto no contexto da Conscienciologia." },
-  neoparadigma: { title: "Neoparadigma", description: "Analisa o conceito no Neoparadigma Consciencial." },
+  neoparadigma: { title: "Neoparadigma", description: "Analisa o conceito nos paradigmas convencional e consciencial." },
 };
 
 export const getAiPanelScopeByAction = (id: AiActionId): AiPanelScope =>

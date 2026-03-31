@@ -99,7 +99,7 @@ const LeftPanel = ({
   }, []);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <div className={`border-b border-border ${panelsTopMenuBarBgClass} px-4 py-4`}>
         <div className="space-y-3">
           <div className="space-y-1">
@@ -121,7 +121,7 @@ const LeftPanel = ({
         </div>
       </div>
 
-      <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
+      <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-4">
         <div className="space-y-5">
           <div className="space-y-2.5">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Documentos</Label>
@@ -226,7 +226,7 @@ const LeftPanel = ({
                 )}
                 <span className="min-w-0 flex-1 text-left">
                   <span className="block break-words text-sm font-medium text-foreground">Customized Prompts</span>
-                  <span className="block break-words text-xs text-muted-foreground">Prompts customizados por botao</span>
+                  <span className="block break-words text-xs text-muted-foreground">Prompts customizados</span>
                 </span>
               </Button>
 

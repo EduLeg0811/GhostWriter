@@ -215,7 +215,7 @@ const RightPanel = ({
   const canSend = !chatDisabled && !isSending && prompt.trim().length > 0;
 
   return (
-    <div className={`flex h-full flex-col ${panelsBgClass}`}>
+    <div className={`flex h-full min-h-0 flex-col ${panelsBgClass}`}>
       <div className={`flex items-center justify-between border-b border-border ${panelsTopMenuBarBgClass} px-4 py-3`}>
         <h2 className="text-sm font-semibold text-foreground">Histórico ({responses.length})</h2>
         <div className="flex flex-1 items-center justify-center">
@@ -298,7 +298,7 @@ const RightPanel = ({
         </div>
       </div>
 
-      <ScrollArea className="scrollbar-thin flex-1 overflow-y-auto">
+      <ScrollArea className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
         {responses.length === 0 ? (
           <div className="flex h-full min-h-52 items-center justify-center p-6 text-center text-muted-foreground">
             <div>

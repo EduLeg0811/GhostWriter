@@ -371,7 +371,7 @@ const Index = () => {
           }}
         />
       )}
-      <ResizablePanelGroup key={layoutResetKey} direction="horizontal" className={isMobileView ? "h-[calc(100vh-3.5rem)]" : ""}>
+      <ResizablePanelGroup key={layoutResetKey} direction="horizontal" className={isMobileView ? "h-[calc(100vh-3.5rem)]" : "min-h-0"}>
         {showLeftPanel && (
           <ResizablePanel
             id="left-panel"
@@ -379,7 +379,7 @@ const Index = () => {
             defaultSize={PANEL_SIZES.left.default}
             minSize={PANEL_SIZES.left.min}
             maxSize={PANEL_SIZES.left.max}
-            className="border-r border-border bg-card"
+            className="min-h-0 border-r border-border bg-card"
           >
             <LeftPanel
               onOpenParameterSection={handleOpenParameterSection}
@@ -408,7 +408,7 @@ const Index = () => {
               defaultSize={PANEL_SIZES.parameter.default}
               minSize={PANEL_SIZES.parameter.min}
               maxSize={PANEL_SIZES.parameter.max}
-              className={`border-r border-border ${sidePanelClass}`}
+              className={`min-h-0 border-r border-border ${sidePanelClass}`}
             >
               {parameterPanelTarget ? (
                 <ParameterPanel
@@ -629,7 +629,7 @@ const Index = () => {
                   ? 100 - PANEL_SIZES.left.min - PANEL_SIZES.parameter.min
                   : 100 - PANEL_SIZES.left.min
             }
-            className={`border-l border-border ${sidePanelClass}`}
+            className={`min-h-0 border-l border-border ${sidePanelClass}`}
           >
             <RightPanel
               responses={responses}
@@ -677,7 +677,7 @@ const Index = () => {
               defaultSize={PANEL_SIZES.editor.default}
               minSize={PANEL_SIZES.editor.min}
               maxSize={PANEL_SIZES.editor.max}
-              className={`border-l border-border ${sidePanelClass}`}
+              className={`min-h-0 border-l border-border ${sidePanelClass}`}
             >
               <LlmLogsPanel
                 llmLogs={llmLogs}
@@ -726,7 +726,9 @@ const Index = () => {
             <ResizablePanel
               id="editor-panel"
               order={hasCenterPanel ? (showJsonPanel ? 5 : 4) : (showJsonPanel ? 4 : 3)}
+              defaultSize={PANEL_SIZES.editor.default}
               minSize={PANEL_SIZES.editor.min}
+              maxSize={PANEL_SIZES.editor.max}
             >
               <main className={`relative h-full min-w-0 ${panelsBgClass}`}>
                 <HtmlEditor
