@@ -5,10 +5,11 @@ import type { AiActionId, AiPanelScope, AppActionId, AppPanelScope, MacroActionI
 export const BOOK_OPTION_LABELS: Record<string, string> = BOOK_LABELS;
 
 export const ACTION_PANEL_BUTTONS_BY_SCOPE: Record<AiPanelScope, AiActionId[]> = {
-  actions: ["define", "synonyms", "etymology", "dictionary", "pensatas"],
+  actions: ["define", "sinonimologia", "dictionary", "synonyms", "etymology", "cognatos"],
   rewriting: ["rewrite", "summarize", "epigraph"],
   translation: ["translate", "dict_lookup"],
   customized_prompts: ["analogies", "comparisons", "examples", "counterpoints", "neoparadigma"],
+  ai_command: []
 };
 
 export const APP_PANEL_BUTTONS_BY_SCOPE: Record<AppPanelScope, AppActionId[]> = {
@@ -22,11 +23,12 @@ export const MACRO_PANEL_BUTTONS: MacroActionId[] = ["macro1", "macro2"];
 
 export const ACTION_PANEL_ICONS: Record<AiActionId, LucideIcon> = {
   define: BookOpen,
+  sinonimologia: Repeat2,
   synonyms: Repeat2,
   etymology: Search,
   dictionary: BookOpen,
   epigraph: Search,
-  pensatas: Search,
+  cognatos: Search,
   rewrite: PenLine,
   summarize: FileText,
   translate: Languages,
@@ -81,16 +83,23 @@ export const parameterMacroMeta: Record<MacroActionId, { title: string; descript
 
 export const parameterActionMeta: Record<AiActionId, { title: string; description: string }> = {
   define: { title: "Definologia", description: "Definologia conscienciológica." },
+  sinonimologia: { title: "Sinonimologia", description: "Sinonimologia conscienciológia." },
+
+
+  dictionary: { title: "Definição", description: "Definição dicionarizada." },
   synonyms: { title: "Sinonímia", description: "Lista de sinônimos." },
   etymology: { title: "Etimologia", description: "Etimologia do termo." },
-  dictionary: { title: "Dicionário", description: "Definição dicionarizada." },
+  cognatos: { title: "Cognatos", description: "Cognatos do termo." },
+
   epigraph: { title: "Epígrafe", description: "Sugere epígrafe do termo." },
   rewrite: { title: "Reescrever", description: "Melhora clareza e fluidez." },
   summarize: { title: "Resumir", description: "Síntese concisa." },
-  pensatas: { title: "Pensatas LO", description: "Pensatas afins." },
+  
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
-  dict_lookup: { title: "Consulta Dicionários", description: "Consulta termos em dicionários online." },
+  dict_lookup: { title: "Dicionários", description: "Consulta termos em dicionários online." },
+
   ai_command: { title: "Comando IA", description: "Envia uma query livre para a LLM." },
+
   analogies: { title: "Analogias", description: "Elabora analogias do texto com a Conscienciologia." },
   comparisons: { title: "Comparações", description: "Compara o texto com termos relevantes da Conscienciologia." },
   examples: { title: "Exemplos", description: "Lista 5 exemplos do texto segundo a Conscienciologia." },
@@ -99,13 +108,34 @@ export const parameterActionMeta: Record<AiActionId, { title: string; descriptio
 };
 
 export const getAiPanelScopeByAction = (id: AiActionId): AiPanelScope =>
-  ACTION_PANEL_BUTTONS_BY_SCOPE.rewriting.includes(id)
+  id === "ai_command"
+    ? "ai_command"
+    : ACTION_PANEL_BUTTONS_BY_SCOPE.rewriting.includes(id)
     ? "rewriting"
     : ACTION_PANEL_BUTTONS_BY_SCOPE.translation.includes(id)
       ? "translation"
       : ACTION_PANEL_BUTTONS_BY_SCOPE.customized_prompts.includes(id)
         ? "customized_prompts"
       : "actions";
+
+export const getParameterPanelTargetByAiAction = (id: AiActionId): ParameterPanelTarget => {
+  const section = getAiPanelScopeByAction(id);
+
+  switch (section) {
+    case "actions":
+      return { section, id };
+    case "rewriting":
+      return { section, id };
+    case "translation":
+      return { section, id };
+    case "customized_prompts":
+      return { section, id };
+    case "ai_command":
+      return { section, id };
+    default:
+      return null;
+  }
+};
 
 export const getParameterPanelHeaderMeta = (
   target: ParameterPanelTarget,
@@ -119,8 +149,9 @@ export const getParameterPanelHeaderMeta = (
     case "sources":
       return { title: "LLM Sources", description: "Vector stores e arquivos" };
     case "actions":
-      if (target.id === "ai_command") return { title: "Comando IA", description: "Envia uma query livre para a LLM" };
       return { title: "Termos & Conceitos", description: "Definir, listar sinonimos, etimologia e dicionario" };
+    case "ai_command":
+      return { title: "Comando IA", description: "Envia uma query livre para a LLM" };
     case "rewriting":
       return { title: "Paragrafos & Trechos", description: "Reescrever, resumir e criar epigrafe" };
     case "translation":

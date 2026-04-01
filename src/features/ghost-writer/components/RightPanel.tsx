@@ -15,27 +15,34 @@ const historyToolbarSeparatorClass = "mx-1.5 h-6 w-px bg-zinc-400/90 shadow-[0_0
 
 const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactNode }> = {
   define: { label: "Definologia", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
+  sinonimologia: { label: "Sinonimologia", icon: <Repeat2 className="h-3.5 w-3.5 text-primary" /> },
+  dictionary: { label: "Definição", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
   synonyms: { label: "Sinonímia", icon: <Repeat2 className="h-3.5 w-3.5 text-primary" /> },
   etymology: { label: "Etimologia", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
-  dictionary: { label: "Dicionário", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
+  
   epigraph: { label: "Epígrafe", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   rewrite: { label: "Reescrever", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
   summarize: { label: "Resumir", icon: <FileText className="h-3.5 w-3.5 text-primary" /> },
+
   translate: { label: "Traduzir", icon: <Languages className="h-3.5 w-3.5 text-primary" /> },
-  dict_lookup: { label: "Consulta Dicionários", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
+  dict_lookup: { label: "Dicionários", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   ai_command: { label: "Comando IA", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
+
   analogies: { label: "Analogias", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
   comparisons: { label: "Comparações", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
   examples: { label: "Exemplos", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
   counterpoints: { label: "Contrapontos", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
   neoparadigma: { label: "Neoparadigma", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
+
   chat: { label: "Chat", icon: <MessageSquare className="h-3.5 w-3.5 text-primary" /> },
-  pensatas: { label: "Pensatas LO", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
+  cognatos: { label: "Cognatos", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
+
   app_ref_book: { label: "Bibliografia de Livros", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
   app_ref_verbete_list: { label: "Listagem de Verbetes", icon: <FileText className="h-3.5 w-3.5 text-primary" /> },
   app_ref_verbete_biblio: { label: "Bibliografia de Verbetes", icon: <FileText className="h-3.5 w-3.5 text-primary" /> },
   app_biblio_geral: { label: "Bibliografia Autores", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_biblio_externa: { label: "Bibliografia Externa", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
+
   app_random_pensata: { label: "Pensata Sorteada", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
   app_book_search: { label: "Lexical Search", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_semantic_search: { label: "Semantic Search", icon: <Search className="h-3.5 w-3.5 text-primary" /> },

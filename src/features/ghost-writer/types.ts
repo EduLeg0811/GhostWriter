@@ -3,19 +3,11 @@ import type { BookCode } from "@/lib/bookCatalog";
 export type MacroActionId = "macro1" | "macro2";
 export type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7" | "app8" | "app9" | "app10" | "app11" | "app12";
 export type AppPanelScope = "bibliografia" | "busca_termos" | "semantic_search" | "verbetografia";
-export type AiPanelScope = "actions" | "rewriting" | "translation" | "customized_prompts";
-export type AiActionId = "define" | "synonyms" | "etymology" | "dictionary" | "epigraph" | "rewrite" | "summarize" | "pensatas" | "translate" | "dict_lookup" | "ai_command" | "analogies" | "comparisons" | "examples" | "counterpoints" | "neoparadigma";
-export type ParameterPanelSection = "document" | "sources" | "actions" | "rewriting" | "translation" | "customized_prompts" | "apps" | "applications";
-export type ParameterPanelTarget =
-  | { section: "document"; id: MacroActionId | null }
-  | { section: "sources"; id: null }
-  | { section: "actions"; id: AiActionId | null }
-  | { section: "rewriting"; id: AiActionId | null }
-  | { section: "translation"; id: AiActionId | null }
-  | { section: "customized_prompts"; id: AiActionId | null }
-  | { section: "apps"; id: AppActionId | null }
-  | { section: "applications"; id: null }
-  | null;
+export type AiPanelScope = "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command";
+export type AiActionId = "define" | "sinonimologia" | "synonyms" | "etymology" | "dictionary" | "epigraph" | "rewrite" | "summarize" | "cognatos" | "translate" | "dict_lookup" | "ai_command" | "analogies" | "comparisons" | "examples" | "counterpoints" | "neoparadigma";
+export type ParameterPanelSection = "document" | "sources" | "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command" | "apps" | "applications";
+export type ParameterPanelTargetId = MacroActionId | AiActionId | AppActionId | null;
+export type ParameterPanelTarget = { section: ParameterPanelSection; id: ParameterPanelTargetId } | null;
 export type MobilePanelId = "left" | "center" | "right" | "editor" | "json";
 export type SourcesPanelView = "books" | "vector-store" | "upload" | null;
 export type BackendStatus = "checking" | "ready" | "missing_openai_key" | "unavailable";
@@ -46,6 +38,7 @@ export interface AIResponse {
   id: string;
   type:
     | "define"
+    | "sinonimologia"
     | "synonyms"
     | "etymology"
     | "dictionary"
@@ -61,7 +54,7 @@ export interface AIResponse {
     | "counterpoints"
     | "neoparadigma"
     | "chat"
-    | "pensatas"
+    | "cognatos"
     | "app_ref_book"
     | "app_ref_verbete_list"
     | "app_ref_verbete_biblio"

@@ -21,13 +21,6 @@ const useGhostWriterLayout = ({ hasEditorPanel }: UseGhostWriterLayoutParams) =>
   const isBiblioExternaConfigOpen = activeLlmConfigPanel === "biblio_externa";
   const hasCenterPanel = Boolean(parameterPanelTarget);
   const hasJsonPanel = isJsonLogPanelOpen;
-  const layoutResetKey = [
-    isMobileView ? "mobile" : "desktop",
-    hasCenterPanel ? "center" : "no-center",
-    hasJsonPanel ? "json" : "no-json",
-    hasEditorPanel ? "editor" : "no-editor",
-  ].join(":");
-
   const mobilePanelOptions: Array<{ id: MobilePanelId; label: string; disabled?: boolean }> = useMemo(() => [
     { id: "json", label: "Json", disabled: !hasJsonPanel },
     { id: "left", label: "Painel" },
@@ -109,7 +102,6 @@ const useGhostWriterLayout = ({ hasEditorPanel }: UseGhostWriterLayoutParams) =>
     isBiblioExternaConfigOpen,
     hasCenterPanel,
     hasJsonPanel,
-    layoutResetKey,
     mobilePanelOptions,
     showJsonPanel,
     showLeftPanel,

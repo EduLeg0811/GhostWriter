@@ -7,7 +7,7 @@ import { sectionActionButtonClass } from "@/styles/buttonStyles";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 
 interface LeftPanelProps {
-  onOpenParameterSection: (section: "document" | "sources" | "actions" | "rewriting" | "translation" | "customized_prompts" | "apps" | "applications") => void;
+  onOpenParameterSection: (section: "document" | "sources" | "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command" | "apps" | "applications") => void;
   onOpenAiCommand: () => void;
   onOpenVerbetografiaTable: () => void;
   onOpenBookSearch: () => void;

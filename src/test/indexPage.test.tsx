@@ -43,6 +43,7 @@ vi.mock("@/lib/openai", () => ({
   LLM_VECTOR_STORE_LO: "vs_lo",
   LLM_VECTOR_STORE_TRANSLATE_RAG: "",
   buildDefinePrompt: vi.fn(() => "define"),
+  buildSinonimologiaPrompt: vi.fn(() => "sinonimologia"),
   buildSynonymsPrompt: vi.fn(() => "synonyms"),
   buildEtymologyPrompt: vi.fn(() => "etymology"),
   buildDictionaryPrompt: vi.fn(() => "dictionary"),
@@ -56,6 +57,7 @@ vi.mock("@/lib/openai", () => ({
   buildExamplesPrompt: vi.fn(() => "examples"),
   buildCounterpointsPrompt: vi.fn(() => "counterpoints"),
   buildNeoparadigmaPrompt: vi.fn(() => "neoparadigma"),
+  buildCognatosPrompt: vi.fn(() => "cognatos"),
   buildChatPrompt: vi.fn(() => "chat"),
   buildVerbeteDefinologiaPrompt: vi.fn(() => "definologia"),
   buildVerbeteFraseEnfaticaPrompt: vi.fn(() => "frase"),
@@ -129,7 +131,7 @@ describe("Index page", () => {
   it("shows the DicionÃ¡rio action with the standard parameter panel", async () => {
     render(<Index />);
 
-    fireEvent.click(await screen.findByRole("button", { name: /termos & conceitos/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /trad.*dicion/i }));
     fireEvent.click(screen.getByRole("button", { name: /^dicion/i }));
 
     await waitFor(() => {
@@ -234,19 +236,19 @@ describe("Index page", () => {
     render(<Index />);
 
     fireEvent.click(await screen.findByRole("button", { name: /trad.*dicion/i }));
-    fireEvent.click(screen.getAllByRole("button", { name: /^consulta dicionários\b/i })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^dicion/i })[0]);
 
     await waitFor(() => {
-      expect(screen.getAllByText("Consulta Dicionários")[0]).toBeInTheDocument();
+      expect(screen.getAllByText(/dicion/i)[0]).toBeInTheDocument();
     });
 
     fireEvent.change(screen.getByPlaceholderText("Write a word, phrase or text"), {
       target: { value: "casa" },
     });
-    fireEvent.click(screen.getAllByRole("button", { name: /^consulta dicionários\b/i })[1]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^dicion/i })[1]);
 
     await waitFor(() => {
-      expect(screen.getAllByText("Consulta Dicionários")[1]).toBeInTheDocument();
+      expect(screen.getByText("Consulta Dicionários")).toBeInTheDocument();
     });
 
     expect((await screen.findAllByText(/Moradia habitual/i)).length).toBeGreaterThan(0);

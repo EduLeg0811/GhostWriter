@@ -2,6 +2,7 @@ import type { AiActionId } from "@/features/ghost-writer/types";
 import {
   buildAnalogiesPrompt,
   buildAiCommandPrompt,
+  buildCognatosPrompt,
   buildComparisonsPrompt,
   buildCounterpointsPrompt,
   buildDictionaryPrompt,
@@ -11,6 +12,7 @@ import {
   buildNeoparadigmaPrompt,
   buildEpigraphPrompt,
   buildRewritePrompt,
+  buildSinonimologiaPrompt,
   buildSummarizePrompt,
   buildSynonymsPrompt,
   buildTranslatePrompt,
@@ -30,6 +32,7 @@ const getFirstSystemPrompt = (messages: ChatMessage[] | unknown): string => {
 
 export const DEFAULT_ACTION_SYSTEM_PROMPTS: Record<ActionSystemPromptId, string> = {
   define: getFirstSystemPrompt(buildDefinePrompt("texto")),
+  sinonimologia: getFirstSystemPrompt(buildSinonimologiaPrompt("texto")),
   synonyms: getFirstSystemPrompt(buildSynonymsPrompt("texto")),
   etymology: getFirstSystemPrompt(buildEtymologyPrompt("texto")),
   dictionary: getFirstSystemPrompt(buildDictionaryPrompt("texto")),
@@ -43,7 +46,7 @@ export const DEFAULT_ACTION_SYSTEM_PROMPTS: Record<ActionSystemPromptId, string>
   examples: getFirstSystemPrompt(buildExamplesPrompt("texto")),
   counterpoints: getFirstSystemPrompt(buildCounterpointsPrompt("texto")),
   neoparadigma: getFirstSystemPrompt(buildNeoparadigmaPrompt("texto")),
-  pensatas: "Voce e um pesquisador de pensatas da Conscienciologia. Use exclusivamente o material recuperado pela busca nos arquivos. Retorne ate 10 pensatas, paragrafos ou trechos curtos realmente relacionados ao tema pedido. Se nao houver material suficiente, diga exatamente: Nenhuma correspondencia encontrada na Vector Store LO.",
+  cognatos: getFirstSystemPrompt(buildCognatosPrompt("texto")),
   app8: getFirstSystemPrompt(buildVerbeteDefinologiaPrompt("titulo: exemplo | especialidade: exemplo")),
   app9: getFirstSystemPrompt(buildVerbeteSinonimologiaPrompt("titulo: exemplo | especialidade: exemplo")),
   app10: getFirstSystemPrompt(buildVerbeteFatologiaPrompt("titulo: exemplo | especialidade: exemplo")),

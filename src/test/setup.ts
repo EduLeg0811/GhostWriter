@@ -23,3 +23,14 @@ Object.defineProperty(HTMLMediaElement.prototype, "pause", {
   writable: true,
   value: () => {},
 });
+
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+Object.defineProperty(globalThis, "ResizeObserver", {
+  writable: true,
+  value: ResizeObserverMock,
+});

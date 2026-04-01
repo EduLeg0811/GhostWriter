@@ -171,8 +171,23 @@ export function buildDefinePrompt(text: string, ragContext?: string): ChatMessag
 
 export function buildSynonymsPrompt(text: string, ragContext?: string): ChatMessage[] {
   const systemBase =
-    "Voce e um especialista em Conscienciologia. Forneca exatamente 10 sinonimos em portugues brasileiro para o termo dado. De preferencia a termos da Conscienciologia. Liste-os numerados. Evitar redundância. Não incluir introdução ou conclusão";
+    `Você é um especialista em linguagem da Conscienciologia.
+Forneça exatamente 10 sinônimos para o termo dado, usando prioritariamente os documentos do vector store.
+Dê preferência por sinônimos que sejam termos da Conscienciologia.
+Considere como sinônimo apenas termos que possam substituir o original em uma frase sem alterar o sentido.
+Não incluir:
+- categorias
+- tipos
+- exemplos
+- termos relacionados
 
+Se não houver 10 sinônimos no domínio, complete com sinônimos gerais da língua.
+Formato:
+01. termo
+02. termo
+...
+10. termo
+Sem comentários, finalizações, adendos ou explicações.    `
   const system = ragContext
     ? `${systemBase}\n\nContexto de referencia:\n${ragContext}`
     : systemBase;
@@ -180,6 +195,37 @@ export function buildSynonymsPrompt(text: string, ragContext?: string): ChatMess
   return [
     { role: "system", content: system },
     { role: "user", content: `Liste 10 sinonimos para: "${text}"` },
+  ];
+}
+
+export function buildSinonimologiaPrompt(text: string, ragContext?: string): ChatMessage[] {
+  const systemBase =
+    `Você é um especialista em linguagem da Conscienciologia.
+Forneça exatamente 10 sinônimos para o termo dado, usando prioritariamente os documentos do vector store.
+Considere como sinônimo apenas termos que possam substituir o original em uma frase sem alterar o sentido.
+Busque prioritariamente termos dentro do corpus de palavras próprio da Conscienciologia, como neologismos, jargões e termos técnicos.
+
+Não incluir:
+- categorias
+- tipos
+- exemplos
+- termos relacionados
+
+Se não houver 10 sinônimos no domínio, complete com sinônimos gerais da língua.
+Formato:
+01. termo
+02. termo
+...
+10. termo
+Sem comentários, finalizações, adendos ou explicações.`;
+
+  const system = ragContext
+    ? `${systemBase}\n\nContexto de referencia:\n${ragContext}`
+    : systemBase;
+
+  return [
+    { role: "system", content: system },
+    { role: "user", content: `Forneca a Sinonimologia para: "${text}"` },
   ];
 }
 
@@ -222,29 +268,23 @@ export function buildEtymologyPrompt(text: string, ragContext?: string): ChatMes
 // este e o ponto do codigo a ser editado.
 export function buildDictionaryPrompt(text: string, ragContext?: string): ChatMessage[] {
   const systemBase = 
-  `
-  Você é um assistente especializado em lexicografia da língua portuguesa.
-
+  `  Você é um assistente especializado em lexicografia da língua portuguesa.
   Sua tarefa é fornecer definições de dicionários para o termo ou expressão informada.
 
   Procedimento:
-
   1. Busque, prioritariamente, nos textos fornecidos (caso existam), definições (ou Definologia) já estabelecidas.
   2. Caso não haja definição disponível, utilize conhecimento lexicográfico confiável para reconstruir definições consistentes com dicionários tradicionais.
   3. Sempre forneça exatamente 3 definições distintas, como se fossem provenientes de diferentes dicionários.
   4. As definições devem apresentar pequenas variações de enfoque (ex.: mais técnica, mais geral, mais contextual).
 
   Regras importantes:
-
   - NÃO invente fontes específicas se não tiver certeza.
   - NÃO use linguagem opinativa.
   - NÃO misture etimologia (a menos que seja parte essencial da definição).
   - Priorize linguagem clara, precisa e de padrão dicionarístico.
 
   Formato de saída:
-
   <strong>Definições.</strong>
-
   **1.** {definição 1}  
   **2.** {definição 2}  
   **3.** {definição 3}  
@@ -252,14 +292,12 @@ export function buildDictionaryPrompt(text: string, ragContext?: string): ChatMe
   ______________________________________________________________________
 
   Em seguida, apresente um quadro comparativo sintético das definições:
-
   - **Termo**:  
   - **Classe gramatical**:  
   - **Campo semântico**:  
   - **Diferenças principais**: (explique brevemente o que muda entre as definições)  
   - **Observações**: (ambiguidade, polissemia, uso técnico, etc.)
   `;
-
   
 
   const system = ragContext
@@ -273,6 +311,27 @@ export function buildDictionaryPrompt(text: string, ragContext?: string): ChatMe
 }
 
 
+
+export function buildCognatosPrompt(text: string, ragContext?: string): ChatMessage[] {
+  const systemBase =
+    `Voce e um pesquisador de Lexicologia da Conscienciologia. 
+    Use exclusivamente o material recuperado pela busca nos arquivos. 
+    Retorne ate 10 cognatos léxicos relacionados ao termo de entrada, ordenados por relevancia e semelhança decrescente.
+    Dê preferência para termos com base no material recuperado. 
+    Se a busca nao recuperar pelo menos 1 cognato com suporte no material, diga exatamente: Nenhuma correspondencia encontrada.
+    A saida deve ser exatamente um destes formatos: 
+    (a) uma lista simples com 1 palavra por linha, sem numeracao, sem marcadores e sem texto adicional; ou 
+    (b) a frase exata: Nenhuma correspondencia encontrada.
+    `
+  const system = ragContext
+    ? `${systemBase}\n\nContexto de referencia:\n${ragContext}`
+    : systemBase;
+
+  return [
+    { role: "system", content: system },
+    { role: "user", content: `Crie uma lista de cognatos para: "${text}"` },
+  ];
+}
 
 export function buildEpigraphPrompt(text: string, ragContext?: string): ChatMessage[] {
   const systemBase =

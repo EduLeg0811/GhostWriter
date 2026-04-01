@@ -1,5 +1,6 @@
 import { PenLine, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { LLM_VECTOR_STORE_LO } from "@/lib/openai";
 import { ACTION_PANEL_BUTTONS_BY_SCOPE, ACTION_PANEL_ICONS, APP_PANEL_BUTTONS_BY_SCOPE, APP_PANEL_ICONS, parameterActionMeta, parameterAppMeta } from "@/features/ghost-writer/config/metadata";
 import type { AiActionId, AppActionId, AppPanelScope, ParameterPanelTarget } from "@/features/ghost-writer/types";
@@ -30,16 +31,37 @@ const ParameterPanelToolbar = ({
   onSelectVerbetografiaAction,
   onRunAppAction,
 }: ParameterPanelToolbarProps) => {
+  const renderAiActionButton = (id: AiActionId) => {
+    const Icon = ACTION_PANEL_ICONS[id];
+
+    return (
+      <Button
+        key={id}
+        variant="ghost"
+        className={sectionActionButtonClass}
+        onClick={() => onOpenAiActionParameters(id)}
+        disabled={isLoading || (id === "cognatos" && !LLM_VECTOR_STORE_LO)}
+      >
+        <Icon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
+        <span className="min-w-0 flex-1 text-left">
+          <span className="block break-words text-sm font-medium text-foreground">{parameterActionMeta[id].title}</span>
+          <span className="block break-words text-xs text-muted-foreground">{parameterActionMeta[id].description}</span>
+        </span>
+      </Button>
+    );
+  };
+
   const isAiActionSection =
     parameterPanelTarget.section === "actions"
     || parameterPanelTarget.section === "rewriting"
     || parameterPanelTarget.section === "translation"
-    || parameterPanelTarget.section === "customized_prompts";
+    || parameterPanelTarget.section === "customized_prompts"
+    || parameterPanelTarget.section === "ai_command";
   const supportsAiConfig =
     isAiActionSection
     && parameterPanelTarget.section !== "translation"
     && parameterPanelTarget.id !== "dict_lookup";
-  const isAiCommandSection = parameterPanelTarget.section === "actions" && parameterPanelTarget.id === "ai_command";
+  const isAiCommandSection = parameterPanelTarget.section === "ai_command" && parameterPanelTarget.id === "ai_command";
   const isVerbetografiaTablePanel = parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app7";
   const showToolbar = parameterPanelTarget.section !== "document"
     && parameterPanelTarget.section !== "sources"
@@ -80,24 +102,27 @@ const ParameterPanelToolbar = ({
                   <span className="block break-words text-xs text-muted-foreground">{parameterActionMeta.ai_command.description}</span>
                 </span>
               </Button>
-            ) : ACTION_PANEL_BUTTONS_BY_SCOPE[parameterPanelTarget.section].map((id) => {
-              const Icon = ACTION_PANEL_ICONS[id];
-              return (
-                <Button
-                  key={id}
-                  variant="ghost"
-                  className={sectionActionButtonClass}
-                  onClick={() => onOpenAiActionParameters(id)}
-                  disabled={isLoading || (id === "pensatas" && !LLM_VECTOR_STORE_LO)}
-                >
-                  <Icon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
-                  <span className="min-w-0 flex-1 text-left">
-                    <span className="block break-words text-sm font-medium text-foreground">{parameterActionMeta[id].title}</span>
-                    <span className="block break-words text-xs text-muted-foreground">{parameterActionMeta[id].description}</span>
-                  </span>
-                </Button>
-              );
+            ) : ACTION_PANEL_BUTTONS_BY_SCOPE[parameterPanelTarget.section as Exclude<typeof parameterPanelTarget.section, "document" | "sources" | "applications" | "apps" | "ai_command">].map((id) => {
+              if (parameterPanelTarget.section !== "actions") {
+                return renderAiActionButton(id);
+              }
+
+              return null;
             })}
+            {parameterPanelTarget.section === "actions" && !isAiCommandSection ? (
+              <>
+                <div className="space-y-1.5">
+                  <p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Conscienciologia</p>
+                  {renderAiActionButton("define")}
+                  {renderAiActionButton("sinonimologia")}
+                </div>
+                <Separator className="my-1" />
+                <div className="space-y-1.5">
+                  <p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Lexicologia</p>
+                  {ACTION_PANEL_BUTTONS_BY_SCOPE.actions.filter((id) => id !== "define" && id !== "sinonimologia").map(renderAiActionButton)}
+                </div>
+              </>
+            ) : null}
           </>
         ) : null}
 

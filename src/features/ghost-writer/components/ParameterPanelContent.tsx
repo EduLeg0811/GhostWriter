@@ -462,7 +462,7 @@ const ParameterPanelContent = ({
           />
         ) : null}
 
-        {(parameterPanelTarget.section === "actions" || parameterPanelTarget.section === "rewriting" || parameterPanelTarget.section === "translation" || parameterPanelTarget.section === "customized_prompts") ? (
+        {(parameterPanelTarget.section === "actions" || parameterPanelTarget.section === "rewriting" || parameterPanelTarget.section === "translation" || parameterPanelTarget.section === "customized_prompts" || parameterPanelTarget.section === "ai_command") ? (
           <AiActionsParameterSection
             section={parameterPanelTarget.section}
             actionId={parameterPanelTarget.id}

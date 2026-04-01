@@ -41,17 +41,20 @@ export const DEFAULT_LOG_FONT_SIZE_PX = 9;
 export const DEFAULT_LOG_LINE_HEIGHT_RATIO = 1.1;
 export const DEFAULT_DOLLAR_TOKEN = 5.5;
 export const CONFIG_PROMPT_ROWS = 5;
-export const PANEL_SIZES = {
-  left: { default: 10, min: 10, max: 20 },
-  parameter: { default: 10, min: 10, max: 20 },
-  editor: { default: 30, min: 20, max: 70 },
-  right: { default: 50, min: 20, max: 70 },
+
+export const DESKTOP_PANEL_SIZES_PX = {
+  left: { default: 300, min: 300, max: 400 },
+  parameter: { default: 300, min: 250, max: 400 },
+  right: { default: 400, min: 200, max: 500 },
+  json: { default: 300, min: 200, max: 500 },
+  editor: { default: 400, min: 200, max: 500 },
 } as const;
 
 interface DefaultDesktopPanelLayoutOptions {
   hasCenterPanel: boolean;
   hasJsonPanel: boolean;
   hasEditorPanel: boolean;
+  containerWidthPx: number;
 }
 
 interface DefaultDesktopPanelLayout {
@@ -62,32 +65,26 @@ interface DefaultDesktopPanelLayout {
   editor: number | null;
 }
 
-const roundPanelSize = (value: number) => Number(value.toFixed(3));
-
 export const getDefaultDesktopPanelLayout = ({
   hasCenterPanel,
   hasJsonPanel,
   hasEditorPanel,
+  containerWidthPx,
 }: DefaultDesktopPanelLayoutOptions): DefaultDesktopPanelLayout => {
-  const left = PANEL_SIZES.left.default;
-  const parameter = hasCenterPanel ? PANEL_SIZES.parameter.default : null;
-  const visibleFlexiblePanels = [
-    { id: "right", weight: PANEL_SIZES.right.default },
-    ...(hasJsonPanel ? [{ id: "json", weight: PANEL_SIZES.editor.default }] : []),
-    ...(hasEditorPanel ? [{ id: "editor", weight: PANEL_SIZES.editor.default }] : []),
-  ] as const;
-  const available = 100 - left - (parameter ?? 0);
-  const totalWeight = visibleFlexiblePanels.reduce((sum, panel) => sum + panel.weight, 0);
-  const scaledSizes = Object.fromEntries(
-    visibleFlexiblePanels.map((panel) => [panel.id, roundPanelSize((available * panel.weight) / totalWeight)]),
-  ) as Record<(typeof visibleFlexiblePanels)[number]["id"], number>;
+  const left = DESKTOP_PANEL_SIZES_PX.left.default;
+  const parameter = hasCenterPanel ? DESKTOP_PANEL_SIZES_PX.parameter.default : null;
+  const json = hasJsonPanel ? DESKTOP_PANEL_SIZES_PX.json.default : null;
+  const editor = hasEditorPanel ? DESKTOP_PANEL_SIZES_PX.editor.default : null;
+  const occupiedWithoutRight = left + (parameter ?? 0) + (json ?? 0) + (editor ?? 0);
+  const remainingWidth = Math.max(0, containerWidthPx - occupiedWithoutRight);
+  const right = Math.max(DESKTOP_PANEL_SIZES_PX.right.default, remainingWidth);
 
   return {
     left,
     parameter,
-    right: scaledSizes.right,
-    json: hasJsonPanel ? scaledSizes.json : null,
-    editor: hasEditorPanel ? scaledSizes.editor : null,
+    right,
+    json,
+    editor,
   };
 };
 export const DEFAULT_BOOK_SEARCH_MAX_RESULTS = 10;

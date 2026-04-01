@@ -14,6 +14,7 @@ import {
   buildNeoparadigmaPrompt,
   buildEpigraphPrompt,
   buildRewritePrompt,
+  buildSinonimologiaPrompt,
   buildSummarizePrompt,
   buildSynonymsPrompt,
   buildTranslatePrompt,
@@ -28,6 +29,7 @@ import {
   uploadLlmSourceFiles,
   type ChatMessage,
   type UploadedLlmFile,
+  buildCognatosPrompt,
 } from "@/lib/openai";
 import type {
   AIResponse,
@@ -50,7 +52,7 @@ import {
 } from "@/features/ghost-writer/config/constants";
 import { applySystemPromptOverride, getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
 import { BOOK_SOURCE, VECTOR_STORES_SOURCE } from "@/features/ghost-writer/config/options";
-import { getAiPanelScopeByAction, normalizeIdList } from "@/features/ghost-writer/config/metadata";
+import { getParameterPanelTargetByAiAction, normalizeIdList } from "@/features/ghost-writer/config/metadata";
 import { buildOnlineDictionaryHistoryResponsePayload } from "@/features/ghost-writer/utils/historyDictionaryResponse";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 
@@ -654,7 +656,7 @@ const useGhostWriterLlm = ({
       return;
     }
 
-    if (type === "pensatas") {
+    if (type === "cognatos") {
       if (vectorStoreIds.length === 0) {
         toast.error("Selecione ao menos 1 Vector Store na configuracao de Acoes IA.");
         return;
@@ -662,22 +664,22 @@ const useGhostWriterLlm = ({
 
       setIsLoading(true);
       try {
-        const pensatasSystemPrompt = getActionSystemPrompt(aiActionSystemPrompts, "pensatas");
+        const cognatosSystemPrompt = getActionSystemPrompt(aiActionSystemPrompts, "cognatos");
         const content = (
           await executeAiActionsLLMWithLog({
             messages: applySystemPromptOverride([
               {
                 role: "system",
                 content:
-                  "Voce e um pesquisador de pensatas da Conscienciologia. Use exclusivamente o material recuperado pela busca nos arquivos. Retorne ate 10 pensatas, paragrafos ou trechos curtos realmente relacionados ao tema pedido. Se nao houver material suficiente, diga exatamente: Nenhuma correspondencia encontrada na Vector Store LO.",
+                  "Você é um pesquisador de termos cognatos da Conscienciologia. Use exclusivamente o material recuperado pela busca nos arquivos. Retorne até 5 cognatos relativos ao termo de entrada. Se nao houver material suficiente, diga exatamente: Nenhuma correspondencia encontrada na Vector Store LO.",
               },
               {
                 role: "user",
                 content:
-                  `Localize pensatas afins ao termo abaixo e devolva apenas a lista final em Markdown numerado.\n\n` +
+                  `Localize cognatos afins ao termo de busca e devolva apenas a lista final em Markdown numerado.\n\n` +
                   `Termo de busca: ${text}`,
               },
-            ], pensatasSystemPrompt),
+            ], cognatosSystemPrompt),
             vectorStoreIds,
             inputFileIds,
           })
@@ -685,10 +687,10 @@ const useGhostWriterLlm = ({
         if (!content || content === "Nenhuma correspondencia encontrada na Vector Store LO.") {
           toast.info("Nenhuma correspond\u00eancia encontrada na Vector Store LO.");
         } else {
-          addResponse("pensatas", text.slice(0, 80), content);
+          addResponse("cognatos", text.slice(0, 80), content);
         }
       } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : "Erro ao buscar Pensatas LO.");
+        toast.error(err instanceof Error ? err.message : "Erro ao buscar Cognatos.");
       } finally {
         setIsLoading(false);
       }
@@ -708,12 +710,15 @@ const useGhostWriterLlm = ({
       }
       const promptMap = {
         define: (value: string) => buildDefinePrompt(value),
+        sinonimologia: (value: string) => buildSinonimologiaPrompt(value),
         synonyms: (value: string) => buildSynonymsPrompt(value),
         etymology: (value: string) => buildEtymologyPrompt(value),
         dictionary: (value: string) => buildDictionaryPrompt(value),
+        
+        cognatos: (value: string) => buildCognatosPrompt(value),
         epigraph: (value: string) => buildEpigraphPrompt(value),
-        rewrite: buildRewritePrompt,
-        summarize: buildSummarizePrompt,
+        rewrite: (value: string) => buildRewritePrompt(value),
+        summarize: (value: string) => buildSummarizePrompt(value),
         translate: (value: string) => buildTranslatePrompt(value, translateLanguage),
         ai_command: (value: string) => buildAiCommandPrompt(value, query),
         analogies: (value: string) => buildAnalogiesPrompt(value),
@@ -757,11 +762,11 @@ const useGhostWriterLlm = ({
   }, [actionText, addResponse, aiActionSystemPrompts, aiCommandQuery, backendNotReadyMessage, currentFileId, documentText, executeAiActionsLLMWithLog, getEditorApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, setIsLoading, toast, translateLanguage]);
 
   const handleOpenAiActionParameters = useCallback((type: AiActionId) => {
-    setParameterPanelTarget({ section: getAiPanelScopeByAction(type), id: type });
+    setParameterPanelTarget(getParameterPanelTargetByAiAction(type));
   }, [setParameterPanelTarget]);
 
   const handleOpenAiCommandPanel = useCallback(() => {
-    setParameterPanelTarget({ section: "actions", id: "ai_command" });
+    setParameterPanelTarget({ section: "ai_command", id: "ai_command" });
   }, [setParameterPanelTarget]);
 
   const handleChat = useCallback(async (message: string) => {
