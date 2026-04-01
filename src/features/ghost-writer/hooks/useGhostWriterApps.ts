@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { biblioExternaApp, biblioGeralApp, insertRefBookMacro, insertRefVerbeteApp, listLexicalBooksApp, listSemanticIndexesApp, openVerbetografiaTableApp, randomPensataApp, searchLexicalBookApp, searchVerbeteApp, semanticSearchPensatasApp } from "@/lib/backend-api";
+import { biblioExternaApp, biblioGeralApp, insertRefBookMacro, insertRefVerbeteApp, listLexicalBooksApp, listSemanticIndexesApp, openVerbetografiaTableApp, openVerbetografiaTableWordApp, randomPensataApp, searchLexicalBookApp, searchVerbeteApp, semanticSearchPensatasApp } from "@/lib/backend-api";
 import { executeLLM, buildPensataAnalysisPrompt, buildVerbeteDefinologiaPrompt, buildVerbeteFatologiaPrompt, buildVerbeteFraseEnfaticaPrompt, buildVerbeteSinonimologiaPrompt } from "@/lib/openai";
 import { BOOK_LABELS, type BookCode } from "@/lib/bookCatalog";
 import { applySystemPromptOverride, getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
@@ -94,6 +94,7 @@ interface UseGhostWriterAppsParams {
   setIsRunningSemanticSearch: Dispatch<SetStateAction<boolean>>;
   setIsRunningVerbeteSearch: Dispatch<SetStateAction<boolean>>;
   setIsRunningVerbetografiaOpenTable: Dispatch<SetStateAction<boolean>>;
+  setIsRunningVerbetografiaOpenTableWord: Dispatch<SetStateAction<boolean>>;
   setIsRunningVerbeteDefinologia: Dispatch<SetStateAction<boolean>>;
   setIsRunningVerbeteFraseEnfatica: Dispatch<SetStateAction<boolean>>;
   setIsRunningVerbeteSinonimologia: Dispatch<SetStateAction<boolean>>;
@@ -215,6 +216,7 @@ const useGhostWriterApps = ({
   setIsRunningSemanticSearch,
   setIsRunningVerbeteSearch,
   setIsRunningVerbetografiaOpenTable,
+  setIsRunningVerbetografiaOpenTableWord,
   setIsRunningVerbeteDefinologia,
   setIsRunningVerbeteFraseEnfatica,
   setIsRunningVerbeteSinonimologia,
@@ -508,6 +510,21 @@ const useGhostWriterApps = ({
       setIsRunningVerbetografiaOpenTable(false);
     }
   }, [setActionText, setCurrentFileConvertedFromPdf, setCurrentFileId, setCurrentFileName, setIsOpeningDocument, setIsRunningVerbetografiaOpenTable, toast, verbetografiaSpecialty, verbetografiaTitle]);
+
+  const handleOpenVerbetografiaTableWord = useCallback(async () => {
+    setIsRunningVerbetografiaOpenTableWord(true);
+    try {
+      await openVerbetografiaTableWordApp({
+        title: verbetografiaTitle.trim(),
+        specialty: verbetografiaSpecialty.trim(),
+      });
+      toast.success("Tabela verbete aberta no Word local.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Falha ao abrir tabela de verbetografia no Word.");
+    } finally {
+      setIsRunningVerbetografiaOpenTableWord(false);
+    }
+  }, [setIsRunningVerbetografiaOpenTableWord, toast, verbetografiaSpecialty, verbetografiaTitle]);
 
   const buildVerbetografiaQueryContext = useCallback(async () => {
     const currentConfig = aiActionsLlmConfigRef.current;
@@ -819,6 +836,7 @@ const useGhostWriterApps = ({
     handleRunBiblioGeral,
     handleRunBiblioExterna,
     handleOpenVerbetografiaTable,
+    handleOpenVerbetografiaTableWord,
     handleRunVerbeteDefinologia,
     handleRunVerbeteFraseEnfatica,
     handleRunVerbeteSinonimologia,

@@ -118,7 +118,21 @@ const AiActionsParameterSection = ({
             showPanelChrome={false}
           />
         ) : (
-          <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground" />
+          <AiActionParametersPanel
+            title=""
+            description=""
+            actionText={actionText}
+            onActionTextChange={onActionTextChange}
+            onRetrieveSelectedText={() => void onRetrieveSelectedText()}
+            onApply={() => {}}
+            isLoading={isLoading}
+            hasDocumentOpen={hasDocumentOpen}
+            showApplyButton={false}
+            showConfigButton={false}
+            isConfigOpen={false}
+            showActionTextArea
+            showPanelChrome={false}
+          />
         )}
       </div>
       {isConfigOpen && supportsAiConfig ? (

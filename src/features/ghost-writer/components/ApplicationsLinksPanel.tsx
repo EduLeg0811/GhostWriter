@@ -10,7 +10,7 @@ interface ApplicationsLinksPanelProps {
 const linkClassName = "group block rounded-xl border border-orange-200 bg-white px-4 py-2 text-blue-600 shadow-sm transition-all duration-200 hover:bg-white hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-[0_10px_24px_-14px_rgba(0,0,0,0.45),0_3px_8px_-4px_rgba(0,0,0,0.25)]";
 
 const ApplicationsLinksPanel = ({ isLoading, onRunRandomPensata }: ApplicationsLinksPanelProps) => (
-  <div className="h-full overflow-y-auto p-4">
+  <div className="scrollbar-thin h-full min-h-0 overflow-y-auto p-4">
     <div className="space-y-3">
       <Button
         variant="ghost"

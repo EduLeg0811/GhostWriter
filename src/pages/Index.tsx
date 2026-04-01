@@ -61,7 +61,7 @@ import { sectionActionButtonClass } from "@/styles/buttonStyles";
 import type { BookCode } from "@/lib/bookCatalog";
 import type { AIResponse, AiActionId, AiPanelScope, AppActionId, AppPanelScope, BackendStatus, Macro2SpacingMode, MacroActionId, MobilePanelId, ParameterPanelHeaderMeta, ParameterPanelSection, ParameterPanelTarget, SelectOption, SemanticIndexOption, SourcesPanelView } from "@/features/ghost-writer/types";
 import { ACTION_PANEL_BUTTONS_BY_SCOPE, ACTION_PANEL_ICONS, APP_PANEL_BUTTONS_BY_SCOPE, APP_PANEL_ICONS, getAiPanelScopeByAction, getParameterPanelHeaderMeta, normalizeIdList, parameterActionMeta, parameterAppMeta, parameterMacroMeta } from "@/features/ghost-writer/config/metadata";
-import { AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY, BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT, BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY, CHAT_EDITOR_CONTEXT_MAX_CHARS, DEFAULT_BOOK_SEARCH_MAX_RESULTS, DEFAULT_LOG_FONT_SIZE_PX, DESKTOP_PANEL_SIZES_PX, GENERAL_SETTINGS_STORAGE_KEY, LLM_LOG_FONT_MAX, LLM_LOG_FONT_MIN, LLM_LOG_FONT_STEP, LLM_SETTINGS_STORAGE_KEY, NO_VECTOR_STORE_ID } from "@/features/ghost-writer/config/constants";
+import { AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY, BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT, BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY, CHAT_EDITOR_CONTEXT_MAX_CHARS, DEFAULT_BOOK_SEARCH_MAX_RESULTS, DEFAULT_LOG_FONT_SIZE_PX, DESKTOP_CONTENT_EDGE_GUTTER_PX, DESKTOP_PANEL_SIZES_PX, GENERAL_SETTINGS_STORAGE_KEY, LLM_LOG_FONT_MAX, LLM_LOG_FONT_MIN, LLM_LOG_FONT_STEP, LLM_SETTINGS_STORAGE_KEY, NO_VECTOR_STORE_ID } from "@/features/ghost-writer/config/constants";
 import { BOOK_SOURCE, DEFAULT_BOOK_SOURCE_ID, MACRO1_HIGHLIGHT_COLORS, TRANSLATE_LANGUAGE_OPTIONS, VECTOR_STORES_SOURCE } from "@/features/ghost-writer/config/options";
 import useGhostWriterLayout from "@/features/ghost-writer/hooks/useGhostWriterLayout";
 import useGhostWriterDocument from "@/features/ghost-writer/hooks/useGhostWriterDocument";
@@ -104,7 +104,7 @@ const Index = () => {
     selectedSemanticSearchIndexId, setSelectedSemanticSearchIndexId, isLoadingSemanticSearchIndexes, setIsLoadingSemanticSearchIndexes, isRunningSemanticSearch, setIsRunningSemanticSearch,
     verbeteSearchAuthor, setVerbeteSearchAuthor, verbeteSearchTitle, setVerbeteSearchTitle, verbeteSearchArea, setVerbeteSearchArea, verbeteSearchText, setVerbeteSearchText,
     verbeteSearchMaxResults, setVerbeteSearchMaxResults, isRunningVerbeteSearch, setIsRunningVerbeteSearch, verbetografiaTitle, setVerbetografiaTitle,
-    verbetografiaSpecialty, setVerbetografiaSpecialty, isRunningVerbetografiaOpenTable, setIsRunningVerbetografiaOpenTable, isRunningVerbeteDefinologia, setIsRunningVerbeteDefinologia,
+    verbetografiaSpecialty, setVerbetografiaSpecialty, isRunningVerbetografiaOpenTable, setIsRunningVerbetografiaOpenTable, isRunningVerbetografiaOpenTableWord, setIsRunningVerbetografiaOpenTableWord, isRunningVerbeteDefinologia, setIsRunningVerbeteDefinologia,
     isRunningVerbeteFraseEnfatica, setIsRunningVerbeteFraseEnfatica, isRunningVerbeteSinonimologia, setIsRunningVerbeteSinonimologia, isRunningVerbeteFatologia, setIsRunningVerbeteFatologia,
   } = appState;
   const llmState = useGhostWriterLlmState(LLM_LOG_FONT_DEFAULT);
@@ -230,6 +230,7 @@ const Index = () => {
     handleRunBiblioGeral,
     handleRunBiblioExterna,
     handleOpenVerbetografiaTable,
+    handleOpenVerbetografiaTableWord,
     handleRunVerbeteDefinologia,
     handleRunVerbeteFraseEnfatica,
     handleRunVerbeteSinonimologia,
@@ -328,7 +329,7 @@ const Index = () => {
   }, [actionText, macro1Term, setMacro1Term, setParameterPanelTarget]);
 
   const isHistoryProcessing =
-    isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningSemanticSearch || isRunningVerbeteSearch || isRunningVerbetografiaOpenTable || isRunningVerbeteDefinologia || isRunningVerbeteFraseEnfatica || isRunningVerbeteSinonimologia || isRunningVerbeteFatologia;
+    isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningSemanticSearch || isRunningVerbeteSearch || isRunningVerbetografiaOpenTable || isRunningVerbetografiaOpenTableWord || isRunningVerbeteDefinologia || isRunningVerbeteFraseEnfatica || isRunningVerbeteSinonimologia || isRunningVerbeteFatologia;
   const parameterPanelHeaderMeta = parameterPanelTarget
     ? getParameterPanelHeaderMeta(parameterPanelTarget, appPanelScope)
     : null;
@@ -523,6 +524,7 @@ const Index = () => {
         verbetografiaSpecialty={verbetografiaSpecialty}
         includeEditorContextInLlm={includeEditorContextInLlm}
         isRunningVerbetografiaOpenTable={isRunningVerbetografiaOpenTable}
+        isRunningVerbetografiaOpenTableWord={isRunningVerbetografiaOpenTableWord}
         isRunningVerbeteDefinologia={isRunningVerbeteDefinologia}
         isRunningVerbeteFraseEnfatica={isRunningVerbeteFraseEnfatica}
         isRunningVerbeteSinonimologia={isRunningVerbeteSinonimologia}
@@ -613,6 +615,7 @@ const Index = () => {
         onVerbeteSearchMaxResultsChange={setVerbeteSearchMaxResults}
         onRunVerbeteSearch={handleRunVerbeteSearch}
         onRunVerbetografiaOpenTable={handleOpenVerbetografiaTableWithPrompt}
+        onRunVerbetografiaOpenTableWord={handleOpenVerbetografiaTableWord}
         onRunVerbeteDefinologia={handleRunVerbeteDefinologia}
         onRunVerbeteFraseEnfatica={handleRunVerbeteFraseEnfatica}
         onRunVerbeteSinonimologia={handleRunVerbeteSinonimologia}
@@ -737,7 +740,7 @@ const Index = () => {
   });
 
   const renderPanelContainer = (children: ReactNode, className: string, style?: CSSProperties) => (
-    <div className={className} style={style}>
+    <div className={`${className} overflow-hidden`} style={style}>
       {children}
     </div>
   );
@@ -792,6 +795,8 @@ const Index = () => {
                 {renderPanelContainer(jsonPanelElement, `min-h-0 shrink-0 border-l border-border ${sidePanelClass}`, getPanelStyle(desktopFixedPanelWidthsPx.json))}
               </>
             )}
+
+            <div className="shrink-0" style={{ width: `${DESKTOP_CONTENT_EDGE_GUTTER_PX}px` }} aria-hidden="true" />
 
           </div>
         </div>

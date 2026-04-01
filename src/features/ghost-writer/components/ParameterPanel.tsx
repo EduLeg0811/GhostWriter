@@ -10,7 +10,7 @@ interface ParameterPanelProps {
 }
 
 const ParameterPanel = ({ title, description, onClose, children }: ParameterPanelProps) => (
-  <div className="flex h-full min-h-0 flex-col">
+  <div className="flex h-full min-h-0 flex-col overflow-hidden">
     <div className={`flex items-start justify-between border-b border-border ${panelsTopMenuBarBgClass} px-4 py-3`}>
       <div className="space-y-1">
         <h2 className="text-sm font-semibold text-foreground">{title}</h2>

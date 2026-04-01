@@ -195,6 +195,24 @@ export async function openVerbetografiaTableApp(payload: { title?: string; speci
   return res.json();
 }
 
+export async function openVerbetografiaTableWordApp(payload: { title?: string; specialty?: string }): Promise<{
+  ok: boolean;
+  result: {
+    id: string;
+    originalName: string;
+    storedName: string;
+    path: string;
+  };
+}> {
+  const res = await fetch(apiUrl("/api/apps/verbetografia/open-table-word"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function listLexicalBooksApp(): Promise<{ ok: boolean; result: { books: string[] } }> {
   return fetchJsonWithRetry(apiUrl("/api/apps/lexical/books"), { method: "GET", cache: "no-store" });
 }

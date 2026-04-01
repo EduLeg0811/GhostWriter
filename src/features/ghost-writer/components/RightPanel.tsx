@@ -18,6 +18,7 @@ const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactN
   sinonimologia: { label: "Sinonimologia", icon: <Repeat2 className="h-3.5 w-3.5 text-primary" /> },
   dictionary: { label: "Definição", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
   synonyms: { label: "Sinonímia", icon: <Repeat2 className="h-3.5 w-3.5 text-primary" /> },
+  antonyms: { label: "Antonímia", icon: <Repeat2 className="h-3.5 w-3.5 text-primary" /> },
   etymology: { label: "Etimologia", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   
   epigraph: { label: "Epígrafe", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
@@ -222,7 +223,7 @@ const RightPanel = ({
   const canSend = !chatDisabled && !isSending && prompt.trim().length > 0;
 
   return (
-    <div className={`flex h-full min-h-0 flex-col ${panelsBgClass}`}>
+    <div className={`flex h-full min-h-0 flex-col overflow-hidden ${panelsBgClass}`}>
       <div className={`flex items-center justify-between border-b border-border ${panelsTopMenuBarBgClass} px-4 py-3`}>
         <h2 className="text-sm font-semibold text-foreground">Histórico ({responses.length})</h2>
         <div className="flex flex-1 items-center justify-center">

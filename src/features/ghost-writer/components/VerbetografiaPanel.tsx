@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -5,11 +6,15 @@ import { Loader2, Play, Settings, X } from "lucide-react";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 
+const verbetografiaFieldLabelClass = "w-16 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground";
+const verbetografiaFieldInputClass = "ml-auto h-7 w-[26ch] !text-[11px] bg-white";
+
 interface VerbetografiaPanelProps {
   title: string;
   description: string;
   verbeteTitle: string;
   specialty: string;
+  extraContent?: ReactNode;
   actionLabel?: string;
   onRun?: () => void;
   isRunning?: boolean;
@@ -34,6 +39,7 @@ const VerbetografiaPanel = ({
   description,
   verbeteTitle,
   specialty,
+  extraContent,
   actionLabel = title,
   onRun,
   isRunning = false,
@@ -79,22 +85,24 @@ const VerbetografiaPanel = ({
           </div>
         ) : null}
 
+        {extraContent}
+
         <div className="flex items-center gap-2">
-          <Label className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Titulo</Label>
+          <Label className={verbetografiaFieldLabelClass}>Titulo</Label>
           <Input
             value={verbeteTitle}
             onChange={(e) => onVerbeteTitleChange(e.target.value)}
-            className="ml-auto h-8 w-[30ch] !text-xs bg-white"
+            className={verbetografiaFieldInputClass}
             placeholder="Digite o titulo"
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <Label className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Especialidade</Label>
+          <Label className={verbetografiaFieldLabelClass}>Especialidade</Label>
           <Input
             value={specialty}
             onChange={(e) => onSpecialtyChange(e.target.value)}
-            className="ml-auto h-8 w-[30ch] !text-xs bg-white"
+            className={verbetografiaFieldInputClass}
             placeholder="Digite a especialidade"
           />
         </div>

@@ -43,12 +43,14 @@ export const DEFAULT_DOLLAR_TOKEN = 5.5;
 export const CONFIG_PROMPT_ROWS = 5;
 
 export const DESKTOP_PANEL_SIZES_PX = {
-  left: { default: 300, min: 300, max: 400 },
-  parameter: { default: 300, min: 250, max: 400 },
+  left: { default: 320, min: 200, max: 400 },
+  parameter: { default: 320, min: 200, max: 400 },
   right: { default: 400, min: 200, max: 500 },
   json: { default: 300, min: 200, max: 500 },
   editor: { default: 400, min: 200, max: 500 },
 } as const;
+export const DESKTOP_RESIZE_HANDLE_WIDTH_PX = 8;
+export const DESKTOP_CONTENT_EDGE_GUTTER_PX = 8;
 
 interface DefaultDesktopPanelLayoutOptions {
   hasCenterPanel: boolean;

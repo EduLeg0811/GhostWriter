@@ -66,7 +66,7 @@ const DocumentParameterSection = ({
   onMacro2SpacingModeChange,
   onRunMacro2ManualNumbering,
 }: DocumentParameterSectionProps) => (
-  <div className="h-full overflow-y-auto p-3">
+  <div className="scrollbar-thin h-full min-h-0 overflow-y-auto p-3">
     <div className="space-y-3">
       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Parâmetros Documento</Label>
 

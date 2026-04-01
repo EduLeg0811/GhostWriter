@@ -70,6 +70,7 @@ interface AppsParameterSectionProps {
   hasDocumentOpen: boolean;
   includeEditorContextInLlm: boolean;
   isRunningVerbetografiaOpenTable: boolean;
+  isRunningVerbetografiaOpenTableWord: boolean;
   isRunningVerbeteDefinologia: boolean;
   isRunningVerbeteFraseEnfatica: boolean;
   isRunningVerbeteSinonimologia: boolean;
@@ -125,6 +126,7 @@ interface AppsParameterSectionProps {
   onVerbeteSearchMaxResultsChange: (value: number) => void;
   onRunVerbeteSearch: () => void | Promise<void>;
   onRunVerbetografiaOpenTable: () => void | Promise<void>;
+  onRunVerbetografiaOpenTableWord: () => void | Promise<void>;
   onRunVerbeteDefinologia: () => void | Promise<void>;
   onRunVerbeteFraseEnfatica: () => void | Promise<void>;
   onRunVerbeteSinonimologia: () => void | Promise<void>;
@@ -195,6 +197,7 @@ const AppsParameterSection = ({
   hasDocumentOpen,
   includeEditorContextInLlm,
   isRunningVerbetografiaOpenTable,
+  isRunningVerbetografiaOpenTableWord,
   isRunningVerbeteDefinologia,
   isRunningVerbeteFraseEnfatica,
   isRunningVerbeteSinonimologia,
@@ -250,6 +253,7 @@ const AppsParameterSection = ({
   onVerbeteSearchMaxResultsChange,
   onRunVerbeteSearch,
   onRunVerbetografiaOpenTable,
+  onRunVerbetografiaOpenTableWord,
   onRunVerbeteDefinologia,
   onRunVerbeteFraseEnfatica,
   onRunVerbeteSinonimologia,
@@ -267,16 +271,17 @@ const AppsParameterSection = ({
   onUploadFiles,
   onRemoveUploadedFile,
 }: AppsParameterSectionProps) => {
-  const [isTableAutomatedFormOpen, setIsTableAutomatedFormOpen] = useState(false);
   const [isSemanticSearchFormOpen, setIsSemanticSearchFormOpen] = useState(false);
+  const [selectedTableVerbeteAction, setSelectedTableVerbeteAction] = useState<"editor" | "word" | null>(null);
 
   useEffect(() => {
-    if (appId === "app7") {
-      setIsTableAutomatedFormOpen(false);
-    }
     if (appId === "app12") {
       setIsSemanticSearchFormOpen(false);
     }
+  }, [appId]);
+
+  useEffect(() => {
+    setSelectedTableVerbeteAction(null);
   }, [appId]);
 
   if (appId === "app1") {
@@ -478,6 +483,10 @@ const AppsParameterSection = ({
     const handleRunSelectedVerbetografiaAction = () => {
       switch (selectedVerbetografiaAction) {
         case "app7":
+          if (selectedTableVerbeteAction === "word") {
+            void onRunVerbetografiaOpenTableWord();
+            break;
+          }
           void onRunVerbetografiaOpenTable();
           break;
         case "app8":
@@ -499,7 +508,9 @@ const AppsParameterSection = ({
 
     const isSelectedVerbetografiaActionRunning =
       selectedVerbetografiaAction === "app7"
-        ? isRunningVerbetografiaOpenTable
+        ? selectedTableVerbeteAction === "word"
+          ? isRunningVerbetografiaOpenTableWord
+          : isRunningVerbetografiaOpenTable
         : selectedVerbetografiaAction === "app8"
           ? isRunningVerbeteDefinologia
           : selectedVerbetografiaAction === "app11"
@@ -517,45 +528,53 @@ const AppsParameterSection = ({
     )
       ? getActionSystemPrompt(aiActionSystemPrompts, selectedVerbetografiaAction)
       : "";
-    const TableAutomatedIcon = APP_PANEL_ICONS.app7;
-
+    const TableVerbeteIcon = APP_PANEL_ICONS.app7;
     return (
       <div className="flex h-full flex-col">
         <div className="min-h-0 flex-1">
           {selectedVerbetografiaAction ? (
             selectedVerbetografiaAction === "app7" ? (
-              <div className="flex h-full flex-col">
-                <div className="grid grid-cols-1 gap-2 p-4 pb-0">
-                  <Button
-                    variant="ghost"
-                    className={sectionActionButtonClass}
-                    onClick={() => setIsTableAutomatedFormOpen(true)}
-                  >
-                    <TableAutomatedIcon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
-                    <span className="min-w-0 flex-1 text-left">
-                      <span className="block break-words text-sm font-medium text-foreground">{parameterAppMeta.app7.title}</span>
-                      <span className="block break-words text-xs text-muted-foreground">{parameterAppMeta.app7.description}</span>
-                    </span>
-                  </Button>
-                </div>
-                {isTableAutomatedFormOpen ? (
-                  <div className="min-h-0 flex-1">
-                    <VerbetografiaPanel
-                      title={parameterAppMeta.app7.title}
-                      description={parameterAppMeta.app7.description}
-                      actionLabel="Abre Tabela no Editor"
-                      verbeteTitle={verbetografiaTitle}
-                      specialty={verbetografiaSpecialty}
-                      onVerbeteTitleChange={onVerbetografiaTitleChange}
-                      onSpecialtyChange={onVerbetografiaSpecialtyChange}
-                      onRun={handleRunSelectedVerbetografiaAction}
-                      isRunning={isSelectedVerbetografiaActionRunning}
-                      showActionButton
-                      showActionSectionTitle={false}
-                      showPanelChrome={false}
-                    />
-                  </div>
-                ) : null}
+              <div className="min-h-0 flex-1">
+                <VerbetografiaPanel
+                  title={parameterAppMeta.app7.title}
+                  description={parameterAppMeta.app7.description}
+                  extraContent={(
+                    <div className="grid grid-cols-1 gap-2">
+                      <Button
+                        variant="ghost"
+                        className={`${sectionActionButtonClass} ${selectedTableVerbeteAction === "editor" ? "border border-blue-200 bg-blue-50/80" : ""}`}
+                        onClick={() => setSelectedTableVerbeteAction("editor")}
+                      >
+                        <TableVerbeteIcon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
+                        <span className="min-w-0 flex-1 text-left">
+                          <span className="block break-words text-sm font-medium text-foreground">Abre Tabela no Editor</span>
+                          <span className="block break-words text-xs text-muted-foreground">Carrega a tabela HTML no editor.</span>
+                        </span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className={`${sectionActionButtonClass} ${selectedTableVerbeteAction === "word" ? "border border-blue-200 bg-blue-50/80" : ""}`}
+                        onClick={() => setSelectedTableVerbeteAction("word")}
+                      >
+                        <TableVerbeteIcon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
+                        <span className="min-w-0 flex-1 text-left">
+                          <span className="block break-words text-sm font-medium text-foreground">Abre Tabela no Word</span>
+                          <span className="block break-words text-xs text-muted-foreground">Baixa a tabela DOCX e abre no Word.</span>
+                        </span>
+                      </Button>
+                    </div>
+                  )}
+                  actionLabel={selectedTableVerbeteAction === "word" ? "Abre Tabela no Word" : "Abre Tabela no Editor"}
+                  verbeteTitle={verbetografiaTitle}
+                  specialty={verbetografiaSpecialty}
+                  onVerbeteTitleChange={onVerbetografiaTitleChange}
+                  onSpecialtyChange={onVerbetografiaSpecialtyChange}
+                  onRun={handleRunSelectedVerbetografiaAction}
+                  isRunning={isSelectedVerbetografiaActionRunning}
+                  showActionButton={selectedTableVerbeteAction !== null}
+                  showActionSectionTitle={false}
+                  showPanelChrome={false}
+                />
               </div>
             ) : (
           <VerbetografiaPanel
@@ -574,7 +593,17 @@ const AppsParameterSection = ({
           />
             )
           ) : (
-            <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground" />
+            <VerbetografiaPanel
+              title="Seções do Verbete"
+              description="Informe Título e Especialidade para habilitar as ações."
+              verbeteTitle={verbetografiaTitle}
+              specialty={verbetografiaSpecialty}
+              onVerbeteTitleChange={onVerbetografiaTitleChange}
+              onSpecialtyChange={onVerbetografiaSpecialtyChange}
+              showActionButton={false}
+              showActionSectionTitle={false}
+              showPanelChrome={false}
+            />
           )}
         </div>
         {isAiActionsConfigOpen ? (

@@ -100,6 +100,7 @@ interface ParameterPanelContentProps {
   verbetografiaSpecialty: string;
   includeEditorContextInLlm: boolean;
   isRunningVerbetografiaOpenTable: boolean;
+  isRunningVerbetografiaOpenTableWord: boolean;
   isRunningVerbeteDefinologia: boolean;
   isRunningVerbeteFraseEnfatica: boolean;
   isRunningVerbeteSinonimologia: boolean;
@@ -185,6 +186,7 @@ interface ParameterPanelContentProps {
   onVerbeteSearchMaxResultsChange: (value: number) => void;
   onRunVerbeteSearch: () => void | Promise<void>;
   onRunVerbetografiaOpenTable: () => void | Promise<void>;
+  onRunVerbetografiaOpenTableWord: () => void | Promise<void>;
   onRunVerbeteDefinologia: () => void | Promise<void>;
   onRunVerbeteFraseEnfatica: () => void | Promise<void>;
   onRunVerbeteSinonimologia: () => void | Promise<void>;
@@ -282,6 +284,7 @@ const ParameterPanelContent = ({
   verbetografiaSpecialty,
   includeEditorContextInLlm,
   isRunningVerbetografiaOpenTable,
+  isRunningVerbetografiaOpenTableWord,
   isRunningVerbeteDefinologia,
   isRunningVerbeteFraseEnfatica,
   isRunningVerbeteSinonimologia,
@@ -367,6 +370,7 @@ const ParameterPanelContent = ({
   onVerbeteSearchMaxResultsChange,
   onRunVerbeteSearch,
   onRunVerbetografiaOpenTable,
+  onRunVerbetografiaOpenTableWord,
   onRunVerbeteDefinologia,
   onRunVerbeteFraseEnfatica,
   onRunVerbeteSinonimologia,
@@ -391,7 +395,7 @@ const ParameterPanelContent = ({
         onSelectVerbetografiaAction={onSelectVerbetografiaAction}
         onRunAppAction={(id) => void onRunAppAction(id)}
       />
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-hidden">
         {parameterPanelTarget.section === "document" ? (
           <DocumentParameterSection
             activeMacroId={parameterPanelTarget.id}
@@ -462,7 +466,7 @@ const ParameterPanelContent = ({
           />
         ) : null}
 
-        {(parameterPanelTarget.section === "actions" || parameterPanelTarget.section === "rewriting" || parameterPanelTarget.section === "translation" || parameterPanelTarget.section === "customized_prompts" || parameterPanelTarget.section === "ai_command") ? (
+        {(parameterPanelTarget.section === "definitions_cons" || parameterPanelTarget.section === "actions" || parameterPanelTarget.section === "rewriting" || parameterPanelTarget.section === "translation" || parameterPanelTarget.section === "customized_prompts" || parameterPanelTarget.section === "ai_command") ? (
           <AiActionsParameterSection
             section={parameterPanelTarget.section}
             actionId={parameterPanelTarget.id}
@@ -555,6 +559,7 @@ const ParameterPanelContent = ({
             hasDocumentOpen={Boolean(currentFileId)}
             includeEditorContextInLlm={includeEditorContextInLlm}
             isRunningVerbetografiaOpenTable={isRunningVerbetografiaOpenTable}
+            isRunningVerbetografiaOpenTableWord={isRunningVerbetografiaOpenTableWord}
             isRunningVerbeteDefinologia={isRunningVerbeteDefinologia}
             isRunningVerbeteFraseEnfatica={isRunningVerbeteFraseEnfatica}
             isRunningVerbeteSinonimologia={isRunningVerbeteSinonimologia}
@@ -610,6 +615,7 @@ const ParameterPanelContent = ({
             onVerbeteSearchMaxResultsChange={onVerbeteSearchMaxResultsChange}
             onRunVerbeteSearch={onRunVerbeteSearch}
             onRunVerbetografiaOpenTable={onRunVerbetografiaOpenTable}
+            onRunVerbetografiaOpenTableWord={onRunVerbetografiaOpenTableWord}
             onRunVerbeteDefinologia={onRunVerbeteDefinologia}
             onRunVerbeteFraseEnfatica={onRunVerbeteFraseEnfatica}
             onRunVerbeteSinonimologia={onRunVerbeteSinonimologia}

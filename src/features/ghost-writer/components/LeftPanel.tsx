@@ -7,7 +7,7 @@ import { sectionActionButtonClass } from "@/styles/buttonStyles";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 
 interface LeftPanelProps {
-  onOpenParameterSection: (section: "document" | "sources" | "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command" | "apps" | "applications") => void;
+  onOpenParameterSection: (section: "document" | "sources" | "definitions_cons" | "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command" | "apps" | "applications") => void;
   onOpenAiCommand: () => void;
   onOpenVerbetografiaTable: () => void;
   onOpenBookSearch: () => void;
@@ -18,7 +18,7 @@ interface LeftPanelProps {
   isLoading: boolean;
 }
 
-type LeftPanelActionId = "document" | "sources" | "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command" | "verbetografia_table" | "apps" | "applications";
+type LeftPanelActionId = "document" | "sources" | "definitions_cons" | "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command" | "verbetografia_table" | "apps" | "applications";
 
 const GHOST_VIDEO_PLAYBACK_RATE = 0.50;
 const GHOST_VIDEO_REPLAY_DELAY_MS = 30000;
@@ -145,11 +145,12 @@ const LeftPanel = ({
           </div>
 
 
-<Separator className="my-1" />
+        <Separator className="mx-[-1rem] my-3 h-[2px] w-[calc(100%+2rem)] bg-border/80" />
 
           <div className="space-y-2.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ferramentas de Texto</Label>
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Lexicografia IA</Label>
             <div className="space-y-1.5">
+
               <Button
                 variant="default"
                 className={`${sectionActionButtonClass} border-0 shadow-none`}
@@ -214,6 +215,57 @@ const LeftPanel = ({
                 variant="ghost"
                 className={`${sectionActionButtonClass} border-0 shadow-none`}
                 onClick={() => {
+                  setActiveActionId("ai_command");
+                  onOpenAiCommand();
+                }}
+                disabled={actionDisabled}
+              >
+                {isLoading && activeActionId === "ai_command" ? (
+                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <PenLine className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                )}
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Comando IA</span>
+                  <span className="block break-words text-xs text-muted-foreground">Enviar instrucao livre para LLM</span>
+                </span>
+              </Button>
+
+
+
+          </div>
+          </div>
+        
+
+          <Separator className="mx-[-1rem] my-3 h-[2px] w-[calc(100%+2rem)] bg-border/80" />
+
+          <div className="space-y-2.5">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Conscienciografia IA</Label>
+            <div className="space-y-1.5">
+              <Button
+                variant="ghost"
+                className={`${sectionActionButtonClass} border-0 shadow-none`}
+                onClick={() => {
+                  setActiveActionId("definitions_cons");
+                  onOpenParameterSection("definitions_cons");
+                }}
+                disabled={actionDisabled}
+              >
+                {isLoading && activeActionId === "definitions_cons" ? (
+                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+                ) : (
+                  <Settings className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                )}
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Definições Conscienciológicas</span>
+                  <span className="block break-words text-xs text-muted-foreground">Definologia, Sinonimologia, etc</span>
+                </span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                className={`${sectionActionButtonClass} border-0 shadow-none`}
+                onClick={() => {
                   setActiveActionId("customized_prompts");
                   onOpenParameterSection("customized_prompts");
                 }}
@@ -230,34 +282,53 @@ const LeftPanel = ({
                 </span>
               </Button>
 
-              <Button
-                variant="ghost"
-                className={`${sectionActionButtonClass} border-0 shadow-none`}
-                onClick={() => {
-                  setActiveActionId("ai_command");
-                  onOpenAiCommand();
-                }}
-                disabled={actionDisabled}
-              >
-                {isLoading && activeActionId === "ai_command" ? (
-                  <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
-                ) : (
-                  <PenLine className="mr-2 h-4 w-4 shrink-0 text-primary" />
-                )}
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">Comando IA</span>
-                  <span className="block break-words text-xs text-muted-foreground">Enviar instrucao livre para LLM</span>
-                </span>
-              </Button>
             </div>
+          </div>
+    
+
+
+
+
+          <Separator className="mx-[-1rem] my-3 h-[2px] w-[calc(100%+2rem)] bg-border/80" />
+
+          <div className="space-y-2.5">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Verbetografia IA</Label>
+
+            <Button variant="ghost" className={`${sectionActionButtonClass} border-0 shadow-none`} onClick={onOpenVerbetografia} disabled={actionDisabled}>
+              <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
+              <span className="min-w-0 flex-1 text-left">
+                <span className="block break-words text-sm font-medium text-foreground">Seções do Verbete</span>
+                <span className="block break-words text-xs text-muted-foreground">Escreve seções com auxílio da IA</span>
+              </span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              className={`${sectionActionButtonClass} border-0 shadow-none`}
+              onClick={() => {
+                setActiveActionId("verbetografia_table");
+                onOpenVerbetografiaTable();
+              }}
+              disabled={actionDisabled}
+            >
+              {isLoading && activeActionId === "verbetografia_table" ? (
+                <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
+              ) : (
+                <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
+              )}
+              <span className="min-w-0 flex-1 text-left">
+                <span className="block break-words text-sm font-medium text-foreground">Tabela Verbete</span>
+                <span className="block break-words text-xs text-muted-foreground">Abre tabela Word e editor HTML</span>
+              </span>
+            </Button>
           </div>
 
 
-          <Separator className="my-1" />
+          <Separator className="mx-[-1rem] my-3 h-[2px] w-[calc(100%+2rem)] bg-border/80" />
 
           <div className="space-y-2.5">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ferramentas de Busca</Label>
-            <div className="space-y-1.5" />
+            
 
             <Button variant="ghost" className={`${sectionActionButtonClass} border-0 shadow-none`} onClick={onOpenBookSearch} disabled={actionDisabled}>
               <Search className="mr-2 h-4 w-4 shrink-0 text-primary" />
@@ -298,41 +369,7 @@ const LeftPanel = ({
 
           
 
-          <Separator className="my-1" />
-
-          <div className="space-y-2.5">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Verbetografia IA</Label>
-
-            <Button variant="ghost" className={`${sectionActionButtonClass} border-0 shadow-none`} onClick={onOpenVerbetografia} disabled={actionDisabled}>
-              <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
-              <span className="min-w-0 flex-1 text-left">
-                <span className="block break-words text-sm font-medium text-foreground">Seções do Verbete</span>
-                <span className="block break-words text-xs text-muted-foreground">Escreve seções com auxílio da IA</span>
-              </span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              className={`${sectionActionButtonClass} border-0 shadow-none`}
-              onClick={() => {
-                setActiveActionId("verbetografia_table");
-                onOpenVerbetografiaTable();
-              }}
-              disabled={actionDisabled}
-            >
-              {isLoading && activeActionId === "verbetografia_table" ? (
-                <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-primary" />
-              ) : (
-                <FileText className="mr-2 h-4 w-4 shrink-0 text-primary" />
-              )}
-              <span className="min-w-0 flex-1 text-left">
-                <span className="block break-words text-sm font-medium text-foreground">Tabela Verbete</span>
-                <span className="block break-words text-xs text-muted-foreground">Abre tabela Word e editor HTML</span>
-              </span>
-            </Button>
-          </div>
-
-          <Separator className="my-1" />
+          <Separator className="mx-[-1rem] my-3 h-[2px] w-[calc(100%+2rem)] bg-border/80" />
 
           <div className="space-y-2.5">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações</Label>
@@ -367,7 +404,7 @@ const LeftPanel = ({
             </div>
           </div>
 
-          <Separator className="my-1" />
+          <Separator className="mx-[-1rem] my-3 h-[2px] w-[calc(100%+2rem)] bg-border/80" />
 
           <div className="space-y-2.5">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Aplicativos</Label>

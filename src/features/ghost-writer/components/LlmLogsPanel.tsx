@@ -72,7 +72,7 @@ const LlmLogsPanel = ({
   successfulCallsCount,
   errorCallsCount,
 }: LlmLogsPanelProps) => (
-  <div className="flex h-full flex-col bg-muted/40">
+  <div className="flex h-full min-h-0 flex-col overflow-hidden bg-muted/40">
     <div className={`flex items-center justify-between border-b border-border ${panelsTopMenuBarBgClass} px-4 py-3`}>
       <h2 className="text-sm font-semibold text-foreground">LLM Logs</h2>
       <div className="flex items-center gap-2">

@@ -231,6 +231,17 @@ def safe_unlink(path: Path) -> None:
         pass
 
 
+def open_file_in_local_word(path: Path) -> None:
+    if not path.exists():
+        raise FileNotFoundError(f"Arquivo nao encontrado: {path}")
+    try:
+        os.startfile(str(path))  # type: ignore[attr-defined]
+    except AttributeError as exc:
+        raise RuntimeError("Abertura automatica no Word disponivel apenas no Windows.") from exc
+    except OSError as exc:
+        raise RuntimeError(f"Nao foi possivel abrir o arquivo no Word local: {exc}") from exc
+
+
 def run_storage_gc(retention_seconds: int = file_retention_seconds) -> None:
     now = time.time()
     referenced_uploads: set[str] = set()
@@ -1231,6 +1242,36 @@ async def api_files_upload(file: UploadFile = File(...)) -> dict[str, Any]:
 
     write_meta(file_id, metadata)
     return metadata
+
+
+@app.post("/api/apps/verbetografia/open-table-word")
+def api_verbetografia_open_table_word(_: VerbetografiaOpenTableRequest) -> dict[str, Any]:
+    run_storage_gc()
+
+    word_template_path = ROOT_DIR / "backend" / "Files" / "Verbetes" / "Tab_Verbete.docx"
+    if not word_template_path.exists():
+        raise HTTPException(status_code=500, detail="Arquivo base Tab_Verbete.docx nao encontrado em backend/Files/Verbetes.")
+
+    file_id = str(uuid.uuid4())
+    stored_name = f"{file_id}.docx"
+    target_path = UPLOADS_DIR / stored_name
+    shutil.copyfile(word_template_path, target_path)
+
+    try:
+        open_file_in_local_word(target_path)
+    except Exception as exc:
+        safe_unlink(target_path)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return {
+        "ok": True,
+        "result": {
+            "id": file_id,
+            "originalName": word_template_path.name,
+            "storedName": stored_name,
+            "path": str(target_path),
+        },
+    }
 
 
 @app.post("/api/ai/files/upload")

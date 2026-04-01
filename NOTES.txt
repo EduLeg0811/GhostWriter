@@ -2,3 +2,11 @@ Customized Prompts:
 Comparações => Texto do Prompt Comparações
 Exemplos => Texto do Prompt Exemplos
 Contrapontos => Texto do Prompt Contrapontos
+
+
+Você quer:
+
+adicionar no painel esquerdo, dentro da seção Conscienciografia IA, um novo botão chamado Definições Cons, no topo da seção;
+esse botão deve abrir um novo painel com o mesmo nome, seguindo exatamente o padrão visual e estrutural dos demais painéis do app;
+usar ícone de configurações no mesmo padrão global;
+mover para esse novo painel Definições Cons os botões que hoje estão na seção Conscienciologia do painel Termos & Conceitos, sem recriar lógica desnecessária, apenas reorganizando o layout.

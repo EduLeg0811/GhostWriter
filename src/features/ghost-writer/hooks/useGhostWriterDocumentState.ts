@@ -132,6 +132,7 @@ export const useGhostWriterAppsState = () => {
   const [verbetografiaTitle, setVerbetografiaTitle] = useState("");
   const [verbetografiaSpecialty, setVerbetografiaSpecialty] = useState("");
   const [isRunningVerbetografiaOpenTable, setIsRunningVerbetografiaOpenTable] = useState(false);
+  const [isRunningVerbetografiaOpenTableWord, setIsRunningVerbetografiaOpenTableWord] = useState(false);
   const [isRunningVerbeteDefinologia, setIsRunningVerbeteDefinologia] = useState(false);
   const [isRunningVerbeteFraseEnfatica, setIsRunningVerbeteFraseEnfatica] = useState(false);
   const [isRunningVerbeteSinonimologia, setIsRunningVerbeteSinonimologia] = useState(false);
@@ -216,6 +217,8 @@ export const useGhostWriterAppsState = () => {
     setVerbetografiaSpecialty,
     isRunningVerbetografiaOpenTable,
     setIsRunningVerbetografiaOpenTable,
+    isRunningVerbetografiaOpenTableWord,
+    setIsRunningVerbetografiaOpenTableWord,
     isRunningVerbeteDefinologia,
     setIsRunningVerbeteDefinologia,
     isRunningVerbeteFraseEnfatica,

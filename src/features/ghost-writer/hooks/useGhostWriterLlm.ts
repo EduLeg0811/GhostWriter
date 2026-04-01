@@ -4,6 +4,7 @@ import { healthCheck, searchOnlineDictionaryApp } from "@/lib/backend-api";
 import {
   buildAiCommandPrompt,
   buildAnalogiesPrompt,
+  buildAntonymsPrompt,
   buildChatPrompt,
   buildComparisonsPrompt,
   buildCounterpointsPrompt,
@@ -712,6 +713,7 @@ const useGhostWriterLlm = ({
         define: (value: string) => buildDefinePrompt(value),
         sinonimologia: (value: string) => buildSinonimologiaPrompt(value),
         synonyms: (value: string) => buildSynonymsPrompt(value),
+        antonyms: (value: string) => buildAntonymsPrompt(value),
         etymology: (value: string) => buildEtymologyPrompt(value),
         dictionary: (value: string) => buildDictionaryPrompt(value),
         

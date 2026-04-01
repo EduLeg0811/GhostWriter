@@ -198,6 +198,35 @@ Sem comentários, finalizações, adendos ou explicações.    `
   ];
 }
 
+export function buildAntonymsPrompt(text: string, ragContext?: string): ChatMessage[] {
+  const systemBase =
+    `Você é um especialista em linguagem da Conscienciologia.
+    Forneça exatamente 10 antônimos para o termo dado, usando prioritariamente os documentos do vector store.
+    Dê preferência por antônimos que sejam termos da Conscienciologia.
+    Não incluir:
+    - categorias
+    - tipos
+    - exemplos
+    - termos relacionados
+
+    Se não houver 10 antônimos no domínio, complete com antônimos gerais da língua.
+    Formato:
+    01. termo
+    02. termo
+    ...
+    10. termo
+    Sem comentários, finalizações, adendos ou explicações.`
+
+  const system = ragContext
+    ? `${systemBase}\n\nContexto de referencia:\n${ragContext}`
+    : systemBase;
+
+  return [
+    { role: "system", content: system },
+    { role: "user", content: `Liste 10 antonimos para: "${text}"` },
+  ];
+}
+
 export function buildSinonimologiaPrompt(text: string, ragContext?: string): ChatMessage[] {
   const systemBase =
     `Você é um especialista em linguagem da Conscienciologia.

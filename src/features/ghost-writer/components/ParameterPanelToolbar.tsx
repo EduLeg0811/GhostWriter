@@ -1,6 +1,5 @@
 import { PenLine, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { LLM_VECTOR_STORE_LO } from "@/lib/openai";
 import { ACTION_PANEL_BUTTONS_BY_SCOPE, ACTION_PANEL_ICONS, APP_PANEL_BUTTONS_BY_SCOPE, APP_PANEL_ICONS, parameterActionMeta, parameterAppMeta } from "@/features/ghost-writer/config/metadata";
 import type { AiActionId, AppActionId, AppPanelScope, ParameterPanelTarget } from "@/features/ghost-writer/types";
@@ -52,7 +51,8 @@ const ParameterPanelToolbar = ({
   };
 
   const isAiActionSection =
-    parameterPanelTarget.section === "actions"
+    parameterPanelTarget.section === "definitions_cons"
+    || parameterPanelTarget.section === "actions"
     || parameterPanelTarget.section === "rewriting"
     || parameterPanelTarget.section === "translation"
     || parameterPanelTarget.section === "customized_prompts"
@@ -110,18 +110,10 @@ const ParameterPanelToolbar = ({
               return null;
             })}
             {parameterPanelTarget.section === "actions" && !isAiCommandSection ? (
-              <>
-                <div className="space-y-1.5">
-                  <p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Conscienciologia</p>
-                  {renderAiActionButton("define")}
-                  {renderAiActionButton("sinonimologia")}
-                </div>
-                <Separator className="my-1" />
-                <div className="space-y-1.5">
-                  <p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Lexicologia</p>
-                  {ACTION_PANEL_BUTTONS_BY_SCOPE.actions.filter((id) => id !== "define" && id !== "sinonimologia").map(renderAiActionButton)}
-                </div>
-              </>
+              <div className="space-y-1.5">
+                {/*<p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Lexicologia</p>*/}
+                {ACTION_PANEL_BUTTONS_BY_SCOPE.actions.map(renderAiActionButton)}
+              </div>
             ) : null}
           </>
         ) : null}
@@ -146,7 +138,7 @@ const ParameterPanelToolbar = ({
                       <Settings className="h-4 w-4" />
                     </button>
                   </div>
-                  <p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Seções do Verbete</p>
+                  {/*<p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Seções do Verbete</p>*/}
                 </>
               ) : null}
               <Button

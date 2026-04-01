@@ -5,7 +5,8 @@ import type { AiActionId, AiPanelScope, AppActionId, AppPanelScope, MacroActionI
 export const BOOK_OPTION_LABELS: Record<string, string> = BOOK_LABELS;
 
 export const ACTION_PANEL_BUTTONS_BY_SCOPE: Record<AiPanelScope, AiActionId[]> = {
-  actions: ["define", "sinonimologia", "dictionary", "synonyms", "etymology", "cognatos"],
+  definitions_cons: ["define", "sinonimologia"],
+  actions: ["dictionary", "synonyms", "antonyms", "etymology", "cognatos"],
   rewriting: ["rewrite", "summarize", "epigraph"],
   translation: ["translate", "dict_lookup"],
   customized_prompts: ["analogies", "comparisons", "examples", "counterpoints", "neoparadigma"],
@@ -25,6 +26,7 @@ export const ACTION_PANEL_ICONS: Record<AiActionId, LucideIcon> = {
   define: BookOpen,
   sinonimologia: Repeat2,
   synonyms: Repeat2,
+  antonyms: Repeat2,
   etymology: Search,
   dictionary: BookOpen,
   epigraph: Search,
@@ -62,13 +64,13 @@ export const MACRO_PANEL_ICONS: Record<MacroActionId, LucideIcon> = {
 };
 
 export const parameterAppMeta: Record<AppActionId, { title: string; description: string }> = {
-  app1: { title: "Bibliografia de Livros", description: "Monta Bibliografia das obras de Waldo Vieira." },
+  app1: { title: "Bibliografia de Livros", description: "Monta Bibliografia de obras Waldo Vieira." },
   app2: { title: "Bibliografia de Verbetes", description: "Monta Bibliografia de verbetes." },
   app3: { title: "Bibliografia Autores", description: "Monta bibliografia de autores diversos." },
   app4: { title: "Busca em Livros", description: "Busca termos nos livros de Waldo Vieira." },
   app5: { title: "Busca em Verbetes", description: "Busca termos nos verbetes em geral." },
   app6: { title: "Bibliografia Externa", description: "Busca referências externas na internet." },
-  app12: { title: "Semantic Search", description: "Busca semântica nas bases vetoriais." },
+  app12: { title: "Semantic Search", description: "Busca semântica por similaridade." },
   app7: { title: "Tabela Automatizada", description: "Abre tabela Word e editor HTML." },
   app8: { title: "Definologia", description: "Gera Definologia do verbete." },
   app9: { title: "Sinonimologia", description: "Gera Sinonimologia do verbete." },
@@ -88,6 +90,7 @@ export const parameterActionMeta: Record<AiActionId, { title: string; descriptio
 
   dictionary: { title: "Definição", description: "Definição dicionarizada." },
   synonyms: { title: "Sinonímia", description: "Lista de sinônimos." },
+  antonyms: { title: "Antonímia", description: "Lista de antônimos." },
   etymology: { title: "Etimologia", description: "Etimologia do termo." },
   cognatos: { title: "Cognatos", description: "Cognatos do termo." },
 
@@ -96,19 +99,21 @@ export const parameterActionMeta: Record<AiActionId, { title: string; descriptio
   summarize: { title: "Resumir", description: "Síntese concisa." },
   
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
-  dict_lookup: { title: "Dicionários", description: "Consulta termos em dicionários online." },
+  dict_lookup: { title: "Dicionários", description: "Consulta dicionários online." },
 
   ai_command: { title: "Comando IA", description: "Envia uma query livre para a LLM." },
 
-  analogies: { title: "Analogias", description: "Elabora analogias do texto com a Conscienciologia." },
-  comparisons: { title: "Comparações", description: "Compara o texto com termos relevantes da Conscienciologia." },
-  examples: { title: "Exemplos", description: "Lista 5 exemplos do texto segundo a Conscienciologia." },
-  counterpoints: { title: "Contrapontos", description: "Lista 5 contrapontos do texto no contexto da Conscienciologia." },
-  neoparadigma: { title: "Neoparadigma", description: "Analisa o conceito nos paradigmas convencional e consciencial." },
+  analogies: { title: "Analogias", description: "Analogias da Conscienciologia." },
+  comparisons: { title: "Comparações", description: "Comparações na Conscienciologia." },
+  examples: { title: "Exemplos", description: "Exemplos segundo a Conscienciologia." },
+  counterpoints: { title: "Contrapontos", description: "Contrapontos pela Conscienciologia." },
+  neoparadigma: { title: "Neoparadigma", description: "Análise comparativa paradigmática." },
 };
 
 export const getAiPanelScopeByAction = (id: AiActionId): AiPanelScope =>
-  id === "ai_command"
+  ACTION_PANEL_BUTTONS_BY_SCOPE.definitions_cons.includes(id)
+    ? "definitions_cons"
+    : id === "ai_command"
     ? "ai_command"
     : ACTION_PANEL_BUTTONS_BY_SCOPE.rewriting.includes(id)
     ? "rewriting"
@@ -122,6 +127,8 @@ export const getParameterPanelTargetByAiAction = (id: AiActionId): ParameterPane
   const section = getAiPanelScopeByAction(id);
 
   switch (section) {
+    case "definitions_cons":
+      return { section, id };
     case "actions":
       return { section, id };
     case "rewriting":
@@ -149,7 +156,9 @@ export const getParameterPanelHeaderMeta = (
     case "sources":
       return { title: "LLM Sources", description: "Vector stores e arquivos" };
     case "actions":
-      return { title: "Termos & Conceitos", description: "Definir, listar sinonimos, etimologia e dicionario" };
+      return { title: "Termos & Conceitos", description: "Definir, sinonimos, etimologia e cognatos" };
+    case "definitions_cons":
+      return { title: "Definições Cons", description: "Definologia e sinonimologia conscienciológica" };
     case "ai_command":
       return { title: "Comando IA", description: "Envia uma query livre para a LLM" };
     case "rewriting":

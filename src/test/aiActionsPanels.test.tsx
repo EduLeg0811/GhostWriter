@@ -9,7 +9,7 @@ const buildSectionProps = () => ({
   isAiCommandSelectionPending: false,
   actionText: "",
   aiCommandQuery: "",
-  translateLanguage: "en" as const,
+  translateLanguage: "Ingles" as const,
   isLoading: false,
   hasDocumentOpen: true,
   isConfigOpen: false,
@@ -47,7 +47,7 @@ describe("AI actions panels", () => {
 
     render(
       <ParameterPanelToolbar
-        parameterPanelTarget={{ section: "actions", id: "ai_command" }}
+        parameterPanelTarget={{ section: "ai_command", id: "ai_command" }}
         appPanelScope={null}
         isLoading={false}
         isAiActionsConfigOpen={false}
@@ -81,9 +81,54 @@ describe("AI actions panels", () => {
     );
 
     const translateButton = screen.getByRole("button", { name: /^traduzir\b/i });
-    const dictButton = screen.getByRole("button", { name: /^consulta dict\b/i });
+    const dictButton = screen.getByRole("button", { name: /^dicionários\b/i });
 
     expect(translateButton.compareDocumentPosition(dictButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("renders definologia and sinonimologia in the Definições Cons toolbar", () => {
+    render(
+      <ParameterPanelToolbar
+        parameterPanelTarget={{ section: "definitions_cons", id: null }}
+        appPanelScope={null}
+        isLoading={false}
+        isAiActionsConfigOpen={false}
+        hasVerbetografiaRequiredFields={false}
+        onToggleAiActionsConfig={vi.fn()}
+        onOpenAiActionParameters={vi.fn()}
+        onSelectVerbetografiaAction={vi.fn()}
+        onRunAppAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /^definologia\b/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^sinonimologia\b/i })).toBeInTheDocument();
+    expect(screen.queryByText(/lexicologia/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps Termos & Conceitos only with lexicologia actions", () => {
+    render(
+      <ParameterPanelToolbar
+        parameterPanelTarget={{ section: "actions", id: null }}
+        appPanelScope={null}
+        isLoading={false}
+        isAiActionsConfigOpen={false}
+        hasVerbetografiaRequiredFields={false}
+        onToggleAiActionsConfig={vi.fn()}
+        onOpenAiActionParameters={vi.fn()}
+        onSelectVerbetografiaAction={vi.fn()}
+        onRunAppAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: /^definologia\b/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^sinonimologia\b/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^definição\b/i })).toBeInTheDocument();
+    const synonymsButton = screen.getByRole("button", { name: /^sinonímia\b/i });
+    const antonymsButton = screen.getByRole("button", { name: /^antonímia\b/i });
+    expect(screen.getByRole("button", { name: /^etimologia\b/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^cognatos\b/i })).toBeInTheDocument();
+    expect(synonymsButton.compareDocumentPosition(antonymsButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("hides the AI config button when consulta dict is selected", () => {
@@ -104,11 +149,12 @@ describe("AI actions panels", () => {
     expect(screen.queryByLabelText(/configurações ia/i)).not.toBeInTheDocument();
   });
 
-  it("keeps the AI action body empty until an action is selected", () => {
+  it("shows the shared import and text area before an AI action is selected", () => {
     render(<AiActionsParameterSection {...buildSectionProps()} />);
 
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /select & import/i })).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^definologia\b/i })).not.toBeInTheDocument();
   });
 
   it("shows the command form only after the top selector is chosen", () => {
@@ -142,7 +188,7 @@ describe("AI actions panels", () => {
     expect(submitButton.className).toContain("border-green-300");
   });
 
-  it("renders consulta dict without language select or AI config footer", () => {
+  it("renders dicionários without language select or AI config footer", () => {
     render(
       <AiActionsParameterSection
         {...buildSectionProps()}
@@ -153,7 +199,7 @@ describe("AI actions panels", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: /consulta dict/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /dicionários/i })).toBeInTheDocument();
     expect(screen.getByDisplayValue("casa")).toBeInTheDocument();
     expect(screen.queryByText(/idioma/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/system prompt da ação/i)).not.toBeInTheDocument();

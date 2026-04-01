@@ -53,6 +53,7 @@ const baseAppsProps = {
   verbetografiaTitle: "Autopesquisa",
   verbetografiaSpecialty: "Parapercepciologia",
   isRunningVerbetografiaOpenTable: false,
+  isRunningVerbetografiaOpenTableWord: false,
   isRunningVerbeteDefinologia: false,
   isRunningVerbeteFraseEnfatica: false,
   isRunningVerbeteSinonimologia: false,
@@ -107,6 +108,7 @@ const baseAppsProps = {
   onVerbeteSearchMaxResultsChange: vi.fn(),
   onRunVerbeteSearch: vi.fn(),
   onRunVerbetografiaOpenTable: vi.fn(),
+  onRunVerbetografiaOpenTableWord: vi.fn(),
   onRunVerbeteDefinologia: vi.fn(),
   onRunVerbeteFraseEnfatica: vi.fn(),
   onRunVerbeteSinonimologia: vi.fn(),
@@ -150,7 +152,7 @@ describe("verbetografia panels", () => {
     expect(onRunAppAction).not.toHaveBeenCalled();
   });
 
-  it("keeps the verbetografia body empty until a section button is selected", () => {
+  it("shows the shared verbetografia fields before a section button is selected", () => {
     render(
       <AppsParameterSection
         hasDocumentOpen={false} includeEditorContextInLlm={false} onToggleIncludeEditorContextInLlm={function (): void {
@@ -161,12 +163,12 @@ describe("verbetografia panels", () => {
         appId={null}      />,
     );
 
-    expect(screen.queryByDisplayValue("Autopesquisa")).not.toBeInTheDocument();
-    expect(screen.queryByDisplayValue("Parapercepciologia")).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("Autopesquisa")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Parapercepciologia")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /tabela automatizada/i })).not.toBeInTheDocument();
   });
 
-  it("shows the verbetografia form and final green action button after selection", () => {
+  it("shows tabela verbete selector buttons and only reveals the editor action after selection", () => {
     const onRunVerbetografiaOpenTable = vi.fn();
 
     render(
@@ -180,19 +182,50 @@ describe("verbetografia panels", () => {
         onRunVerbetografiaOpenTable={onRunVerbetografiaOpenTable}      />,
     );
 
-    const openButton = screen.getByRole("button", { name: /tabela automatizada/i });
-    expect(openButton).toBeInTheDocument();
-
-    fireEvent.click(openButton);
-
     expect(screen.getByDisplayValue("Autopesquisa")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Parapercepciologia")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /abre tabela no editor/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /abre tabela no word/i })).toBeInTheDocument();
+    expect(screen.queryAllByRole("button", { name: /abre tabela no editor/i })).toHaveLength(1);
 
-    const actionButton = screen.getByRole("button", { name: /abre tabela no editor/i });
+    fireEvent.click(screen.getByRole("button", { name: /abre tabela no editor/i }));
+
+    const actionButton = screen.getAllByRole("button", { name: /abre tabela no editor/i })[1];
     expect(actionButton.className).toContain("border-green-300");
 
     fireEvent.click(actionButton);
     expect(onRunVerbetografiaOpenTable).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs the word action only after selecting the word button", () => {
+    const onRunVerbetografiaOpenTable = vi.fn();
+    const onRunVerbetografiaOpenTableWord = vi.fn();
+
+    render(
+      <AppsParameterSection
+        hasDocumentOpen={false}
+        includeEditorContextInLlm={false}
+        onToggleIncludeEditorContextInLlm={function (): void {
+          throw new Error("Function not implemented.");
+        }}
+        aiActionSystemPrompts={undefined}
+        onAiActionSystemPromptChange={function (actionId: ActionSystemPromptId, value: string): void {
+          throw new Error("Function not implemented.");
+        }}
+        {...baseAppsProps}
+        appId="app7"
+        onRunVerbetografiaOpenTable={onRunVerbetografiaOpenTable}
+        onRunVerbetografiaOpenTableWord={onRunVerbetografiaOpenTableWord}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /abre tabela no word/i }));
+
+    const actionButton = screen.getAllByRole("button", { name: /abre tabela no word/i })[1];
+    fireEvent.click(actionButton);
+
+    expect(onRunVerbetografiaOpenTableWord).toHaveBeenCalledTimes(1);
+    expect(onRunVerbetografiaOpenTable).not.toHaveBeenCalled();
   });
 
   it("shows semantic search fields only after clicking the main panel button", () => {
