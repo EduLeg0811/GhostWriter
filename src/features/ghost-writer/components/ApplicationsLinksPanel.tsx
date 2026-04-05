@@ -38,6 +38,19 @@ const ApplicationsLinksPanel = ({ isLoading, onRunRandomPensata }: ApplicationsL
         </div>
       </a>
 
+      <a href="https://dictionary-wtrh.onrender.com/" target="_blank" rel="noopener noreferrer" className={linkClassName}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <img src="/Dict.png" alt="Dicionarios" className="h-16 w-16 rounded-md" />
+            <span className="min-w-0 flex-1 text-left">
+              <span className="text-sm font-semibold tracking-wide text-orange-600 shadow-lg">Dicionários</span>
+              <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Consulta externa de dicionários online</p>
+            </span>
+          </div>
+          <ExternalLink className="h-4 w-4 shrink-0 opacity-90 transition group-hover:translate-x-0.5" />
+        </div>
+      </a>
+
       <a
         href="https://www.dropbox.com/scl/fo/qh87067rpgc7ndjpv50eb/AGWrUeEVDyDZRlOWqDNcJ00?rlkey=jw6lkzp9fkugkamcx500z0k9g&st=owkldr8v&dl=0"
         target="_blank"
