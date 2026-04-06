@@ -138,6 +138,7 @@ class ExecuteLLMRequest(BaseModel):
 
 class InsertRefBookRequest(BaseModel):
     book: str
+    mode: str = "bee"
 
 
 def get_openai_api_key() -> str:
@@ -851,10 +852,13 @@ def api_health() -> dict[str, Any]:
 @app.post("/api/macros/insert-ref-book")
 def api_insert_ref_book(payload: InsertRefBookRequest) -> dict[str, Any]:
     book = payload.book.strip()
+    mode = (payload.mode or "bee").strip().lower()
     if not book:
         raise HTTPException(status_code=400, detail="Parametro 'book' e obrigatorio.")
+    if mode not in {"bee", "simples"}:
+        raise HTTPException(status_code=400, detail="Parametro 'mode' invalido. Use 'bee' ou 'simples'.")
     script_path = PYTHON_DIR / "insert_ref_book.py"
-    result = run_python_json_script(script_path, [book])
+    result = run_python_json_script(script_path, [book, mode])
     if not result.get("ok"):
         message = str(result.get("error") or "Falha ao executar macro1 no Python.")
         if "Livro nao identificado" in message or "Titulo nao encontrado" in message or "Parametro" in message:

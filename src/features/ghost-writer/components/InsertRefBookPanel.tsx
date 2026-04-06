@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 import { BOOK_ORDER, BOOK_LABELS, type BookCode } from "@/lib/bookCatalog";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
+import type { RefBookMode } from "@/features/ghost-writer/types";
 
 const REF_BOOK_OPTIONS: BookCode[] = [...BOOK_ORDER];
 
@@ -13,8 +14,10 @@ interface InsertRefBookPanelProps {
   title: string;
   description: string;
   selectedRefBook: BookCode;
+  refBookMode: RefBookMode;
   refBookPages: string;
   onSelectRefBook: (value: BookCode) => void;
+  onRefBookModeChange: (value: RefBookMode) => void;
   onRefBookPagesChange: (value: string) => void;
   onRunInsertRefBook: () => void;
   isRunningInsertRefBook: boolean;
@@ -26,8 +29,10 @@ const InsertRefBookPanel = ({
   title,
   description,
   selectedRefBook,
+  refBookMode,
   refBookPages,
   onSelectRefBook,
+  onRefBookModeChange,
   onRefBookPagesChange,
   onRunInsertRefBook,
   isRunningInsertRefBook,
@@ -65,8 +70,34 @@ const InsertRefBookPanel = ({
         </div>
 
         <div className="space-y-2">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Páginas (Opcional)</Label>
-          <p className="text-xs text-muted-foreground">Separe por vírgula ou ponto-e-vírgula.</p>
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Formato</Label>
+          <div className="flex gap-2">
+            {([
+              { value: "bee", label: "BEE" },
+              { value: "simples", label: "Simples" },
+            ] as const).map((option) => {
+              const isActive = refBookMode === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => onRefBookModeChange(option.value)}
+                  className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition-colors ${
+                    isActive
+                      ? "border-orange-300 bg-orange-100 text-orange-900 shadow-sm"
+                      : "border-orange-200/80 bg-orange-50/55 text-orange-700/20 hover:bg-orange-100/50"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Paginas (Opcional)</Label>
+          <p className="text-xs text-muted-foreground">Separe por virgula ou ponto-e-virgula.</p>
           <Textarea
             className="min-h-10 rounded-md border border-input bg-white px-3 py-1 text-xs leading-1 text-foreground"
             rows={2}

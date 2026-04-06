@@ -179,10 +179,13 @@ def bookName(book: str) -> str:
     return "Livro nao identificado"
 
 
-def find_simple_by_book(book: str, xlsx_path: Path | None = None) -> str:
+def find_book_reference_by_mode(book: str, mode: str = "bee", xlsx_path: Path | None = None) -> str:
     title = bookName(book)
     if title == "Livro nao identificado":
         raise ValueError(f"Livro nao identificado: {book}")
+    selected_mode = (mode or "bee").strip().lower()
+    if selected_mode not in {"bee", "simples"}:
+        raise ValueError("Modo invalido. Use 'bee' ou 'simples'.")
 
     root = Path(__file__).resolve().parents[1]
     workbook = xlsx_path or _resolve_biblio_workbook(root, "BooksWV.xlsx")
@@ -195,10 +198,10 @@ def find_simple_by_book(book: str, xlsx_path: Path | None = None) -> str:
     for row in rows:
         row_title = _norm(row.get("titulo", ""))
         if row_title == wanted:
-            simple = row.get("simples", "").strip()
-            if simple:
-                return simple
-            raise ValueError(f"Livro encontrado sem conteudo na coluna 'simples': {title}")
+            reference = row.get(selected_mode, "").strip()
+            if reference:
+                return reference
+            raise ValueError(f"Livro encontrado sem conteudo na coluna '{selected_mode}': {title}")
 
     partial_matches: list[dict[str, str]] = []
     for row in rows:
@@ -216,12 +219,16 @@ def find_simple_by_book(book: str, xlsx_path: Path | None = None) -> str:
             partial_matches.sort(key=lambda r: int((r.get("ano") or "0").strip() or "0"), reverse=True)
 
         picked = partial_matches[0]
-        simple = (picked.get("simples") or "").strip()
-        if simple:
-            return simple
-        raise ValueError(f"Livro encontrado sem conteudo na coluna 'simples': {picked.get('titulo') or title}")
+        reference = (picked.get(selected_mode) or "").strip()
+        if reference:
+            return reference
+        raise ValueError(f"Livro encontrado sem conteudo na coluna '{selected_mode}': {picked.get('titulo') or title}")
 
     raise ValueError(f"Titulo nao encontrado na planilha: {title}")
+
+
+def find_simple_by_book(book: str, xlsx_path: Path | None = None) -> str:
+    return find_book_reference_by_mode(book, mode="simples", xlsx_path=xlsx_path)
 
 
 def find_refs_by_titles(titles: list[str], xlsx_path: Path | None = None) -> dict[str, str]:

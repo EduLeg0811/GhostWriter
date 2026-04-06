@@ -356,6 +356,29 @@ const removeVerbeteLinkLineHtml = (html: string): string => {
   return root.innerHTML;
 };
 
+const styleRandomPensataHtml = (html: string): string => {
+  const parsed = parseHtmlRoot(html);
+  if (!parsed) return html;
+  const { root } = parsed;
+  const blocks = Array.from(root.querySelectorAll("p, li"));
+  const firstContentBlock = blocks.find((block) => ((block.textContent || "").replace(/\u00a0/g, " ").trim().length > 0));
+  if (!firstContentBlock) return html;
+
+  const pensataBlock = firstContentBlock as HTMLElement;
+  pensataBlock.style.background = "linear-gradient(180deg, rgba(255,247,237,0.96), rgba(255,251,235,0.9))";
+  pensataBlock.style.border = "1px solid rgba(253,186,116,0.45)";
+  pensataBlock.style.borderLeft = "4px solid rgba(249,115,22,0.55)";
+  pensataBlock.style.borderRadius = "12px";
+  pensataBlock.style.padding = "0.8em 0.95em";
+  pensataBlock.style.marginBottom = "0.9em";
+  pensataBlock.style.fontSize = "1.12em";
+  pensataBlock.style.lineHeight = "1.65";
+  pensataBlock.style.fontWeight = "500";
+  pensataBlock.style.color = "#1e3a8a";
+
+  return root.innerHTML;
+};
+
 const convertHistorySearchExportDivsToParagraphs = (html: string): string => {
   const parsed = parseHtmlRoot(html);
   if (!parsed) return html;
@@ -442,6 +465,10 @@ export const renderHistoryResponseEditorHtml = (
     const highlightedHtml = options.applyHighlight ? highlightBookSearchHtml(html, response.query) : html;
     const formattedHtml = styleVerbeteSearchHtml(highlightedHtml);
     return options.applyNumbering ? styleVerbeteSearchResultItemsHtml(formattedHtml) : removeNumberingFromHistoryHtml(formattedHtml);
+  }
+
+  if (response.type === "app_random_pensata") {
+    return styleRandomPensataHtml(html);
   }
 
   return options.applyNumbering ? styleNumberedListItemsHtml(html) : removeNumberingFromHistoryHtml(html);

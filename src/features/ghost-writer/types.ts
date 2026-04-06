@@ -15,6 +15,7 @@ export type ParameterPanelHeaderMeta = { title: string; description: string };
 export type SelectOption = { id: string; label: string };
 export type LlmConfigPanelId = "chat" | "ai_actions" | "biblio_externa";
 export type Macro2SpacingMode = "normal_single" | "normal_double" | "nbsp_single" | "nbsp_double";
+export type RefBookMode = "bee" | "simples";
 export type SemanticIndexOption = {
   id: string;
   label: string;

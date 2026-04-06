@@ -18,7 +18,7 @@ const ApplicationsLinksPanel = ({ isLoading, onRunRandomPensata }: ApplicationsL
         onClick={onRunRandomPensata}
         disabled={isLoading}
       >
-        <img src="/LO.png" alt="LO" className="h-16 w-16 shrink-0 object-contain bg-white" />
+        <img src="/LO.png" alt="LO" className="h-14 w-16 shrink-0 object-contain bg-white" />
         <span className="min-w-0 flex-1 text-left">
           <span className="text-sm font-semibold tracking-wide text-orange-600 shadow-lg">Pensata do Dia</span>
           <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Bibliomancia Digital</p>
@@ -28,7 +28,7 @@ const ApplicationsLinksPanel = ({ isLoading, onRunRandomPensata }: ApplicationsL
       <a href="https://cons-ia.org/" target="_blank" rel="noopener noreferrer" className={linkClassName}>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
-            <img src="/cons-ia.png" alt="Cons-IA" className="h-16 w-16 rounded-md" />
+            <img src="/cons-ia.png" alt="Cons-IA" className="h-14 w-14 rounded-md" />
             <span className="min-w-0 flex-1 text-left">
               <span className="text-sm font-semibold tracking-wide text-orange-600 shadow-lg">Cons-IA</span>
               <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Toolbox de IA da Conscienciologia</p>
@@ -40,8 +40,8 @@ const ApplicationsLinksPanel = ({ isLoading, onRunRandomPensata }: ApplicationsL
 
       <a href="https://externaldict.onrender.com/" target="_blank" rel="noopener noreferrer" className={linkClassName}>
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <img src="/Dict.png" alt="Dicionarios" className="h-16 w-16 rounded-md" />
+          <div className="flex items-center gap-4">
+            <img src="/Dict.jpg" alt="Dicionarios" className="h-14 w-16 rounded-md" />
             <span className="min-w-0 flex-1 text-left">
               <span className="text-sm font-semibold tracking-wide text-orange-600 shadow-lg">Dicionários</span>
               <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Consulta externa de dicionários online</p>
@@ -59,7 +59,7 @@ const ApplicationsLinksPanel = ({ isLoading, onRunRandomPensata }: ApplicationsL
       >
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
-            <img src="/Books.png" alt="PDF" className="h-16 w-16 rounded-md" />
+            <img src="/Books.png" alt="PDF" className="h-14 w-16 rounded-md" />
             <span className="min-w-0 flex-1 text-left">
               <span className="text-sm font-semibold tracking-wide text-orange-600 shadow-lg">Livros em PDF</span>
               <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Download de livros da Conscienciologia</p>
@@ -72,7 +72,7 @@ const ApplicationsLinksPanel = ({ isLoading, onRunRandomPensata }: ApplicationsL
       <a href="https://consciencioteca.onrender.com/" target="_blank" rel="noopener noreferrer" className={linkClassName}>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
-            <img src="/WV-Green3.png" alt="Videos" className="h-12 w-16 rounded-md" />
+            <img src="/WV-Green3.png" alt="Videos" className="h-14 w-18 rounded-md" />
             <span className="min-w-0 flex-1 text-left">
               <span className="text-sm font-semibold tracking-wide text-orange-600 shadow-lg">Consciencioteca</span>
               <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Canal de videos da Conscienciologia</p>

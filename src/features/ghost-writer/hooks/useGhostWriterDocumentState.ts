@@ -94,6 +94,7 @@ export const useGhostWriterDocumentState = () => {
 
 export const useGhostWriterAppsState = () => {
   const [selectedRefBook, setSelectedRefBook] = useState<BookCode>("LO");
+  const [refBookMode, setRefBookMode] = useState<"bee" | "simples">("bee");
   const [refBookPages, setRefBookPages] = useState("");
   const [isRunningInsertRefBook, setIsRunningInsertRefBook] = useState(false);
   const [verbeteInput, setVerbeteInput] = useState("");
@@ -141,6 +142,8 @@ export const useGhostWriterAppsState = () => {
   return {
     selectedRefBook,
     setSelectedRefBook,
+    refBookMode,
+    setRefBookMode,
     refBookPages,
     setRefBookPages,
     isRunningInsertRefBook,

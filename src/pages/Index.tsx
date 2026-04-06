@@ -94,7 +94,7 @@ const Index = () => {
   } = documentState;
   const appState = useGhostWriterAppsState();
   const {
-    selectedRefBook, setSelectedRefBook, refBookPages, setRefBookPages, isRunningInsertRefBook, setIsRunningInsertRefBook, verbeteInput, setVerbeteInput,
+    selectedRefBook, setSelectedRefBook, refBookMode, setRefBookMode, refBookPages, setRefBookPages, isRunningInsertRefBook, setIsRunningInsertRefBook, verbeteInput, setVerbeteInput,
     isRunningInsertRefVerbete, setIsRunningInsertRefVerbete, biblioGeralAuthor, setBiblioGeralAuthor, biblioGeralTitle, setBiblioGeralTitle, biblioGeralYear, setBiblioGeralYear,
     biblioGeralExtra, setBiblioGeralExtra, isRunningBiblioGeral, setIsRunningBiblioGeral, biblioExternaAuthor, setBiblioExternaAuthor, biblioExternaTitle, setBiblioExternaTitle,
     biblioExternaYear, setBiblioExternaYear, biblioExternaJournal, setBiblioExternaJournal, biblioExternaPublisher, setBiblioExternaPublisher, biblioExternaIdentifier,
@@ -478,6 +478,7 @@ const Index = () => {
         aiActionsSelectedVectorStoreIds={aiActionsSelectedVectorStoreIds}
         aiActionVectorStoreOptions={aiActionVectorStoreOptions}
         selectedRefBook={selectedRefBook}
+        refBookMode={refBookMode}
         refBookPages={refBookPages}
         isRunningInsertRefBook={isRunningInsertRefBook}
         verbeteInput={verbeteInput}
@@ -575,6 +576,7 @@ const Index = () => {
         onAiActionsSelectedVectorStoreIdsChange={setAiActionsSelectedVectorStoreIds}
         onUploadSourceFiles={handleUploadSourceFiles}
         onSelectRefBook={handleSelectRefBook}
+        onRefBookModeChange={setRefBookMode}
         onRefBookPagesChange={setRefBookPages}
         onRunInsertRefBook={handleRunInsertRefBook}
         onVerbeteInputChange={setVerbeteInput}

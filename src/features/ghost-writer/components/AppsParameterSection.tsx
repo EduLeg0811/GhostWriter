@@ -13,7 +13,7 @@ import VerbetografiaPanel from "@/features/ghost-writer/components/Verbetografia
 import { getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
 import { CONFIG_PROMPT_ROWS } from "@/features/ghost-writer/config/constants";
 import { APP_PANEL_ICONS, parameterAppMeta } from "@/features/ghost-writer/config/metadata";
-import type { AppActionId, AppPanelScope, SelectOption, SemanticIndexOption } from "@/features/ghost-writer/types";
+import type { AppActionId, AppPanelScope, RefBookMode, SelectOption, SemanticIndexOption } from "@/features/ghost-writer/types";
 import type { BookCode } from "@/lib/bookCatalog";
 import type { UploadedLlmFile } from "@/lib/openai";
 import { sectionActionButtonClass } from "@/styles/buttonStyles";
@@ -23,6 +23,7 @@ interface AppsParameterSectionProps {
   appPanelScope: AppPanelScope | null;
   isAiActionsConfigOpen: boolean;
   selectedRefBook: BookCode;
+  refBookMode: RefBookMode;
   refBookPages: string;
   isRunningInsertRefBook: boolean;
   verbeteInput: string;
@@ -86,6 +87,7 @@ interface AppsParameterSectionProps {
   uploadedChatFiles: UploadedLlmFile[];
   isUploadingChatFiles: boolean;
   onSelectRefBook: (value: BookCode) => void;
+  onRefBookModeChange: (value: RefBookMode) => void;
   onRefBookPagesChange: (value: string) => void;
   onRunInsertRefBook: () => void | Promise<void>;
   onVerbeteInputChange: (value: string) => void;
@@ -150,6 +152,7 @@ const AppsParameterSection = ({
   appPanelScope,
   isAiActionsConfigOpen,
   selectedRefBook,
+  refBookMode,
   refBookPages,
   isRunningInsertRefBook,
   verbeteInput,
@@ -213,6 +216,7 @@ const AppsParameterSection = ({
   uploadedChatFiles,
   isUploadingChatFiles,
   onSelectRefBook,
+  onRefBookModeChange,
   onRefBookPagesChange,
   onRunInsertRefBook,
   onVerbeteInputChange,
@@ -290,8 +294,10 @@ const AppsParameterSection = ({
         title={parameterAppMeta.app1.title}
         description={parameterAppMeta.app1.description}
         selectedRefBook={selectedRefBook}
+        refBookMode={refBookMode}
         refBookPages={refBookPages}
         onSelectRefBook={onSelectRefBook}
+        onRefBookModeChange={onRefBookModeChange}
         onRefBookPagesChange={onRefBookPagesChange}
         onRunInsertRefBook={() => void onRunInsertRefBook()}
         isRunningInsertRefBook={isRunningInsertRefBook}

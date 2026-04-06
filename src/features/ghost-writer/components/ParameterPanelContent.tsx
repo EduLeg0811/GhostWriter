@@ -9,7 +9,7 @@ import { BOOK_SOURCE, MACRO1_HIGHLIGHT_COLORS, TRANSLATE_LANGUAGE_OPTIONS, VECTO
 import type { TextStats } from "@/hooks/useTextStats";
 import type { BookCode } from "@/lib/bookCatalog";
 import type { UploadedLlmFile } from "@/lib/openai";
-import type { AiActionId, AppActionId, AppPanelScope, Macro2SpacingMode, ParameterPanelTarget, SelectOption, SemanticIndexOption } from "@/features/ghost-writer/types";
+import type { AiActionId, AppActionId, AppPanelScope, Macro2SpacingMode, ParameterPanelTarget, RefBookMode, SelectOption, SemanticIndexOption } from "@/features/ghost-writer/types";
 
 type NonNullParameterPanelTarget = Exclude<ParameterPanelTarget, null>;
 
@@ -54,6 +54,7 @@ interface ParameterPanelContentProps {
   aiActionsSelectedVectorStoreIds: string[];
   aiActionVectorStoreOptions: SelectOption[];
   selectedRefBook: BookCode;
+  refBookMode: RefBookMode;
   refBookPages: string;
   isRunningInsertRefBook: boolean;
   verbeteInput: string;
@@ -146,6 +147,7 @@ interface ParameterPanelContentProps {
   onAiActionsSelectedVectorStoreIdsChange: (value: string[]) => void;
   onUploadSourceFiles: (files: File[]) => void | Promise<void>;
   onSelectRefBook: (value: BookCode) => void;
+  onRefBookModeChange: (value: RefBookMode) => void;
   onRefBookPagesChange: (value: string) => void;
   onRunInsertRefBook: () => void | Promise<void>;
   onVerbeteInputChange: (value: string) => void;
@@ -238,6 +240,7 @@ const ParameterPanelContent = ({
   aiActionsSelectedVectorStoreIds,
   aiActionVectorStoreOptions,
   selectedRefBook,
+  refBookMode,
   refBookPages,
   isRunningInsertRefBook,
   verbeteInput,
@@ -330,6 +333,7 @@ const ParameterPanelContent = ({
   onAiActionsSelectedVectorStoreIdsChange,
   onUploadSourceFiles,
   onSelectRefBook,
+  onRefBookModeChange,
   onRefBookPagesChange,
   onRunInsertRefBook,
   onVerbeteInputChange,
@@ -512,6 +516,7 @@ const ParameterPanelContent = ({
             appPanelScope={appPanelScope}
             isAiActionsConfigOpen={isAiActionsConfigOpen}
             selectedRefBook={selectedRefBook}
+            refBookMode={refBookMode}
             refBookPages={refBookPages}
             isRunningInsertRefBook={isRunningInsertRefBook}
             verbeteInput={verbeteInput}
@@ -575,6 +580,7 @@ const ParameterPanelContent = ({
             uploadedChatFiles={uploadedChatFiles}
             isUploadingChatFiles={isUploadingChatFiles}
             onSelectRefBook={onSelectRefBook}
+            onRefBookModeChange={onRefBookModeChange}
             onRefBookPagesChange={onRefBookPagesChange}
             onRunInsertRefBook={onRunInsertRefBook}
             onVerbeteInputChange={onVerbeteInputChange}

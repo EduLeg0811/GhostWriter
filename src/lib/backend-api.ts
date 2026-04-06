@@ -118,11 +118,11 @@ export async function healthCheck(): Promise<{ ok: boolean; openaiConfigured: bo
   return res.json();
 }
 
-export async function insertRefBookMacro(book: string): Promise<{ ok: boolean; result: string }> {
+export async function insertRefBookMacro(book: string, mode: "bee" | "simples"): Promise<{ ok: boolean; result: string }> {
   const res = await fetch(apiUrl("/api/macros/insert-ref-book"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ book }),
+    body: JSON.stringify({ book, mode }),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();

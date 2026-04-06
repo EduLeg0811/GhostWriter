@@ -5,7 +5,7 @@ import { executeLLM, buildPensataAnalysisPrompt, buildVerbeteDefinologiaPrompt, 
 import { BOOK_LABELS, type BookCode } from "@/lib/bookCatalog";
 import { applySystemPromptOverride, getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
 import { normalizeIdList } from "@/features/ghost-writer/config/metadata";
-import type { AIResponse, AppActionId, AppPanelScope, LlmLogEntry, ParameterPanelTarget, SemanticIndexOption } from "@/features/ghost-writer/types";
+import type { AIResponse, AppActionId, AppPanelScope, LlmLogEntry, ParameterPanelTarget, RefBookMode, SemanticIndexOption } from "@/features/ghost-writer/types";
 import { buildLexicalSearchHistoryResponsePayload, buildSemanticSearchHistoryResponsePayload } from "@/features/ghost-writer/utils/historySearchResponses";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 
@@ -32,6 +32,7 @@ interface UseGhostWriterAppsParams {
   setActionText: Dispatch<SetStateAction<string>>;
   selectedRefBook: BookCode;
   setSelectedRefBook: Dispatch<SetStateAction<BookCode>>;
+  refBookMode: RefBookMode;
   refBookPages: string;
   verbeteInput: string;
   biblioGeralAuthor: string;
@@ -154,6 +155,7 @@ const useGhostWriterApps = ({
   setActionText,
   selectedRefBook,
   setSelectedRefBook,
+  refBookMode,
   refBookPages,
   verbeteInput,
   biblioGeralAuthor,
@@ -240,7 +242,7 @@ const useGhostWriterApps = ({
   const handleRunInsertRefBook = useCallback(async () => {
     setIsRunningInsertRefBook(true);
     try {
-      const rawResult = (await insertRefBookMacro(selectedRefBook)).result.trim();
+      const rawResult = (await insertRefBookMacro(selectedRefBook, refBookMode)).result.trim();
       const pages = normalizeRefPages(refBookPages);
       const result = pages ? `${rawResult}; p. ${pages}.` : rawResult;
       if (result) {
@@ -252,7 +254,7 @@ const useGhostWriterApps = ({
     } finally {
       setIsRunningInsertRefBook(false);
     }
-  }, [addResponse, refBookPages, selectedRefBook, setIsRunningInsertRefBook, toast]);
+  }, [addResponse, refBookMode, refBookPages, selectedRefBook, setIsRunningInsertRefBook, toast]);
 
   const handleRunInsertRefVerbete = useCallback(async () => {
     const raw = verbeteInput.trim();
