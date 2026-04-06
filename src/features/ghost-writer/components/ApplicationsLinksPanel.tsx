@@ -41,7 +41,7 @@ const ApplicationsLinksPanel = ({ isLoading, onRunRandomPensata }: ApplicationsL
       <a href="https://externaldict.onrender.com/" target="_blank" rel="noopener noreferrer" className={linkClassName}>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-0">
-            <img src="/DictLookUp.png" alt="Dicionarios" className="h-14 w-20 rounded-md" />
+            <img src="/DictLookUp.png" alt="Dicionarios" className="h-12 w-18 rounded-md" />
             <span className="min-w-0 flex-1 text-left">
               <span className="text-sm font-semibold tracking-wide text-orange-600 shadow-lg">Dicionários</span>
               <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Consulta externa de dicionários online</p>
@@ -58,7 +58,7 @@ const ApplicationsLinksPanel = ({ isLoading, onRunRandomPensata }: ApplicationsL
         className={linkClassName}
       >
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <img src="/Books.png" alt="PDF" className="h-14 w-16 rounded-md" />
             <span className="min-w-0 flex-1 text-left">
               <span className="text-sm font-semibold tracking-wide text-orange-600 shadow-lg">Livros em PDF</span>
@@ -71,8 +71,8 @@ const ApplicationsLinksPanel = ({ isLoading, onRunRandomPensata }: ApplicationsL
 
       <a href="https://consciencioteca.onrender.com/" target="_blank" rel="noopener noreferrer" className={linkClassName}>
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-4">
-            <img src="/WV-Green3.png" alt="Videos" className="h-14 w-18 rounded-md" />
+          <div className="flex items-center gap-3">
+            <img src="/WV-Green3.png" alt="Videos" className="h-12 w-16 rounded-md" />
             <span className="min-w-0 flex-1 text-left">
               <span className="text-sm font-semibold tracking-wide text-orange-600 shadow-lg">Consciencioteca</span>
               <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Canal de videos da Conscienciologia</p>
