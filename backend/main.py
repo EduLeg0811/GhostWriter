@@ -29,12 +29,36 @@ UPLOADS_DIR = DATA_DIR / "uploads"
 META_DIR = DATA_DIR / "meta"
 PYTHON_DIR = Path(__file__).resolve().parent / "python"
 
+try:
+    from backend.python.external_dictionary import (
+        clean_text as clean_external_dictionary_term,
+        fetch_analogico_aulete,
+        run_lexical_pipeline,
+    )
+    from backend.functions.online_dictionary_service import search_online_dictionaries
+except Exception:
+    from python.external_dictionary import (
+        clean_text as clean_external_dictionary_term,
+        fetch_analogico_aulete,
+        run_lexical_pipeline,
+    )
+    from functions.online_dictionary_service import search_online_dictionaries
+
 
 def resolve_biblio_file(filename: str) -> Path:
     preferred = ROOT_DIR / "backend" / "Files" / "Biblio" / filename
     if preferred.exists():
         return preferred
     return ROOT_DIR / "backend" / "Files" / filename
+
+
+def validate_external_dictionary_term(raw_term: str, param_name: str = "palavra") -> str:
+    word = clean_external_dictionary_term(raw_term)
+    if not word:
+        raise HTTPException(status_code=400, detail=f"Parametro '{param_name}' e obrigatorio.")
+    if len(word) > 80:
+        raise HTTPException(status_code=400, detail=f"Parametro '{param_name}' deve ter no maximo 80 caracteres.")
+    return word
 
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 META_DIR.mkdir(parents=True, exist_ok=True)
@@ -1198,14 +1222,7 @@ def api_semantic_search(payload: SemanticSearchRequest) -> dict[str, Any]:
 
 @app.post("/api/apps/online-dictionary/search")
 def api_online_dictionary_search(payload: OnlineDictionarySearchRequest) -> dict[str, Any]:
-    term = (payload.term or "").strip()
-    if not term:
-        raise HTTPException(status_code=400, detail="Parametro 'term' e obrigatorio.")
-
-    try:
-        from backend.functions.online_dictionary_service import search_online_dictionaries
-    except Exception:
-        from functions.online_dictionary_service import search_online_dictionaries
+    term = validate_external_dictionary_term(payload.term or "", "term")
 
     try:
         result = search_online_dictionaries(term)
@@ -1215,6 +1232,30 @@ def api_online_dictionary_search(payload: OnlineDictionarySearchRequest) -> dict
         raise HTTPException(status_code=500, detail=f"Falha ao executar Consulta Dict: {exc}")
 
     return {"ok": True, "result": result}
+
+
+@app.get("/lexico")
+def api_external_dictionary_lexico(palavra: str) -> dict[str, Any]:
+    word = validate_external_dictionary_term(palavra)
+
+    try:
+        return run_lexical_pipeline(word)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Falha ao executar consulta lexical externa: {exc}")
+
+
+@app.get("/analogico")
+def api_external_dictionary_analogico(palavra: str) -> dict[str, Any]:
+    word = validate_external_dictionary_term(palavra)
+
+    try:
+        return fetch_analogico_aulete(word)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Falha ao executar consulta analogica externa: {exc}")
 
 
 @app.post("/api/files/upload")

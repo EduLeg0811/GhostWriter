@@ -38,7 +38,7 @@ const ApplicationsLinksPanel = ({ isLoading, onRunRandomPensata }: ApplicationsL
         </div>
       </a>
 
-      <a href="https://dictionary-wtrh.onrender.com/" target="_blank" rel="noopener noreferrer" className={linkClassName}>
+      <a href="https://externaldict.onrender.com/" target="_blank" rel="noopener noreferrer" className={linkClassName}>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <img src="/Dict.png" alt="Dicionarios" className="h-16 w-16 rounded-md" />
