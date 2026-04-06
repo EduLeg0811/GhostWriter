@@ -71,11 +71,13 @@ describe("historyResponseHtml", () => {
       applyHighlight: true,
     });
 
-    expect(withReferences).toContain("color:#1d4ed8");
+    expect(withReferences).toContain("<strong>1.</strong>");
+    expect(withReferences).toContain("Texto com <mark");
     expect(withReferences).toContain("<strong>LO</strong>; Autopensenidade");
     expect(withReferences).not.toContain("LO | Autopensenidade | #1");
+    expect(historyHtmlToPlainText(withReferences)).toContain("1.  Texto com recin destacado");
 
-    expect(withoutReferences).toContain("color:#1d4ed8");
+    expect(withoutReferences).toContain("<strong>1.</strong>");
     expect(withoutReferences).not.toContain("<strong>LO</strong>; Autopensenidade");
     expect(withoutReferences).not.toContain("LO | Autopensenidade | #1");
   });
@@ -158,7 +160,7 @@ describe("historyResponseHtml", () => {
       applyHighlight: true,
     });
 
-    expect(withReferencesAndMetadata).toContain("color:#1d4ed8");
+    expect(withReferencesAndMetadata).toContain("<strong>1.</strong>");
     expect(withReferencesAndMetadata).toContain("<strong>LO</strong>; Titulo semantico");
     expect(withReferencesAndMetadata).toContain("LO | Titulo semantico | #4");
 

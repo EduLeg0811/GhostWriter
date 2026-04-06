@@ -289,6 +289,82 @@ const removeNumberingFromHistoryHtml = (html: string): string => {
   return root.innerHTML;
 };
 
+const flattenNumberedBlocksForClipboard = (html: string): string => {
+  const parsed = parseHtmlRoot(html);
+  if (!parsed) return html;
+  const { doc, root } = parsed;
+  const numberedPattern = /^\s*(\d{1,2})\.\s*/;
+
+  // Normaliza a estrutura invalida gerada quando um bloco flex com divs internos
+  // passa por exportacao em <p>, e o parser separa os divs como irmaos do paragrafo.
+  const rootChildren = Array.from(root.children) as HTMLElement[];
+  for (let index = 0; index < rootChildren.length - 2; index += 1) {
+    const current = rootChildren[index];
+    const next = rootChildren[index + 1];
+    const nextNext = rootChildren[index + 2];
+    const currentIsEmptyParagraph = current.tagName === "P" && !((current.textContent || "").replace(/\u00a0/g, " ").trim());
+    const nextIsNumberDiv = next.tagName === "DIV" && /^\s*\d{1,2}\.\s*$/.test((next.textContent || "").replace(/\u00a0/g, " "));
+    const nextNextIsContentDiv = nextNext.tagName === "DIV" && Boolean((nextNext.textContent || "").replace(/\u00a0/g, " ").trim());
+
+    if (!currentIsEmptyParagraph || !nextIsNumberDiv || !nextNextIsContentDiv) continue;
+
+    const numberText = ((next.textContent || "").replace(/\u00a0/g, " ").match(/^\s*(\d{1,2})\.\s*$/) || [])[1] || "";
+    current.innerHTML = `<strong>${numberText}.</strong>&nbsp;&nbsp;${nextNext.innerHTML}`;
+    next.remove();
+    nextNext.remove();
+  }
+
+  const candidateBlocks = [
+    ...Array.from(root.querySelectorAll("div")).filter((block) => (block as HTMLElement).style.display === "flex"),
+    ...Array.from(root.querySelectorAll("p, li")),
+  ];
+
+  for (const block of candidateBlocks) {
+    const htmlBlock = block as HTMLElement;
+    const text = (htmlBlock.textContent || "").replace(/\u00a0/g, " ");
+    const match = text.match(numberedPattern);
+    if (!match) continue;
+
+    const indexLabel = match[1];
+
+    if (htmlBlock.style.display === "flex") {
+      const children = Array.from(htmlBlock.children) as HTMLElement[];
+      const contentBlock = children[1];
+      if (contentBlock) {
+        htmlBlock.innerHTML = `<strong>${indexLabel}.</strong>&nbsp;&nbsp;${contentBlock.innerHTML}`;
+      } else {
+        htmlBlock.innerHTML = htmlBlock.innerHTML.replace(numberedPattern, `<strong>${indexLabel}.</strong>&nbsp;&nbsp;`);
+      }
+    } else {
+      const firstStrong = htmlBlock.querySelector("strong");
+      if (firstStrong && /^\s*\d{1,2}\.\s*$/.test((firstStrong.textContent || "").replace(/\u00a0/g, " "))) {
+        firstStrong.remove();
+        const next = htmlBlock.firstChild;
+        if (next?.nodeType === Node.TEXT_NODE) next.nodeValue = (next.nodeValue || "").replace(/^\s+/, "");
+      } else if (htmlBlock.firstChild?.nodeType === Node.TEXT_NODE) {
+        htmlBlock.firstChild.nodeValue = (htmlBlock.firstChild.nodeValue || "").replace(/^\s*\d{1,2}\.\s*/, "");
+      }
+
+      const numberStrong = doc.createElement("strong");
+      numberStrong.textContent = `${indexLabel}.`;
+      htmlBlock.insertBefore(doc.createTextNode("\u00a0\u00a0"), htmlBlock.firstChild);
+      htmlBlock.insertBefore(numberStrong, htmlBlock.firstChild);
+    }
+
+    htmlBlock.style.display = "block";
+    htmlBlock.style.width = "";
+    htmlBlock.style.minWidth = "";
+    htmlBlock.style.flex = "";
+    htmlBlock.style.paddingLeft = "0";
+    htmlBlock.style.textIndent = "0";
+    htmlBlock.style.gap = "0";
+    htmlBlock.style.alignItems = "";
+    htmlBlock.style.textAlign = "";
+  }
+
+  return root.innerHTML;
+};
+
 const styleVerbeteSearchHtml = (html: string): string => {
   const parsed = parseHtmlRoot(html);
   if (!parsed) return html;
@@ -397,8 +473,26 @@ const convertHistorySearchExportDivsToParagraphs = (html: string): string => {
 
     childBlocks.forEach((child) => {
       const paragraph = doc.createElement("p");
-      paragraph.innerHTML = (child as HTMLElement).innerHTML;
+      const childElement = child as HTMLElement;
+      if (childElement.style.display === "flex") {
+        const childParts = Array.from(childElement.children) as HTMLElement[];
+        const numberPart = childParts[0];
+        const contentPart = childParts[1];
+        const numberText = (numberPart?.textContent || "").replace(/\u00a0/g, " ").trim();
+        const normalizedNumber = numberText.match(/^(\d{1,2})\.$/)?.[1] || "";
+        const contentHtml = contentPart?.innerHTML || childElement.innerHTML;
+        paragraph.innerHTML = normalizedNumber
+          ? `<strong>${normalizedNumber}.</strong>&nbsp;&nbsp;${contentHtml}`
+          : contentHtml;
+      } else {
+        paragraph.innerHTML = childElement.innerHTML;
+      }
       copyInlineStyles(child as HTMLElement, paragraph);
+      if (childElement.style.display === "flex") {
+        paragraph.style.display = "block";
+        paragraph.style.alignItems = "";
+        paragraph.style.gap = "0";
+      }
       fragment.appendChild(paragraph);
     });
 
@@ -505,7 +599,8 @@ export const renderHistoryResponseCopyHtml = (
     return renderHistorySearchResponseExportHtml(response, options);
   }
   const html = renderHistoryResponseEditorHtml(response, options);
-  return response.type === "app_verbete_search" ? removeVerbeteLinkLineHtml(html) : html;
+  const cleanedHtml = response.type === "app_verbete_search" ? removeVerbeteLinkLineHtml(html) : html;
+  return flattenNumberedBlocksForClipboard(cleanedHtml);
 };
 
 export const historyHtmlToPlainText = (html: string): string => {
