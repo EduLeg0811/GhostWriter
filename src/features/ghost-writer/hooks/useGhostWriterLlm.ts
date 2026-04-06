@@ -132,6 +132,8 @@ interface UseGhostWriterLlmParams {
   setEnableHistoryReferences: Dispatch<SetStateAction<boolean>>;
   enableHistoryMetadata: boolean;
   setEnableHistoryMetadata: Dispatch<SetStateAction<boolean>>;
+  enableHistoryHighlight: boolean;
+  setEnableHistoryHighlight: Dispatch<SetStateAction<boolean>>;
   selectedBookSourceIds: string[];
   uploadedChatFiles: UploadedLlmFile[];
   setUploadedChatFiles: Dispatch<SetStateAction<UploadedLlmFile[]>>;
@@ -261,6 +263,8 @@ const useGhostWriterLlm = ({
   setEnableHistoryReferences,
   enableHistoryMetadata,
   setEnableHistoryMetadata,
+  enableHistoryHighlight,
+  setEnableHistoryHighlight,
   selectedBookSourceIds,
   uploadedChatFiles,
   setUploadedChatFiles,
@@ -435,14 +439,20 @@ const useGhostWriterLlm = ({
     try {
       const raw = window.localStorage.getItem(GENERAL_SETTINGS_STORAGE_KEY);
       if (!raw) return;
-      const parsed = JSON.parse(raw) as Partial<{ enableHistoryNumbering: boolean; enableHistoryReferences: boolean; enableHistoryMetadata: boolean }>;
+      const parsed = JSON.parse(raw) as Partial<{
+        enableHistoryNumbering: boolean;
+        enableHistoryReferences: boolean;
+        enableHistoryMetadata: boolean;
+        enableHistoryHighlight: boolean;
+      }>;
       if (typeof parsed.enableHistoryNumbering === "boolean") setEnableHistoryNumbering(parsed.enableHistoryNumbering);
       if (typeof parsed.enableHistoryReferences === "boolean") setEnableHistoryReferences(parsed.enableHistoryReferences);
       if (typeof parsed.enableHistoryMetadata === "boolean") setEnableHistoryMetadata(parsed.enableHistoryMetadata);
+      if (typeof parsed.enableHistoryHighlight === "boolean") setEnableHistoryHighlight(parsed.enableHistoryHighlight);
     } catch {
       // Keep defaults on invalid storage.
     }
-  }, [setEnableHistoryMetadata, setEnableHistoryNumbering, setEnableHistoryReferences]);
+  }, [setEnableHistoryHighlight, setEnableHistoryMetadata, setEnableHistoryNumbering, setEnableHistoryReferences]);
 
   useEffect(() => {
     const safeTemperature = Number.isFinite(llmTemperature) ? Math.max(0, Math.min(llmTemperature, 2)) : CHAT_TEMPERATURE;
@@ -473,8 +483,13 @@ const useGhostWriterLlm = ({
   }, [aiActionSystemPrompts, aiActionsLlmEffort, aiActionsLlmMaxOutputTokens, aiActionsLlmModel, aiActionsLlmSystemPrompt, aiActionsLlmTemperature, aiActionsLlmVerbosity, aiActionsSelectedInputFileIds, aiActionsSelectedVectorStoreIds]);
 
   useEffect(() => {
-    window.localStorage.setItem(GENERAL_SETTINGS_STORAGE_KEY, JSON.stringify({ enableHistoryNumbering, enableHistoryReferences, enableHistoryMetadata }));
-  }, [enableHistoryMetadata, enableHistoryNumbering, enableHistoryReferences]);
+    window.localStorage.setItem(GENERAL_SETTINGS_STORAGE_KEY, JSON.stringify({
+      enableHistoryNumbering,
+      enableHistoryReferences,
+      enableHistoryMetadata,
+      enableHistoryHighlight,
+    }));
+  }, [enableHistoryHighlight, enableHistoryMetadata, enableHistoryNumbering, enableHistoryReferences]);
 
   useEffect(() => {
     try {

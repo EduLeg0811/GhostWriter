@@ -22,9 +22,28 @@ describe("historyResponseHtml", () => {
       applyNumbering: true,
       applyReferences: true,
       applyMetadata: true,
+      applyHighlight: true,
     });
 
     expect(html).toContain("<mark");
+    expect(html).toContain("recin");
+  });
+
+  it("hides highlight when the history highlight toggle is disabled", () => {
+    const response = buildResponse(
+      "app_book_search",
+      "Livro: Lexico de Ortopensatas | Termo: recin | Total: 1",
+      "Texto com recin destacado\n(**LO**; Autopensenidade)\nLO | Autopensenidade | #1",
+    );
+
+    const html = renderHistoryResponseEditorHtml(response, {
+      applyNumbering: true,
+      applyReferences: true,
+      applyMetadata: true,
+      applyHighlight: false,
+    });
+
+    expect(html).not.toContain("<mark");
     expect(html).toContain("recin");
   });
 
@@ -43,11 +62,13 @@ describe("historyResponseHtml", () => {
       applyNumbering: true,
       applyReferences: true,
       applyMetadata: false,
+      applyHighlight: true,
     });
     const withoutReferences = renderHistoryResponseCopyHtml(response, {
       applyNumbering: true,
       applyReferences: false,
       applyMetadata: false,
+      applyHighlight: true,
     });
 
     expect(withReferences).toContain("color:#1d4ed8");
@@ -74,9 +95,12 @@ describe("historyResponseHtml", () => {
       applyNumbering: true,
       applyReferences: true,
       applyMetadata: true,
+      applyHighlight: true,
     });
 
     expect(html).toContain("data-pdf-download-url=\"https://example.com/verbete.pdf\"");
+    expect(html).toContain("display: flex");
+    expect(html).toContain("padding-left: 28px");
     expect(html).toContain("Texto do verbete.");
     expect(html).not.toContain(">PDF<");
   });
@@ -97,6 +121,7 @@ describe("historyResponseHtml", () => {
       applyNumbering: true,
       applyReferences: true,
       applyMetadata: true,
+      applyHighlight: true,
     });
 
     expect(appendHtml).toContain("Texto do verbete.");
@@ -124,11 +149,13 @@ describe("historyResponseHtml", () => {
       applyNumbering: true,
       applyReferences: true,
       applyMetadata: true,
+      applyHighlight: true,
     });
     const withoutReferencesAndMetadata = renderHistoryResponseAppendBodyHtml(response, {
       applyNumbering: false,
       applyReferences: false,
       applyMetadata: false,
+      applyHighlight: true,
     });
 
     expect(withReferencesAndMetadata).toContain("color:#1d4ed8");
@@ -156,11 +183,13 @@ describe("historyResponseHtml", () => {
       applyNumbering: false,
       applyReferences: true,
       applyMetadata: true,
+      applyHighlight: true,
     });
     const withoutMetadata = renderHistoryResponseAppendBodyHtml(response, {
       applyNumbering: false,
       applyReferences: true,
       applyMetadata: false,
+      applyHighlight: true,
     });
 
     expect(withMetadata).toContain("<strong>LO</strong>; Autopensenidade");
@@ -191,6 +220,7 @@ describe("historyResponseHtml", () => {
       applyNumbering: true,
       applyReferences: true,
       applyMetadata: true,
+      applyHighlight: true,
     });
 
     expect(html).toContain("<table");
@@ -198,5 +228,29 @@ describe("historyResponseHtml", () => {
     expect(html).toContain("<tbody>");
     expect(html).toContain("Aulete");
     expect(html).toContain("Moradia habitual.");
+  });
+
+  it("renders regular numbered history items with aligned flex layout", () => {
+    const response = buildResponse(
+      "summarize",
+      "Teste",
+      [
+        "1. Primeiro item com uma linha",
+        "continua na segunda linha",
+        "",
+        "2. Segundo item",
+      ].join("\n"),
+    );
+
+    const html = renderHistoryResponseEditorHtml(response, {
+      applyNumbering: true,
+      applyReferences: true,
+      applyMetadata: true,
+      applyHighlight: true,
+    });
+
+    expect(html).toContain("display: flex");
+    expect(html).toContain(">1.</strong>");
+    expect(html).toContain("continua na segunda linha");
   });
 });

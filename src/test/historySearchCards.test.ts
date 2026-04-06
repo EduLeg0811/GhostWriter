@@ -14,6 +14,7 @@ describe("historySearchCards", () => {
           date: "2024-01-10",
           author: "Fulano",
           number: "12",
+          pagina: "33",
           text: "nao deve aparecer",
           folha: "33",
           source: "arquivo-x",
@@ -22,8 +23,8 @@ describe("historySearchCards", () => {
     ]);
 
     expect(markdown).toContain("Primeiro paragrafo[[HISTORY_SEARCH_BR]]Segundo paragrafo");
-    expect(markdown).toContain("(**LO**; Autopensenidade)");
-    expect(markdown).toContain("LO | Autopensenidade | argumento: recin | area: Mentalsomatologia | date: 2024-01-10 | author: Fulano | #12 | folha: 33 | source: arquivo-x");
+    expect(markdown).toContain("(**LO**, p. 33)");
+    expect(markdown).toContain("LO | Autopensenidade | argumento: recin | area: Mentalsomatologia | date: 2024-01-10 | author: Fulano | #12 | p. 33 | folha: 33 | source: arquivo-x");
     expect(markdown).not.toContain("text: nao deve aparecer");
   });
 
@@ -57,6 +58,7 @@ describe("historySearchCards", () => {
           sourcebook: "LO",
           title: "Autopensenidade",
           number: "1",
+          pagina: "44",
           folha: "33",
         },
       },
@@ -65,8 +67,9 @@ describe("historySearchCards", () => {
     const html = renderHistorySearchCardsHtml(markdown, { applyNumbering: true, showMetadata: true });
 
     expect(html).toContain("color:#1d4ed8");
-    expect(html).toContain("<strong>LO</strong>; Autopensenidade");
-    expect(html).toContain("LO | Autopensenidade | #1 | folha: 33");
+    expect(html).toContain("display: flex");
+    expect(html).toContain("<strong>LO</strong>, p. 44");
+    expect(html).toContain("LO | Autopensenidade | p. 44 | folha: 33");
     expect(html).toContain("<br>continua");
   });
 
@@ -85,9 +88,27 @@ describe("historySearchCards", () => {
 
     const html = renderHistorySearchCardsHtml(markdown, { applyNumbering: false, showMetadata: false });
 
-    expect(html).toContain("<strong>EC</strong>; Verbete");
+    expect(html).toContain("<strong>EC</strong>");
     expect(html).not.toContain("area: Paradireitologia");
     expect(html).not.toContain("#22");
+  });
+
+  it("formats EC source line using verbete title instead of page", () => {
+    const markdown = buildHistorySearchCardsMarkdown([
+      {
+        textParagraphs: ["Texto"],
+        metadata: {
+          book: "EC",
+          sourcebook: "EC",
+          title: "Paradireito",
+          pagina: "123",
+          number: "22",
+        },
+      },
+    ]);
+
+    expect(markdown).toContain("(**EC**, verbete *Paradireito*)");
+    expect(markdown).not.toContain("(**EC**, p. 123)");
   });
 
   it("hides source line when source toggle is disabled and keeps metadata when enabled", () => {
@@ -105,9 +126,23 @@ describe("historySearchCards", () => {
 
     const html = renderHistorySearchCardsHtml(markdown, { applyNumbering: false, showSourceLine: false, showMetadata: true });
 
-    expect(html).not.toContain("<strong>EC</strong>; Verbete");
+    expect(html).not.toContain("<strong>EC</strong>");
     expect(html).toContain("area: Paradireitologia");
     expect(html).toContain("#22");
+  });
+
+  it("omits dangling comma in source line when pagina is empty", () => {
+    const markdown = buildHistorySearchCardsMarkdown([
+      {
+        textParagraphs: ["Texto"],
+        metadata: {
+          sourcebook: "EC",
+        },
+      },
+    ]);
+
+    expect(markdown).toContain("(**EC**)");
+    expect(markdown).not.toContain("(**EC**, )");
   });
 
   it("pads numbering with leading zero when there are ten or more items", () => {

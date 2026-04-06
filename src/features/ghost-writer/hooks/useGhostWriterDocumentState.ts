@@ -268,6 +268,7 @@ export const useGhostWriterLlmState = (llmLogFontDefault: number) => {
   const [enableHistoryNumbering, setEnableHistoryNumbering] = useState(true);
   const [enableHistoryReferences, setEnableHistoryReferences] = useState(true);
   const [enableHistoryMetadata, setEnableHistoryMetadata] = useState(true);
+  const [enableHistoryHighlight, setEnableHistoryHighlight] = useState(true);
   const [selectedBookSourceIds, setSelectedBookSourceIds] = useState<string[]>(() => (DEFAULT_BOOK_SOURCE_ID ? [DEFAULT_BOOK_SOURCE_ID] : []));
   const [uploadedChatFiles, setUploadedChatFiles] = useState<UploadedLlmFile[]>([]);
   const [isUploadingChatFiles, setIsUploadingChatFiles] = useState(false);
@@ -348,6 +349,8 @@ export const useGhostWriterLlmState = (llmLogFontDefault: number) => {
     setEnableHistoryReferences,
     enableHistoryMetadata,
     setEnableHistoryMetadata,
+    enableHistoryHighlight,
+    setEnableHistoryHighlight,
     selectedBookSourceIds,
     setSelectedBookSourceIds,
     uploadedChatFiles,

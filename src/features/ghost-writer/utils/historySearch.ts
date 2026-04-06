@@ -46,11 +46,14 @@ const assignBaseHistorySearchMetadata = (
     sourcebook?: unknown;
     title?: unknown;
     number?: unknown;
+    pagina?: unknown;
+    [key: string]: unknown;
   },
 ) => {
   assignHistorySearchMetadata(target, "sourcebook", values.sourcebook);
   assignHistorySearchMetadata(target, "title", values.title);
   assignHistorySearchMetadata(target, "number", values.number);
+  assignHistorySearchMetadata(target, "pagina", values.pagina);
 };
 
 const mergeHistorySearchMetadataEntries = (
@@ -69,6 +72,7 @@ export const buildLexicalHistorySearchMetadata = (
     number: number | null;
     title: string;
     data: Record<string, string>;
+    pagina: string;
   },
   fallbackBook: string,
 ): HistorySearchCardMetadata => {
@@ -77,8 +81,9 @@ export const buildLexicalHistorySearchMetadata = (
   const sourcebook = sourceBookCode ? BOOK_OPTION_LABELS[sourceBookCode] ?? sourceBookCode : "";
   const title = normalizeHistorySearchMetadataValue(item.title) || "s/titulo";
   const number = item.number == null ? "" : normalizeHistorySearchMetadataValue(item.number);
+  const pagina = normalizeHistorySearchMetadataValue(item.pagina);
 
-  assignBaseHistorySearchMetadata(metadata, { sourcebook, title, number });
+  assignBaseHistorySearchMetadata(metadata, { sourcebook, title, number, pagina });
   assignHistorySearchMetadata(metadata, "book", sourceBookCode);
   assignHistorySearchMetadata(metadata, "row", item.row);
   mergeHistorySearchMetadataEntries(metadata, item.data || {});

@@ -3,11 +3,13 @@ import { markdownToEditorHtml, normalizeHistoryContentToMarkdown } from "@/lib/m
 import type { AIResponse } from "@/features/ghost-writer/types";
 
 const RESULT_LINE_INDENT_PX = 28;
+const RESULT_NUMBER_GAP_PX = 8;
 
 type HistoryResponseRenderOptions = {
   applyNumbering: boolean;
   applyReferences: boolean;
   applyMetadata: boolean;
+  applyHighlight?: boolean;
   compactSpacing?: boolean;
 };
 
@@ -21,15 +23,39 @@ const parseHtmlRoot = (html: string): { doc: Document; root: HTMLDivElement } | 
 
 const isHttpUrlText = (value: string): boolean => /^https?:\/\/\S+$/i.test((value || "").trim());
 
-const applyHangingIndent = (block: Element, px = 19): void => {
-  const htmlBlock = block as HTMLElement;
-  htmlBlock.style.paddingLeft = `${px}px`;
-  htmlBlock.style.textIndent = `${-px}px`;
-};
-
 const applyIndentedLine = (block: Element, px = 19): void => {
   const htmlBlock = block as HTMLElement;
   htmlBlock.style.paddingLeft = `${px}px`;
+};
+
+const applyNumberedBlockLayout = (block: Element, indexLabel: string, doc: Document): void => {
+  const htmlBlock = block as HTMLElement;
+  const originalHtml = htmlBlock.innerHTML;
+
+  htmlBlock.innerHTML = "";
+  htmlBlock.style.display = "flex";
+  htmlBlock.style.alignItems = "flex-start";
+  htmlBlock.style.gap = `${RESULT_NUMBER_GAP_PX}px`;
+  htmlBlock.style.paddingLeft = "0";
+  htmlBlock.style.textIndent = "0";
+
+  const numberBlock = doc.createElement("span");
+  numberBlock.style.width = `${RESULT_LINE_INDENT_PX - RESULT_NUMBER_GAP_PX}px`;
+  numberBlock.style.minWidth = `${RESULT_LINE_INDENT_PX - RESULT_NUMBER_GAP_PX}px`;
+  numberBlock.style.flex = `0 0 ${RESULT_LINE_INDENT_PX - RESULT_NUMBER_GAP_PX}px`;
+  numberBlock.style.textAlign = "right";
+  numberBlock.style.lineHeight = "inherit";
+  numberBlock.style.display = "inline-block";
+  numberBlock.innerHTML = `<strong style="color:#1d4ed8;font-weight:700;">${indexLabel}.</strong>`;
+
+  const contentBlock = doc.createElement("span");
+  contentBlock.style.flex = "1 1 auto";
+  contentBlock.style.minWidth = "0";
+  contentBlock.style.display = "block";
+  contentBlock.innerHTML = originalHtml;
+
+  htmlBlock.appendChild(numberBlock);
+  htmlBlock.appendChild(contentBlock);
 };
 
 const applyExternalLinkLineStyle = (block: Element, urlText: string, doc: Document): void => {
@@ -150,7 +176,7 @@ const highlightBookSearchHtml = (html: string, query: string): string => {
 const styleNumberedListItemsHtml = (html: string): string => {
   const parsed = parseHtmlRoot(html);
   if (!parsed) return html;
-  const { root } = parsed;
+  const { doc, root } = parsed;
 
   const blocks = Array.from(root.querySelectorAll("p, li"));
   const numberedPattern = /^\s*(\d{1,2})\.\s*/;
@@ -168,14 +194,16 @@ const styleNumberedListItemsHtml = (html: string): string => {
     const normalizedIndex = shouldPad && item.index < 10 ? `0${item.index}` : String(item.index);
     const firstStrong = item.block.querySelector("strong");
     if (firstStrong && /^\s*\d{1,2}\.\s*$/.test((firstStrong.textContent || "").replace(/\u00a0/g, " "))) {
-      firstStrong.textContent = `${normalizedIndex}. `;
+      firstStrong.remove();
+      const next = item.block.firstChild;
+      if (next?.nodeType === Node.TEXT_NODE) next.nodeValue = (next.nodeValue || "").replace(/^\s+/, "");
     } else if (item.block.firstChild?.nodeType === Node.TEXT_NODE) {
       const raw = (item.block.firstChild.nodeValue || "").replace(/\u00a0/g, " ");
-      item.block.firstChild.nodeValue = raw.replace(/^\s*\d{1,2}\.\s*/, `${normalizedIndex}. `);
+      item.block.firstChild.nodeValue = raw.replace(/^\s*\d{1,2}\.\s*/, "");
     }
 
-    applyHangingIndent(item.block, RESULT_LINE_INDENT_PX);
-    (item.block as HTMLElement).style.marginTop = "0.2em";
+    applyNumberedBlockLayout(item.block, normalizedIndex, doc);
+    (item.block as HTMLElement).style.marginTop = "0.6em";
     (item.block as HTMLElement).style.marginBottom = "0.2em";
   }
 
@@ -187,7 +215,8 @@ const styleVerbeteSearchResultItemsHtml = (html: string): string => {
   if (!parsed) return html;
   const { doc, root } = parsed;
 
-  const blocks = Array.from(root.querySelectorAll("p")).filter((block) => {
+  const allBlocks = Array.from(root.querySelectorAll("p"));
+  const blocks = allBlocks.filter((block) => {
     const text = (block.textContent || "").replace(/\u00a0/g, " ").trim();
     if (!text) return false;
     return block.querySelector("strong") !== null && block.querySelector("em") !== null && text.includes("#");
@@ -199,11 +228,27 @@ const styleVerbeteSearchResultItemsHtml = (html: string): string => {
     if (block.firstChild?.nodeType === Node.TEXT_NODE) {
       block.firstChild.nodeValue = (block.firstChild.nodeValue || "").replace(/^\s*\d{1,2}\.\s*/, "");
     }
-    block.insertBefore(doc.createTextNode(`${normalizedIndex}. `), block.firstChild);
-    applyHangingIndent(block, RESULT_LINE_INDENT_PX);
-    (block as HTMLElement).style.marginTop = "0.2em";
-    (block as HTMLElement).style.marginBottom = "0.2em";
+    applyNumberedBlockLayout(block, normalizedIndex, doc);
+    (block as HTMLElement).style.marginTop = index === 0 ? "0.2em" : "0.45em";
+    (block as HTMLElement).style.marginBottom = "0.15em";
   });
+
+  // Keep the definologia/body lines aligned to the same text column as the numbered header.
+  for (let index = 0; index < allBlocks.length; index += 1) {
+    const block = allBlocks[index];
+    const text = (block.textContent || "").replace(/\u00a0/g, " ").trim();
+    const isHeaderBlock = block.querySelector("strong") !== null && block.querySelector("em") !== null && text.includes("#");
+    if (!isHeaderBlock) continue;
+
+    for (let lookAhead = index + 1; lookAhead < allBlocks.length; lookAhead += 1) {
+      const candidate = allBlocks[lookAhead];
+      const candidateText = (candidate.textContent || "").replace(/\u00a0/g, " ").trim();
+      const candidateIsHeader = candidate.querySelector("strong") !== null && candidate.querySelector("em") !== null && candidateText.includes("#");
+      if (candidateIsHeader) break;
+
+      applyIndentedLine(candidate, RESULT_LINE_INDENT_PX);
+    }
+  }
 
   return root.innerHTML;
 };
@@ -260,7 +305,8 @@ const styleVerbeteSearchHtml = (html: string): string => {
     if (hasHeaderShape) {
       block.style.color = "#1e3a8a";
       block.style.fontWeight = "700";
-      applyHangingIndent(block);
+      block.style.paddingLeft = `${RESULT_LINE_INDENT_PX}px`;
+      block.style.textIndent = "0";
 
       for (let lookAhead = index + 1; lookAhead < blocks.length; lookAhead += 1) {
         const candidateBlock = blocks[lookAhead];
@@ -360,12 +406,13 @@ const renderHistorySearchResponseHtml = (response: AIResponse, options: HistoryR
     showSourceLine: options.applyReferences,
     showMetadata: options.applyMetadata,
   });
+  if (!options.applyHighlight) return renderedHtml;
   return response.type === "app_book_search" ? highlightBookSearchHtml(renderedHtml, response.query) : renderedHtml;
 };
 
 const renderHistorySearchResponseExportHtml = (
   response: AIResponse,
-  options: Pick<HistoryResponseRenderOptions, "applyNumbering" | "applyReferences" | "applyMetadata" | "compactSpacing">,
+  options: Pick<HistoryResponseRenderOptions, "applyNumbering" | "applyReferences" | "applyMetadata" | "applyHighlight" | "compactSpacing">,
 ): string => {
   const markdown = normalizeResponseMarkdown(response.content, options.compactSpacing);
   const renderedHtml = renderHistorySearchCardsHtml(markdown, {
@@ -374,6 +421,7 @@ const renderHistorySearchResponseExportHtml = (
     showMetadata: options.applyMetadata,
   });
   const exportHtml = convertHistorySearchExportDivsToParagraphs(renderedHtml);
+  if (!options.applyHighlight) return exportHtml;
   return response.type === "app_book_search" ? highlightBookSearchHtml(exportHtml, response.query) : exportHtml;
 };
 
@@ -382,7 +430,7 @@ export const isHistorySearchResponseType = (type: AIResponse["type"]): type is "
 
 export const renderHistoryResponseEditorHtml = (
   response: AIResponse,
-  options: Pick<HistoryResponseRenderOptions, "applyNumbering" | "applyReferences" | "applyMetadata">,
+  options: Pick<HistoryResponseRenderOptions, "applyNumbering" | "applyReferences" | "applyMetadata" | "applyHighlight">,
 ): string => {
   if (isHistorySearchResponseType(response.type)) {
     return renderHistorySearchResponseHtml(response, { ...options });
@@ -391,7 +439,8 @@ export const renderHistoryResponseEditorHtml = (
   const markdown = normalizeResponseMarkdown(response.content);
   const html = markdownToEditorHtml(markdown);
   if (response.type === "app_verbete_search") {
-    const formattedHtml = styleVerbeteSearchHtml(highlightBookSearchHtml(html, response.query));
+    const highlightedHtml = options.applyHighlight ? highlightBookSearchHtml(html, response.query) : html;
+    const formattedHtml = styleVerbeteSearchHtml(highlightedHtml);
     return options.applyNumbering ? styleVerbeteSearchResultItemsHtml(formattedHtml) : removeNumberingFromHistoryHtml(formattedHtml);
   }
 
@@ -400,26 +449,30 @@ export const renderHistoryResponseEditorHtml = (
 
 export const renderHistoryResponseAppendBodyHtml = (
   response: AIResponse,
-  options?: Pick<HistoryResponseRenderOptions, "applyNumbering" | "applyReferences" | "applyMetadata">,
+  options?: Pick<HistoryResponseRenderOptions, "applyNumbering" | "applyReferences" | "applyMetadata" | "applyHighlight">,
 ): string => {
   if (isHistorySearchResponseType(response.type)) {
     return renderHistorySearchResponseExportHtml(response, {
       applyNumbering: options?.applyNumbering ?? false,
       applyReferences: options?.applyReferences ?? true,
       applyMetadata: options?.applyMetadata ?? true,
+      applyHighlight: options?.applyHighlight ?? true,
       compactSpacing: true,
     });
   }
 
   const markdown = normalizeResponseMarkdown(response.content, true);
   const html = markdownToEditorHtml(markdown);
-  if (response.type === "app_verbete_search") return removeVerbeteLinkLineHtml(highlightBookSearchHtml(html, response.query));
+  if (response.type === "app_verbete_search") {
+    const highlightedHtml = options?.applyHighlight ?? true ? highlightBookSearchHtml(html, response.query) : html;
+    return removeVerbeteLinkLineHtml(highlightedHtml);
+  }
   return html;
 };
 
 export const renderHistoryResponseCopyHtml = (
   response: AIResponse,
-  options: Pick<HistoryResponseRenderOptions, "applyNumbering" | "applyReferences" | "applyMetadata">,
+  options: Pick<HistoryResponseRenderOptions, "applyNumbering" | "applyReferences" | "applyMetadata" | "applyHighlight">,
 ): string => {
   if (isHistorySearchResponseType(response.type)) {
     return renderHistorySearchResponseExportHtml(response, options);

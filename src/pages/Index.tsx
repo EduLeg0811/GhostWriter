@@ -117,7 +117,7 @@ const Index = () => {
     aiActionsSelectedInputFileIds, setAiActionsSelectedInputFileIds, biblioExternaLlmModel, setBiblioExternaLlmModel, biblioExternaLlmTemperature, setBiblioExternaLlmTemperature,
     biblioExternaLlmMaxOutputTokens, setBiblioExternaLlmMaxOutputTokens, biblioExternaLlmVerbosity, setBiblioExternaLlmVerbosity, biblioExternaLlmEffort, setBiblioExternaLlmEffort,
     biblioExternaLlmSystemPrompt, setBiblioExternaLlmSystemPrompt, chatPreviousResponseId, setChatPreviousResponseId, llmLogs, setLlmLogs, llmSessionLogs, setLlmSessionLogs,
-    llmLogFontScale, setLlmLogFontScale, enableHistoryNumbering, setEnableHistoryNumbering, enableHistoryReferences, setEnableHistoryReferences, enableHistoryMetadata, setEnableHistoryMetadata, selectedBookSourceIds, setSelectedBookSourceIds,
+    llmLogFontScale, setLlmLogFontScale, enableHistoryNumbering, setEnableHistoryNumbering, enableHistoryReferences, setEnableHistoryReferences, enableHistoryMetadata, setEnableHistoryMetadata, enableHistoryHighlight, setEnableHistoryHighlight, selectedBookSourceIds, setSelectedBookSourceIds,
     uploadedChatFiles, setUploadedChatFiles, isUploadingChatFiles, setIsUploadingChatFiles, includeEditorContextInLlm, setIncludeEditorContextInLlm,
   } = llmState;
   const { historyNotice, showHistoryNotice, toast } = useGhostWriterFeedback();
@@ -634,9 +634,11 @@ const Index = () => {
       enableHistoryNumbering={enableHistoryNumbering}
       enableHistoryReferences={enableHistoryReferences}
       enableHistoryMetadata={enableHistoryMetadata}
+      enableHistoryHighlight={enableHistoryHighlight}
       onToggleHistoryNumbering={() => setEnableHistoryNumbering((prev) => !prev)}
       onToggleHistoryReferences={() => setEnableHistoryReferences((prev) => !prev)}
       onToggleHistoryMetadata={() => setEnableHistoryMetadata((prev) => !prev)}
+      onToggleHistoryHighlight={() => setEnableHistoryHighlight((prev) => !prev)}
       onClear={() => setResponses([])}
       onSendMessage={(message) => void handleChat(message)}
       onCleanConversation={handleCleanLlmConversation}

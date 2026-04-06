@@ -142,12 +142,12 @@ const buildVerbeteSearchMarkdown = (matches: Array<{
     const authorPart = `${rowAuthor || "s/autor"}`;
     const numberPart = `# ${rowNumber || "?"}`;
     const datePart = rowDate || "s/data";
-    const definologiaPart = `**Definologia.** ${rowText || ""}`.trim();
+    const definologiaPart = `${rowText || ""}`.trim();
     const linkPart = rowLink ? `[PDF](${rowLink})` : "";
-    const headerLine = `**${titlePart}** (*${areaPart}*) - *${authorPart}* - ${numberPart} - ${datePart}`;
-    return `${headerLine}\n${definologiaPart}\n${linkPart}`;
+    const headerLine = `**${titlePart}** (*${areaPart}*) ● *${authorPart}* ● ${numberPart} ● ${datePart}`;
+    return [headerLine, definologiaPart, linkPart].filter(Boolean).join("\n");
   })
-  .join("\n\n");
+  .join("\n");
 
 const useGhostWriterApps = ({
   actionText,

@@ -20,11 +20,12 @@ export interface HistorySearchRenderOptions {
 
 const MAIN_LINE_BREAK_TOKEN = "[[HISTORY_SEARCH_BR]]";
 const RESULT_LINE_INDENT_PX = 28;
+const RESULT_NUMBER_GAP_PX = 8;
 const CARD_TEXT_TOP_SPACING_EM = "0.5em";
 const SOURCEBOOK_FALLBACK = "s/fonte";
 const TITLE_FALLBACK = "s/titulo";
-const METADATA_PRIORITY = ["sourcebook", "title", "argumento", "area", "date", "author", "number"] as const;
-const HIDDEN_METADATA_KEYS = new Set(["text"]);
+const METADATA_PRIORITY = ["sourcebook", "title", "argumento", "area", "date", "author", "pagina", "number"] as const;
+const HIDDEN_METADATA_KEYS = new Set(["text", "row", "number"]);
 const CANONICAL_ALIAS_GROUPS: Record<string, string[]> = {
   sourcebook: ["sourcebook"],
   title: ["title", "titulo", "verbete", "tema", "cabecalho", "heading"],
@@ -33,6 +34,7 @@ const CANONICAL_ALIAS_GROUPS: Record<string, string[]> = {
   date: ["date", "data"],
   author: ["author", "autor"],
   number: ["number", "numero", "paragraph_number", "index", "ordem", "id"],
+  pagina: ["pagina", "page"],
 };
 
 type MetadataEntry = {
@@ -81,15 +83,19 @@ const getPriorityIndex = (canonicalKey: string): number => {
 };
 
 const buildSourceRefLine = (metadata: HistorySearchCardMetadata): string => {
+  const bookCode = trim(metadata.book);
   const sourcebook = trim(metadata.sourcebook) || SOURCEBOOK_FALLBACK;
   const title = trim(metadata.title) || TITLE_FALLBACK;
-  return `(**${sourcebook}**; ${title})`;
+  const pagina = trim(metadata.pagina) || "";
+  if (bookCode === "EC") return `(**${sourcebook}**, verbete *${title}*)`;
+  return pagina ? `(**${sourcebook}**, p. ${pagina})` : `(**${sourcebook}**)`;
 };
 
 const formatMetadataEntry = (entry: MetadataEntry): string => {
   if (entry.keyLower === "sourcebook") return entry.value;
   if (entry.keyLower === "title") return entry.value;
   if (entry.keyLower === "number") return `#${entry.value}`;
+  if (entry.keyLower === "pagina") return `p. ${entry.value}`;
   return `${entry.key}: ${entry.value}`;
 };
 
@@ -139,11 +145,6 @@ const buildMetadataEntries = (metadata: HistorySearchCardMetadata): string[] => 
   });
 
   return filteredEntries.map(formatMetadataEntry);
-};
-
-const applyHangingIndent = (block: HTMLElement, px: number): void => {
-  block.style.paddingLeft = `${px}px`;
-  block.style.textIndent = `${-px}px`;
 };
 
 const applySearchSubLineStyle = (block: HTMLElement, applyNumbering: boolean): void => {
@@ -217,9 +218,25 @@ export function renderHistorySearchCardsHtml(markdown: string, options: HistoryS
     const mainLineHtml = (itemLines[0] || "").split(MAIN_LINE_BREAK_TOKEN).join("<br/>").trim();
     if (options.applyNumbering) {
       const normalizedIndex = shouldPad && index + 1 < 10 ? `0${index + 1}` : String(index + 1);
-      const numberHtml = `<strong style="color:#1d4ed8;font-weight:700;">${escapeAttribute(normalizedIndex)}.</strong>&nbsp;&nbsp;`;
-      mainLine.innerHTML = `${numberHtml}${mainLineHtml}`;
-      applyHangingIndent(mainLine, RESULT_LINE_INDENT_PX);
+      mainLine.style.display = "flex";
+      mainLine.style.alignItems = "flex-start";
+      mainLine.style.gap = `${RESULT_NUMBER_GAP_PX}px`;
+
+      const numberBlock = doc.createElement("div");
+      numberBlock.style.width = `${RESULT_LINE_INDENT_PX - RESULT_NUMBER_GAP_PX}px`;
+      numberBlock.style.minWidth = `${RESULT_LINE_INDENT_PX - RESULT_NUMBER_GAP_PX}px`;
+      numberBlock.style.flex = `0 0 ${RESULT_LINE_INDENT_PX - RESULT_NUMBER_GAP_PX}px`;
+      numberBlock.style.textAlign = "right";
+      numberBlock.style.lineHeight = "inherit";
+      numberBlock.innerHTML = `<strong style="color:#1d4ed8;font-weight:700;">${escapeAttribute(normalizedIndex)}.</strong>`;
+
+      const contentBlock = doc.createElement("div");
+      contentBlock.style.flex = "1 1 auto";
+      contentBlock.style.minWidth = "0";
+      contentBlock.innerHTML = mainLineHtml;
+
+      mainLine.appendChild(numberBlock);
+      mainLine.appendChild(contentBlock);
     } else {
       mainLine.innerHTML = mainLineHtml;
       mainLine.style.paddingLeft = "0";

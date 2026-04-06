@@ -15,13 +15,15 @@ describe("historySearchResponses", () => {
           number: 12,
           title: "Autopensenidade",
           text: "Texto principal",
+          pagina: "55",
           data: { area: "Mentalsomatologia" },
         },
       ],
     });
 
     expect(payload.markdown).toContain("Texto principal");
-    expect(payload.markdown).toContain("(**Lexico de Ortopensatas**; Autopensenidade)");
+    expect(payload.markdown).toContain("(**Lexico de Ortopensatas**, p. 55)");
+    expect(payload.markdown).toContain("p. 55");
     expect(payload.querySummary).toBe("Livro: Lexico de Ortopensatas | Termo: autopensenidade | Total: 14 | Exibidos: 10");
   });
 
@@ -38,6 +40,7 @@ describe("historySearchResponses", () => {
           number: null,
           title: "Tema",
           text: "   ",
+          pagina: "",
           data: { argumento: "recin", area: "Experimentologia" },
         },
       ],
@@ -59,6 +62,7 @@ describe("historySearchResponses", () => {
           number: null,
           title: "Sem corpo",
           text: "",
+          pagina: "",
           data: {},
         },
       ],
@@ -107,7 +111,8 @@ describe("historySearchResponses", () => {
     });
 
     expect(payload.markdown).toContain("Pensata relacionada");
-    expect(payload.markdown).toContain("(**Indice DAC**; Tema semantico)");
+    expect(payload.markdown).toContain("(**Indice DAC**)");
+    expect(payload.markdown).toContain("Indice DAC | Tema semantico | author: Autor X");
     expect(payload.querySummary).toBe(`Base: Indice DAC | Consulta: ${"x".repeat(117)}... | Total: 1`);
   });
 });

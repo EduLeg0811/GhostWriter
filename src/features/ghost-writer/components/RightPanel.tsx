@@ -1,7 +1,7 @@
 import { MouseEvent, useCallback, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, BookOpen, Clock, Copy, FileText, Info, Languages, ListOrdered, Loader2, MessageSquare, Paperclip, PenLine, Repeat2, RotateCcw, Search, SendHorizontal, Settings, Trash2 } from "lucide-react";
+import { ArrowRight, BookOpen, Clock, Copy, FileText, Highlighter, Info, Languages, ListOrdered, Loader2, MessageSquare, Paperclip, PenLine, Repeat2, RotateCcw, Search, SendHorizontal, Settings, Trash2 } from "lucide-react";
 import { historyHtmlToPlainText, isHistorySearchResponseType, renderHistoryResponseAppendBodyHtml, renderHistoryResponseCopyHtml, renderHistoryResponseEditorHtml } from "@/features/ghost-writer/utils/historyResponseHtml";
 import { buttonsPrimarySolidBgClass, cardsBgClass, chatSectionBgClass, panelsBgClass, panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 import type { AIResponse } from "@/features/ghost-writer/types";
@@ -59,9 +59,11 @@ interface RightPanelProps {
   enableHistoryNumbering?: boolean;
   enableHistoryReferences?: boolean;
   enableHistoryMetadata?: boolean;
+  enableHistoryHighlight?: boolean;
   onToggleHistoryNumbering?: () => void;
   onToggleHistoryReferences?: () => void;
   onToggleHistoryMetadata?: () => void;
+  onToggleHistoryHighlight?: () => void;
   onClear: () => void;
   onSendMessage: (message: string) => Promise<void> | void;
   onCleanConversation?: () => void | Promise<void>;
@@ -84,9 +86,11 @@ const RightPanel = ({
   enableHistoryNumbering = true,
   enableHistoryReferences = true,
   enableHistoryMetadata = true,
+  enableHistoryHighlight = true,
   onToggleHistoryNumbering,
   onToggleHistoryReferences,
   onToggleHistoryMetadata,
+  onToggleHistoryHighlight,
   onClear,
   onSendMessage,
   onCleanConversation,
@@ -184,6 +188,7 @@ const RightPanel = ({
       applyNumbering: enableHistoryNumbering,
       applyReferences: enableHistoryReferences,
       applyMetadata: enableHistoryMetadata,
+      applyHighlight: enableHistoryHighlight,
     });
     const text = historyHtmlToPlainText(html);
 
@@ -205,11 +210,13 @@ const RightPanel = ({
           applyNumbering: enableHistoryNumbering,
           applyReferences: enableHistoryReferences,
           applyMetadata: enableHistoryMetadata,
+          applyHighlight: enableHistoryHighlight,
         })
       : renderHistoryResponseAppendBodyHtml(response, {
           applyNumbering: enableHistoryNumbering,
           applyReferences: enableHistoryReferences,
           applyMetadata: enableHistoryMetadata,
+          applyHighlight: enableHistoryHighlight,
         })
   );
 
@@ -268,6 +275,16 @@ const RightPanel = ({
             aria-label="Inserir Metadados"
           >
             <Info className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`${historyToolbarButtonBaseClass} ${enableHistoryHighlight ? historyToolbarButtonActiveClass : historyToolbarButtonInactiveClass}`}
+            onClick={onToggleHistoryHighlight}
+            title="Highlight"
+            aria-label="Highlight"
+          >
+            <Highlighter className="h-3.5 w-3.5" />
           </Button>
           <div className={historyToolbarSeparatorClass} aria-hidden="true" />
           <Button
@@ -343,6 +360,7 @@ const RightPanel = ({
                         applyNumbering: enableHistoryNumbering,
                         applyReferences: enableHistoryReferences,
                         applyMetadata: enableHistoryMetadata,
+                        applyHighlight: enableHistoryHighlight,
                       }),
                     }}
                   />
