@@ -166,7 +166,11 @@ const RightPanel = ({
   }, [triggerPdfDownload]);
 
   const renderQuerySubtitle = (response: AIResponse): React.ReactNode => {
-    if (response.type === "app_random_pensata") return "Léxico de Ortopensatas (2a ed., 2019)";
+    if (response.type === "app_random_pensata") {
+      const pageMatch = (response.query || "").match(/\|\s*p\.\s*([^|]+)/i);
+      const page = (pageMatch?.[1] || "").trim();
+      return `Léxico de Ortopensatas (2a ed., 2019${page ? `, p. ${page}` : ""})`;
+    }
     if (response.type !== "app_book_search" && response.type !== "app_verbete_search") return response.query;
 
     const query = response.query || "";

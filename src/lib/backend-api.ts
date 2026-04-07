@@ -175,7 +175,7 @@ export async function biblioExternaApp(payload: {
   return res.json();
 }
 
-export async function randomPensataApp(): Promise<{ ok: boolean; result: { paragraph: string; paragraph_number: number; total_paragraphs: number; source: string } }> {
+export async function randomPensataApp(): Promise<{ ok: boolean; result: { paragraph: string; page: string; paragraph_number: number; total_paragraphs: number; source: string } }> {
   const res = await fetch(apiUrl("/api/apps/random-pensata"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },

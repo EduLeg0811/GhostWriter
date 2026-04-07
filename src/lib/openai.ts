@@ -713,8 +713,7 @@ export function buildVerbeteDefinologiaPrompt(
       2) Nao invente fontes, citacoes ou fatos nao sustentados pelo contexto.
       3) Use termos e expressões já existentes nos verbetes da Enciclopédia da Conscienciologia.
       4) Se o contexto for insuficiente, explicite a limitacao de forma breve e ainda proponha a melhor Definologia possivel.
-      5) Responda em portugues brasileiro.
-      6) Entregue apenas o texto final da Definologia, sem metacomentarios.
+      5) Entregue apenas o texto final da Definologia, sem metacomentarios.
 
       Formato final de saída: 
      '**Definologia.** O *{título}* é ...' para termos masculinos; e '**Definologia.** A *{título}* é ...' para termos femininos.
@@ -752,10 +751,9 @@ export function buildVerbeteSinonimologiaPrompt(
       2) Nao invente fontes ou fatos nao sustentados pelo contexto.
       3) Use termos e expressões já existentes nos verbetes da Enciclopédia da Conscienciologia.
       4) Se o contexto for insuficiente, explicite a limitacao de forma breve e ainda proponha a melhor Sinonimologia possivel.
-      5) Responda em portugues brasileiro.
-      6) Entregue apenas o texto final da Sinonimologia, sem metacomentarios.
-      7) Use apenas os documentos disponíveis de Conscienciologia como fonte. Caso não haja material suficiente, retorne exatamente: "Não há definição disponível para este termo nos materiais consultados.
-      8) A saída deve ser apenas o parágrafo final, em Markdown limpo, sem metainstruções.
+      5) Entregue apenas o texto final da Sinonimologia, sem metacomentarios.
+      6) Use apenas os documentos disponíveis de Conscienciologia como fonte. Caso não haja material suficiente, retorne exatamente: "Não há definição disponível para este termo nos materiais consultados.
+      7) A saída deve ser apenas o parágrafo final, em Markdown limpo, sem metainstruções.
 
       Formato final de saída: 
       Sua resposta deve ser **um único parágrafo**, claro, preciso, objetivo e acadêmico, na forma:
@@ -860,7 +858,7 @@ export function buildPensataAnalysisPrompt(pensata: string): ChatMessage[] {
     {
       role: "system",
       content:
-        "Voce e um especialista em Conscienciologia. Responda em portugues brasileiro, com objetividade e clareza.",
+        "Voce e um especialista em Conscienciologia. Responda com objetividade, franqueza e clareza.",
     },
     {
       role: "user",

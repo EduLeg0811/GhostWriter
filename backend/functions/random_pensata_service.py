@@ -6,16 +6,18 @@ FILE_NAME = "LO.xlsx"
 FILE_PATH = "Files/Lexical"
 
 
-def _iter_formatted_paragraphs(sheet) -> Iterable[str]:
+def _iter_formatted_paragraphs(sheet) -> Iterable[dict[str, str]]:
     for row in sheet.iter_rows(min_row=2, values_only=True):
         if not row:
             continue
         text_value = row[0] if len(row) > 0 else None
         title_value = row[1] if len(row) > 1 else None
+        page_value = row[3] if len(row) > 3 else None
         text = str(text_value).strip() if text_value is not None else ""
         title = str(title_value).strip() if title_value is not None else ""
+        page = str(page_value).strip() if page_value is not None else ""
         if text and title:
-            yield f"**{title}.** {text}"
+            yield {"paragraph": text, "page": page}
 
 
 def get_random_paragraph(term: str = "") -> dict:
@@ -44,7 +46,8 @@ def get_random_paragraph(term: str = "") -> dict:
     selected_paragraph = paragraphs[random_index]
 
     return {
-        "paragraph": selected_paragraph,
+        "paragraph": selected_paragraph["paragraph"],
+        "page": selected_paragraph["page"],
         "paragraph_number": random_index + 1,
         "total_paragraphs": total_paragraphs,
         "source": file_path.name,

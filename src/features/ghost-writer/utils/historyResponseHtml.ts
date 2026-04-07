@@ -449,6 +449,8 @@ const styleRandomPensataHtml = (html: string): string => {
   pensataBlock.style.border = "1px solid rgba(253,186,116,0.45)";
   pensataBlock.style.borderLeft = "4px solid rgba(249,115,22,0.55)";
   pensataBlock.style.borderRadius = "12px";
+  pensataBlock.style.display = "inline-block";
+  pensataBlock.style.maxWidth = "100%";
   pensataBlock.style.padding = "0.8em 0.95em";
   pensataBlock.style.marginBottom = "0.9em";
   pensataBlock.style.fontSize = "1.12em";
