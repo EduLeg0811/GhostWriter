@@ -672,47 +672,6 @@ const useGhostWriterLlm = ({
       return;
     }
 
-    if (type === "cognatos") {
-      if (vectorStoreIds.length === 0) {
-        toast.error("Selecione ao menos 1 Vector Store na configuracao de Acoes IA.");
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        const cognatosSystemPrompt = getActionSystemPrompt(aiActionSystemPrompts, "cognatos");
-        const content = (
-          await executeAiActionsLLMWithLog({
-            messages: applySystemPromptOverride([
-              {
-                role: "system",
-                content:
-                  "Você é um pesquisador de termos cognatos da Conscienciologia. Use exclusivamente o material recuperado pela busca nos arquivos. Retorne até 5 cognatos relativos ao termo de entrada. Se nao houver material suficiente, diga exatamente: Nenhuma correspondencia encontrada na Vector Store LO.",
-              },
-              {
-                role: "user",
-                content:
-                  `Localize cognatos afins ao termo de busca e devolva apenas a lista final em Markdown numerado.\n\n` +
-                  `Termo de busca: ${text}`,
-              },
-            ], cognatosSystemPrompt),
-            vectorStoreIds,
-            inputFileIds,
-          })
-        ).content.trim();
-        if (!content || content === "Nenhuma correspondencia encontrada na Vector Store LO.") {
-          toast.info("Nenhuma correspond\u00eancia encontrada na Vector Store LO.");
-        } else {
-          addResponse("cognatos", text.slice(0, 80), content);
-        }
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : "Erro ao buscar Cognatos.");
-      } finally {
-        setIsLoading(false);
-      }
-      return;
-    }
-
     setIsLoading(true);
     try {
       let editorPlainTextContext = "";

@@ -286,6 +286,34 @@ describe("Index page", () => {
     expect(await screen.findByText(/Resposta de analogias/i)).toBeInTheDocument();
   });
 
+  it("runs cognatos through the generic action flow without vector store ids", async () => {
+    const openai = await import("@/lib/openai");
+    vi.mocked(openai.executeLLM).mockResolvedValue({ content: "cognato-um\ncognato-dois" });
+
+    render(<Index />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /termos & conceitos/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^cognatos\b/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Cognatos")[0]).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("Write a word, phrase or text"), {
+      target: { value: "holopensene" },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: /^cognatos\b/i })[1]);
+
+    await waitFor(() => {
+      expect(openai.executeLLM).toHaveBeenCalled();
+    });
+
+    const payload = vi.mocked(openai.executeLLM).mock.calls.at(-1)?.[0];
+    expect(openai.buildCognatosPrompt).toHaveBeenCalledWith("holopensene");
+    expect(payload?.vectorStoreIds).toEqual([]);
+    expect(await screen.findByText(/cognato-um/i)).toBeInTheDocument();
+  });
+
   it("shows the new customized prompt buttons", async () => {
     render(<Index />);
 

@@ -1,6 +1,5 @@
 import { PenLine, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LLM_VECTOR_STORE_LO } from "@/lib/openai";
 import { ACTION_PANEL_BUTTONS_BY_SCOPE, ACTION_PANEL_ICONS, APP_PANEL_BUTTONS_BY_SCOPE, APP_PANEL_ICONS, parameterActionMeta, parameterAppMeta } from "@/features/ghost-writer/config/metadata";
 import type { AiActionId, AppActionId, AppPanelScope, ParameterPanelTarget } from "@/features/ghost-writer/types";
 import { sectionActionButtonClass } from "@/styles/buttonStyles";
@@ -39,7 +38,7 @@ const ParameterPanelToolbar = ({
         variant="ghost"
         className={sectionActionButtonClass}
         onClick={() => onOpenAiActionParameters(id)}
-        disabled={isLoading || (id === "cognatos" && !LLM_VECTOR_STORE_LO)}
+        disabled={isLoading}
       >
         <Icon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
         <span className="min-w-0 flex-1 text-left">
