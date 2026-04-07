@@ -1,19 +1,20 @@
 {
   "index_label": "LO",
-  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmpcmj1cqj9.xlsx",
-  "source_rows": 25186,
-  "indexed_rows": 25186,
+  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmptk9wlg1v.xlsx",
+  "source_rows": 25187,
+  "indexed_rows": 25187,
   "sheet_name": "Sheet1",
   "text_column": "text",
   "metadata_columns": [
     "title",
-    "number"
+    "number",
+    "pagina"
   ],
   "model": "text-embedding-3-small",
   "embedding_dtype": "float16",
   "dimensions": 1536,
-  "generated_at": "2026-03-25T19:18:36.000Z",
+  "generated_at": "2026-04-07T00:06:53.000Z",
   "normalization": "l2",
-  "source_mtime": "2026-03-25T19:11:25.000Z",
-  "source_size": 2003430
+  "source_mtime": "2026-04-07T00:00:05.000Z",
+  "source_size": 2381569
 }

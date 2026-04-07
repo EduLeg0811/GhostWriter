@@ -1,19 +1,20 @@
 {
   "index_label": "700EXP",
-  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmpomi1fz86.xlsx",
-  "source_rows": 4018,
-  "indexed_rows": 4018,
+  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmpzffu_7q4.xlsx",
+  "source_rows": 4019,
+  "indexed_rows": 4019,
   "sheet_name": "Sheet1",
   "text_column": "text",
   "metadata_columns": [
     "title",
-    "number"
+    "number",
+    "pagina"
   ],
   "model": "text-embedding-3-small",
   "embedding_dtype": "float16",
   "dimensions": 1536,
-  "generated_at": "2026-03-25T18:41:02.000Z",
+  "generated_at": "2026-04-06T23:22:13.000Z",
   "normalization": "l2",
-  "source_mtime": "2026-03-25T18:39:57.000Z",
-  "source_size": 926431
+  "source_mtime": "2026-04-06T23:21:05.000Z",
+  "source_size": 1044178
 }

@@ -1171,9 +1171,9 @@ def api_lexical_verbete_search(payload: LexicalVerbeteSearchRequest) -> dict[str
 @app.get("/api/apps/semantic/indexes")
 def api_semantic_indexes() -> dict[str, Any]:
     try:
-        from backend.functions.semantic_search_service import list_semantic_indexes
+        from Build_Vector_Index.semantic_search_service import list_semantic_indexes
     except Exception:
-        from functions.semantic_search_service import list_semantic_indexes
+        from Build_Vector_Index.semantic_search_service import list_semantic_indexes
 
     try:
         indexes = list_semantic_indexes()
@@ -1200,9 +1200,9 @@ def api_semantic_search(payload: SemanticSearchRequest) -> dict[str, Any]:
     limit = max(1, min(int(payload.limit or 10), 50))
 
     try:
-        from backend.functions.semantic_search_service import search_semantic_index
+        from Build_Vector_Index.functions.semantic_search_service import search_semantic_index
     except Exception:
-        from functions.semantic_search_service import search_semantic_index
+        from Build_Vector_Index.semantic_search_service import search_semantic_index
 
     try:
         total, matches = search_semantic_index(index_id=index_id, query=query, limit=limit, api_key=get_openai_api_key())

@@ -1,0 +1,20 @@
+{
+  "index_label": "PROEXIS",
+  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmpe98xc7kf.xlsx",
+  "source_rows": 750,
+  "indexed_rows": 750,
+  "sheet_name": "Sheet1",
+  "text_column": "text",
+  "metadata_columns": [
+    "title",
+    "number",
+    "pagina"
+  ],
+  "model": "text-embedding-3-small",
+  "embedding_dtype": "float16",
+  "dimensions": 1536,
+  "generated_at": "2026-04-06T23:13:00.000Z",
+  "normalization": "l2",
+  "source_mtime": "2026-04-06T23:12:47.000Z",
+  "source_size": 99520
+}

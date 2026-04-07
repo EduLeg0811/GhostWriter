@@ -1,0 +1,20 @@
+{
+  "index_label": "HSP",
+  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmp5ol25wbz.xlsx",
+  "source_rows": 6965,
+  "indexed_rows": 6965,
+  "sheet_name": "Sheet1",
+  "text_column": "text",
+  "metadata_columns": [
+    "title",
+    "number",
+    "pagina"
+  ],
+  "model": "text-embedding-3-small",
+  "embedding_dtype": "float16",
+  "dimensions": 1536,
+  "generated_at": "2026-04-07T00:12:49.000Z",
+  "normalization": "l2",
+  "source_mtime": "2026-04-07T00:11:07.000Z",
+  "source_size": 1112592
+}

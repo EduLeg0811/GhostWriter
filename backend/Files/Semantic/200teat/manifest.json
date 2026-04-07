@@ -1,19 +1,20 @@
 {
   "index_label": "200TEAT",
-  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmpc2naofp7.xlsx",
+  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmp6my8sa_d.xlsx",
   "source_rows": 1945,
   "indexed_rows": 1945,
   "sheet_name": "Capítulos",
   "text_column": "text",
   "metadata_columns": [
     "title",
-    "number"
+    "number",
+    "pagina"
   ],
   "model": "text-embedding-3-small",
   "embedding_dtype": "float16",
   "dimensions": 1536,
-  "generated_at": "2026-03-25T18:39:38.000Z",
+  "generated_at": "2026-04-06T23:09:32.000Z",
   "normalization": "l2",
-  "source_mtime": "2026-03-25T18:39:02.000Z",
-  "source_size": 207412
+  "source_mtime": "2026-04-06T23:08:40.000Z",
+  "source_size": 243205
 }

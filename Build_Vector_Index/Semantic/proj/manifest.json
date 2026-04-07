@@ -1,0 +1,20 @@
+{
+  "index_label": "PROJ",
+  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmp3cv6b4pe.xlsx",
+  "source_rows": 8985,
+  "indexed_rows": 8985,
+  "sheet_name": "Sheet1",
+  "text_column": "text",
+  "metadata_columns": [
+    "title",
+    "number",
+    "pagina"
+  ],
+  "model": "text-embedding-3-small",
+  "embedding_dtype": "float16",
+  "dimensions": 1536,
+  "generated_at": "2026-04-07T00:18:33.000Z",
+  "normalization": "l2",
+  "source_mtime": "2026-04-07T00:16:19.000Z",
+  "source_size": 1666516
+}

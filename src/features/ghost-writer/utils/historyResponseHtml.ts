@@ -108,18 +108,22 @@ const appendExternalLinkIconToHeader = (block: Element, urlText: string, doc: Do
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const extractBookSearchQuery = (query: string): string => {
+const extractSearchQuery = (query: string): string => {
   const raw = query || "";
   const withTotal = raw.match(/Termo:\s*([\s\S]*?)\s*\|\s*Total:/i);
   if (withTotal?.[1]) return withTotal[1].trim();
+  const semanticWithTotal = raw.match(/Consulta:\s*([\s\S]*?)\s*\|\s*Total:/i);
+  if (semanticWithTotal?.[1]) return semanticWithTotal[1].trim();
   const legacyWithMax = raw.match(/Termo:\s*([\s\S]*?)\s*\|\s*Max:/i);
   if (legacyWithMax?.[1]) return legacyWithMax[1].trim();
   const fallback = raw.match(/Termo:\s*([\s\S]*?)$/i);
-  return (fallback?.[1] || "").trim();
+  if (fallback?.[1]) return fallback[1].trim();
+  const semanticFallback = raw.match(/Consulta:\s*([\s\S]*?)$/i);
+  return (semanticFallback?.[1] || "").trim();
 };
 
 const extractHighlightTerms = (query: string): string[] => {
-  const raw = extractBookSearchQuery(query);
+  const raw = extractSearchQuery(query);
   if (!raw) return [];
   const tokens = raw.match(/"[^"]+"|\S+/g) || [];
   const cleaned = tokens
@@ -524,7 +528,9 @@ const renderHistorySearchResponseHtml = (response: AIResponse, options: HistoryR
     showMetadata: options.applyMetadata,
   });
   if (!options.applyHighlight) return renderedHtml;
-  return response.type === "app_book_search" ? highlightBookSearchHtml(renderedHtml, response.query) : renderedHtml;
+  return response.type === "app_book_search" || response.type === "app_semantic_search"
+    ? highlightBookSearchHtml(renderedHtml, response.query)
+    : renderedHtml;
 };
 
 const renderHistorySearchResponseExportHtml = (
@@ -539,7 +545,9 @@ const renderHistorySearchResponseExportHtml = (
   });
   const exportHtml = convertHistorySearchExportDivsToParagraphs(renderedHtml);
   if (!options.applyHighlight) return exportHtml;
-  return response.type === "app_book_search" ? highlightBookSearchHtml(exportHtml, response.query) : exportHtml;
+  return response.type === "app_book_search" || response.type === "app_semantic_search"
+    ? highlightBookSearchHtml(exportHtml, response.query)
+    : exportHtml;
 };
 
 export const isHistorySearchResponseType = (type: AIResponse["type"]): type is "app_book_search" | "app_semantic_search" =>

@@ -1,0 +1,20 @@
+{
+  "index_label": "TEMAS",
+  "source_file": "C:\\Users\\Edu\\AppData\\Local\\Temp\\tmpfi_f9je1.xlsx",
+  "source_rows": 721,
+  "indexed_rows": 721,
+  "sheet_name": "Sheet1",
+  "text_column": "text",
+  "metadata_columns": [
+    "title",
+    "number",
+    "pagina"
+  ],
+  "model": "text-embedding-3-small",
+  "embedding_dtype": "float16",
+  "dimensions": 1536,
+  "generated_at": "2026-04-06T23:13:50.000Z",
+  "normalization": "l2",
+  "source_mtime": "2026-04-06T23:13:37.000Z",
+  "source_size": 146892
+}
