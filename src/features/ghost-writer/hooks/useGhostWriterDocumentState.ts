@@ -118,6 +118,7 @@ export const useGhostWriterAppsState = () => {
   const [lexicalTerm, setLexicalTerm] = useState("");
   const [lexicalMaxResults, setLexicalMaxResults] = useState(DEFAULT_BOOK_SEARCH_MAX_RESULTS);
   const [isRunningLexicalSearch, setIsRunningLexicalSearch] = useState(false);
+  const [isRunningLexicalOverview, setIsRunningLexicalOverview] = useState(false);
   const [semanticSearchQuery, setSemanticSearchQuery] = useState("");
   const [semanticSearchMaxResults, setSemanticSearchMaxResults] = useState(DEFAULT_BOOK_SEARCH_MAX_RESULTS);
   const [semanticSearchIndexes, setSemanticSearchIndexes] = useState<SemanticIndexOption[]>([]);
@@ -190,6 +191,8 @@ export const useGhostWriterAppsState = () => {
     setLexicalMaxResults,
     isRunningLexicalSearch,
     setIsRunningLexicalSearch,
+    isRunningLexicalOverview,
+    setIsRunningLexicalOverview,
     semanticSearchQuery,
     setSemanticSearchQuery,
     semanticSearchMaxResults,

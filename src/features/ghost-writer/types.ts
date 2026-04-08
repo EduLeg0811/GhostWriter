@@ -1,7 +1,7 @@
 import type { BookCode } from "@/lib/bookCatalog";
 
 export type MacroActionId = "macro1" | "macro2";
-export type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7" | "app8" | "app9" | "app10" | "app11" | "app12";
+export type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7" | "app8" | "app9" | "app10" | "app11" | "app12" | "app13";
 export type AppPanelScope = "bibliografia" | "busca_termos" | "semantic_search" | "verbetografia";
 export type AiPanelScope = "definitions_cons" | "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command";
 export type AiActionId = "define" | "sinonimologia" | "synonyms" | "antonyms" | "etymology" | "dictionary" | "epigraph" | "rewrite" | "summarize" | "cognatos" | "translate" | "dict_lookup" | "ai_command" | "analogies" | "comparisons" | "examples" | "counterpoints" | "neoparadigma";
@@ -35,6 +35,37 @@ export type LlmLogEntry = {
 export type GhostWriterActionState = {
   selectedRefBook: BookCode;
 };
+
+export interface LexicalHistoryMatch {
+  book: string;
+  row: number;
+  number: number | null;
+  title: string;
+  text: string;
+  pagina: string;
+  data: Record<string, string>;
+}
+
+export interface LexicalOverviewHistoryGroup {
+  bookCode: string;
+  bookLabel: string;
+  fileStem: string;
+  totalFound: number;
+  shownCount: number;
+  matches: LexicalHistoryMatch[];
+}
+
+export interface LexicalOverviewHistoryPayload {
+  kind: "lexical_overview";
+  term: string;
+  limit: number;
+  totalBooks: number;
+  totalFound: number;
+  groups: LexicalOverviewHistoryGroup[];
+}
+
+export type AIResponsePayload = LexicalOverviewHistoryPayload;
+
 export interface AIResponse {
   id: string;
   type:
@@ -64,6 +95,7 @@ export interface AIResponse {
     | "app_biblio_externa"
     | "app_random_pensata"
     | "app_book_search"
+    | "app_lexical_overview"
     | "app_semantic_search"
     | "app_verbete_search"
     | "app_verbete_definologia"
@@ -72,5 +104,6 @@ export interface AIResponse {
     | "app_verbete_fatologia";
   query: string;
   content: string;
+  payload?: AIResponsePayload;
   timestamp: Date;
 }

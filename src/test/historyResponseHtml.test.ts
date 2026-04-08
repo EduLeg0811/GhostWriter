@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 import { historyHtmlToPlainText, renderHistoryResponseAppendBodyHtml, renderHistoryResponseCopyHtml, renderHistoryResponseEditorHtml } from "@/features/ghost-writer/utils/historyResponseHtml";
 import type { AIResponse } from "@/features/ghost-writer/types";
 
-const buildResponse = (type: AIResponse["type"], query: string, content: string): AIResponse => ({
+const buildResponse = (type: AIResponse["type"], query: string, content: string, payload?: AIResponse["payload"]): AIResponse => ({
   id: `${type}-1`,
   type,
   query,
   content,
+  payload,
   timestamp: new Date("2026-03-27T12:00:00.000Z"),
 });
 
@@ -254,5 +255,126 @@ describe("historyResponseHtml", () => {
     expect(html).toContain("display: flex");
     expect(html).toContain(">1.</strong>");
     expect(html).toContain("continua na segunda linha");
+  });
+
+  it("renders lexical overview export html with global toggles and highlights", () => {
+    const response = buildResponse(
+      "app_lexical_overview",
+      "Termo: cosmoetica | Total: 3 | Livros: 2 | Limite por livro: 2",
+      "fallback",
+      {
+        kind: "lexical_overview",
+        term: "cosmoetica",
+        limit: 2,
+        totalBooks: 2,
+        totalFound: 3,
+        groups: [
+          {
+            bookCode: "LO",
+            bookLabel: "Lexico de Ortopensatas",
+            fileStem: "LO",
+            totalFound: 2,
+            shownCount: 2,
+            matches: [
+              {
+                book: "LO",
+                row: 1,
+                number: 1,
+                title: "Cosmoetica",
+                text: "Trecho com cosmoetica (p. 41)",
+                pagina: "41",
+                data: { area: "Mentalsomatologia" },
+              },
+            ],
+          },
+          {
+            bookCode: "QUEST",
+            bookLabel: "QUEST",
+            fileStem: "QUEST",
+            totalFound: 1,
+            shownCount: 1,
+            matches: [
+              {
+                book: "QUEST",
+                row: 2,
+                number: 2,
+                title: "Questao",
+                text: "Outro trecho",
+                pagina: "",
+                data: { author: "E.Q." },
+              },
+            ],
+          },
+        ],
+      },
+    );
+
+    const editorHtml = renderHistoryResponseEditorHtml(response, {
+      applyNumbering: true,
+      applyReferences: true,
+      applyMetadata: true,
+      applyHighlight: true,
+    });
+    const appendHtml = renderHistoryResponseAppendBodyHtml(response, {
+      applyNumbering: false,
+      applyReferences: false,
+      applyMetadata: false,
+      applyHighlight: false,
+    });
+    const copyHtml = renderHistoryResponseCopyHtml(response, {
+      applyNumbering: true,
+      applyReferences: true,
+      applyMetadata: true,
+      applyHighlight: true,
+    });
+
+    expect(editorHtml).toContain("Lexico de Ortopensatas");
+    expect(editorHtml).toContain("<mark");
+    expect(editorHtml).toContain("p. 41");
+    expect(copyHtml).toContain("<strong>1.</strong>");
+    expect(copyHtml).toContain("QUEST");
+    expect(appendHtml).toContain("Outro trecho");
+    expect(appendHtml).not.toContain("Mentalsomatologia");
+    expect(historyHtmlToPlainText(copyHtml)).toContain("Trecho com cosmoetica");
+  });
+
+  it("preserves QUEST special formatting in editor, append and copy flows", () => {
+    const response = buildResponse(
+      "app_book_search",
+      "Livro: QUEST | Termo: abdicacoes | Total: 1",
+      [
+        "**\"Pergunta de teste\"**[[HISTORY_SEARCH_BR]]**W:** Resposta de teste",
+        "(**QUEST**, 05/11/2014, E.Q., p. 39)",
+        "QUEST | Abdicaciologia | date: 05/11/2014 | author: E.Q. | p. 39",
+      ].join("\n"),
+    );
+
+    const editorHtml = renderHistoryResponseEditorHtml(response, {
+      applyNumbering: true,
+      applyReferences: true,
+      applyMetadata: true,
+      applyHighlight: true,
+    });
+    const appendHtml = renderHistoryResponseAppendBodyHtml(response, {
+      applyNumbering: false,
+      applyReferences: true,
+      applyMetadata: true,
+      applyHighlight: true,
+    });
+    const copyHtml = renderHistoryResponseCopyHtml(response, {
+      applyNumbering: true,
+      applyReferences: true,
+      applyMetadata: true,
+      applyHighlight: true,
+    });
+
+    expect(editorHtml).toContain("<strong>\"Pergunta de teste\"</strong>");
+    expect(editorHtml).toContain("<strong>W:</strong>");
+    expect(editorHtml).toContain("05/11/2014, E.Q., p. 39");
+    expect(appendHtml).toContain("<strong>\"Pergunta de teste\"</strong>");
+    expect(appendHtml).toContain("<strong>W:</strong>");
+    expect(copyHtml).toContain("<strong>\"Pergunta de teste\"</strong>");
+    expect(copyHtml).toContain("<strong>W:</strong>");
+    expect(copyHtml).toContain("05/11/2014, E.Q., p. 39");
   });
 });

@@ -15,7 +15,7 @@ export const ACTION_PANEL_BUTTONS_BY_SCOPE: Record<AiPanelScope, AiActionId[]> =
 
 export const APP_PANEL_BUTTONS_BY_SCOPE: Record<AppPanelScope, AppActionId[]> = {
   bibliografia: ["app1", "app2", "app3", "app6"],
-  busca_termos: ["app4", "app5"],
+  busca_termos: ["app4", "app5", "app13"],
   semantic_search: ["app12"],
   verbetografia: ["app8", "app9", "app10", "app11"],
 };
@@ -48,6 +48,7 @@ export const APP_PANEL_ICONS: Record<AppActionId, LucideIcon> = {
   app2: Repeat2,
   app3: Search,
   app4: Search,
+  app13: Search,
   app5: Search,
   app6: Search,
   app12: Search,
@@ -68,6 +69,7 @@ export const parameterAppMeta: Record<AppActionId, { title: string; description:
   app2: { title: "Bibliografia de Verbetes", description: "Monta Bibliografia de verbetes." },
   app3: { title: "Bibliografia Autores", description: "Monta bibliografia de autores diversos." },
   app4: { title: "Busca em Livros", description: "Busca termos nos livros de Waldo Vieira." },
+  app13: { title: "Lexical Overview", description: "Busca o termo em todos os livros." },
   app5: { title: "Busca em Verbetes", description: "Busca termos nos verbetes em geral." },
   app6: { title: "Bibliografia Externa", description: "Busca referências externas na internet." },
   app12: { title: "Semantic Search", description: "Busca semântica por similaridade." },

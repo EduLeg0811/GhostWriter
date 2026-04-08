@@ -62,6 +62,9 @@ const joinTextParagraphs = (textParagraphs: string[]): string =>
     .filter(Boolean)
     .join(MAIN_LINE_BREAK_TOKEN);
 
+export const replaceHistorySearchInlineBreaks = (text: string): string =>
+  (text || "").replace(/\s*\|\s*/g, MAIN_LINE_BREAK_TOKEN);
+
 const escapeAttribute = (value: string): string =>
   value
     .replace(/&/g, "&amp;")
@@ -86,8 +89,16 @@ const buildSourceRefLine = (metadata: HistorySearchCardMetadata): string => {
   const bookCode = trim(metadata.book);
   const sourcebook = trim(metadata.sourcebook) || SOURCEBOOK_FALLBACK;
   const title = trim(metadata.title) || TITLE_FALLBACK;
+  const date = trim(metadata.date);
+  const author = trim(metadata.author);
   const pagina = trim(metadata.pagina) || "";
   if (bookCode === "EC") return `(**${sourcebook}**, verbete *${title}*)`;
+  if (bookCode === "QUEST") {
+    const suffixParts = [date, author, pagina ? `p. ${pagina}` : ""].filter(Boolean);
+    return suffixParts.length > 0
+      ? `(**${sourcebook}**, ${suffixParts.join(", ")})`
+      : `(**${sourcebook}**)`;
+  }
   return pagina ? `(**${sourcebook}**, p. ${pagina})` : `(**${sourcebook}**)`;
 };
 

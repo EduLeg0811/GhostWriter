@@ -1,6 +1,6 @@
-import { buildHistorySearchCardsMarkdown, type HistorySearchCardInput, type HistorySearchCardMetadata } from "@/lib/historySearchCards";
+import { buildHistorySearchCardsMarkdown, replaceHistorySearchInlineBreaks, type HistorySearchCardInput, type HistorySearchCardMetadata } from "@/lib/historySearchCards";
 import { BOOK_OPTION_LABELS } from "@/features/ghost-writer/config/metadata";
-import type { SemanticIndexOption } from "@/features/ghost-writer/types";
+import type { LexicalHistoryMatch, LexicalOverviewHistoryGroup, LexicalOverviewHistoryPayload, SemanticIndexOption } from "@/features/ghost-writer/types";
 import { buildLexicalHistorySearchMetadata, buildSemanticHistorySearchMetadata } from "@/features/ghost-writer/utils/historySearch";
 
 type HistorySearchResponsePayload = {
@@ -8,13 +8,8 @@ type HistorySearchResponsePayload = {
   querySummary: string;
 };
 
-type LexicalSearchMatch = {
-  book: string;
-  row: number;
-  number: number | null;
-  title: string;
-  text: string;
-  data: Record<string, string>;
+type LexicalOverviewResponsePayload = HistorySearchResponsePayload & {
+  payload: LexicalOverviewHistoryPayload;
 };
 
 type SemanticSearchMatch = {
@@ -52,17 +47,42 @@ const buildHistorySearchCards = <TMatch>(
 const truncateQuery = (query: string, maxLength: number): string =>
   query.length > maxLength ? `${query.slice(0, maxLength - 3)}...` : query;
 
+const isQuestMatch = (match: LexicalHistoryMatch): boolean =>
+  (match.book || "").trim().toUpperCase() === "QUEST" || Boolean((match.data?.quest || "").trim());
+
+const formatQuestMatchText = (match: LexicalHistoryMatch): string => {
+  const rawText = (match.text || "").trim();
+  if (!rawText) return rawText;
+
+  const quest = (match.data?.quest || "").trim();
+  const separatorIndex = rawText.indexOf("|");
+  if (separatorIndex < 0) {
+    const question = quest || rawText;
+    return replaceHistorySearchInlineBreaks(`**${question}**`);
+  }
+
+  const question = quest || rawText.slice(0, separatorIndex).trim();
+  const answer = rawText.slice(separatorIndex + 1).trim();
+  return replaceHistorySearchInlineBreaks(`**${question}** | **W:** ${answer}`.trim());
+};
+
+const formatLexicalMatchText = (match: LexicalHistoryMatch): string => {
+  const text = (match.text || "").trim();
+  if (!text) return text;
+  return isQuestMatch(match) ? formatQuestMatchText(match) : replaceHistorySearchInlineBreaks(text);
+};
+
 export const buildLexicalSearchHistoryResponsePayload = (params: {
   book: string;
   term: string;
   totalFound: number;
   maxResults: number;
-  matches: LexicalSearchMatch[];
+  matches: LexicalHistoryMatch[];
 }): HistorySearchResponsePayload => {
   const { book, term, totalFound, maxResults, matches } = params;
   const markdown = buildHistorySearchCards(matches, {
     getTextParagraphs: (item) => {
-      const text = (item.text || "").trim();
+      const text = formatLexicalMatchText(item);
       const fallbackBody = Object.values(item.data || {}).filter(Boolean).join(" | ");
       return [text || fallbackBody];
     },
@@ -73,6 +93,64 @@ export const buildLexicalSearchHistoryResponsePayload = (params: {
   return {
     markdown,
     querySummary: `Livro: ${BOOK_OPTION_LABELS[book] ?? book} | Termo: ${term} | Total: ${totalFound}${shownInfo}`,
+  };
+};
+
+export const buildLexicalOverviewGroupMarkdown = (group: Pick<LexicalOverviewHistoryGroup, "matches">): string => buildHistorySearchCardsFromCards(matchesToCards(group.matches));
+
+const matchesToCards = (matches: LexicalHistoryMatch[]): HistorySearchCardInput[] =>
+  matches
+    .map((match) => ({
+      textParagraphs: normalizeParagraphs([formatLexicalMatchText(match) || Object.values(match.data || {}).filter(Boolean).join(" | ")]),
+      metadata: buildLexicalHistorySearchMetadata(match, match.book),
+    }))
+    .filter((item) => item.textParagraphs.length > 0);
+
+const buildHistorySearchCardsFromCards = (cards: HistorySearchCardInput[]): string => buildHistorySearchCardsMarkdown(cards);
+
+const buildLexicalOverviewFallbackContent = (payload: LexicalOverviewHistoryPayload): string =>
+  payload.groups
+    .map((group) => {
+      const header = `## ${group.bookLabel} (${group.shownCount}/${group.totalFound})`;
+      const body = buildLexicalOverviewGroupMarkdown(group);
+      return [header, body].filter(Boolean).join("\n\n");
+    })
+    .filter(Boolean)
+    .join("\n\n");
+
+export const buildLexicalOverviewHistoryResponsePayload = (params: {
+  term: string;
+  limit: number;
+  totalBooks: number;
+  totalFound: number;
+  groups: LexicalOverviewHistoryGroup[];
+}): LexicalOverviewResponsePayload => {
+  const groups = params.groups.map((group) => ({
+    ...group,
+    matches: group.matches.map((match) => {
+      const page = (match.pagina || "").trim();
+      const text = formatLexicalMatchText(match);
+      const textWithPage = text && page ? `${text} (p. ${page})` : text;
+      return {
+        ...match,
+        text: textWithPage,
+      };
+    }),
+  }));
+
+  const payload: LexicalOverviewHistoryPayload = {
+    kind: "lexical_overview",
+    term: params.term,
+    limit: params.limit,
+    totalBooks: params.totalBooks,
+    totalFound: params.totalFound,
+    groups,
+  };
+
+  return {
+    payload,
+    markdown: buildLexicalOverviewFallbackContent(payload),
+    querySummary: `Termo: ${params.term} | Total: ${params.totalFound} | Livros: ${params.totalBooks} | Limite por livro: ${params.limit}`,
   };
 };
 

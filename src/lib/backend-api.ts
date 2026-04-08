@@ -233,11 +233,48 @@ export async function searchLexicalBookApp(payload: {
       number: number | null;
       title: string;
       text: string;
+      pagina: string;
       data: Record<string, string>;
     }>;
   };
 }> {
   return fetchJsonWithRetry(apiUrl("/api/apps/lexical/search"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+}
+
+export async function searchLexicalOverviewApp(payload: {
+  term: string;
+  limit?: number;
+}): Promise<{
+  ok: boolean;
+  result: {
+    term: string;
+    limit: number;
+    totalBooks: number;
+    totalFound: number;
+    groups: Array<{
+      bookCode: string;
+      bookLabel: string;
+      fileStem: string;
+      totalFound: number;
+      shownCount: number;
+      matches: Array<{
+        book: string;
+        row: number;
+        number: number | null;
+        title: string;
+        text: string;
+        pagina: string;
+        data: Record<string, string>;
+      }>;
+    }>;
+  };
+}> {
+  return fetchJsonWithRetry(apiUrl("/api/apps/lexical/overview"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

@@ -3,6 +3,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, BookOpen, Clock, Copy, FileText, Highlighter, Info, Languages, ListOrdered, Loader2, MessageSquare, Paperclip, PenLine, Repeat2, RotateCcw, Search, SendHorizontal, Settings, Trash2 } from "lucide-react";
 import { historyHtmlToPlainText, isHistorySearchResponseType, renderHistoryResponseAppendBodyHtml, renderHistoryResponseCopyHtml, renderHistoryResponseEditorHtml } from "@/features/ghost-writer/utils/historyResponseHtml";
+import LexicalOverviewHistoryCard from "@/features/ghost-writer/components/LexicalOverviewHistoryCard";
 import { buttonsPrimarySolidBgClass, cardsBgClass, chatSectionBgClass, panelsBgClass, panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 import type { AIResponse } from "@/features/ghost-writer/types";
 
@@ -46,6 +47,7 @@ const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactN
 
   app_random_pensata: { label: "Pensata Sorteada", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
   app_book_search: { label: "Lexical Search", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
+  app_lexical_overview: { label: "Lexical Overview", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_semantic_search: { label: "Semantic Search", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_verbete_search: { label: "Busca em Verbetes", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_verbete_definologia: { label: "Definologia", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
@@ -355,19 +357,30 @@ const RightPanel = ({
                     </p>
                   )}
 
-                  <div
-                    className={`prose prose-sm max-w-none text-xs text-foreground ${response.type === "app_verbete_frase_enfatica" ? "uppercase" : ""}`}
-                    style={historyFontStyle}
-                    onClick={response.type === "app_verbete_search" ? handlePdfIconClick : undefined}
-                    dangerouslySetInnerHTML={{
-                      __html: renderHistoryResponseEditorHtml(response, {
-                        applyNumbering: enableHistoryNumbering,
-                        applyReferences: enableHistoryReferences,
-                        applyMetadata: enableHistoryMetadata,
-                        applyHighlight: enableHistoryHighlight,
-                      }),
-                    }}
-                  />
+                  {response.type === "app_lexical_overview" ? (
+                    <LexicalOverviewHistoryCard
+                      response={response}
+                      historyFontStyle={historyFontStyle}
+                      enableHistoryNumbering={enableHistoryNumbering}
+                      enableHistoryReferences={enableHistoryReferences}
+                      enableHistoryMetadata={enableHistoryMetadata}
+                      enableHistoryHighlight={enableHistoryHighlight}
+                    />
+                  ) : (
+                    <div
+                      className={`prose prose-sm max-w-none text-xs text-foreground ${response.type === "app_verbete_frase_enfatica" ? "uppercase" : ""}`}
+                      style={historyFontStyle}
+                      onClick={response.type === "app_verbete_search" ? handlePdfIconClick : undefined}
+                      dangerouslySetInnerHTML={{
+                        __html: renderHistoryResponseEditorHtml(response, {
+                          applyNumbering: enableHistoryNumbering,
+                          applyReferences: enableHistoryReferences,
+                          applyMetadata: enableHistoryMetadata,
+                          applyHighlight: enableHistoryHighlight,
+                        }),
+                      }}
+                    />
+                  )}
 
                   <div className="flex justify-end">
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => void copyToClipboard(response)} title="Copiar resposta">

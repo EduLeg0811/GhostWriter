@@ -1,12 +1,12 @@
 import { useCallback } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { biblioExternaApp, biblioGeralApp, insertRefBookMacro, insertRefVerbeteApp, listLexicalBooksApp, listSemanticIndexesApp, openVerbetografiaTableApp, openVerbetografiaTableWordApp, randomPensataApp, searchLexicalBookApp, searchVerbeteApp, semanticSearchPensatasApp } from "@/lib/backend-api";
+import { biblioExternaApp, biblioGeralApp, insertRefBookMacro, insertRefVerbeteApp, listLexicalBooksApp, listSemanticIndexesApp, openVerbetografiaTableApp, openVerbetografiaTableWordApp, randomPensataApp, searchLexicalBookApp, searchLexicalOverviewApp, searchVerbeteApp, semanticSearchPensatasApp } from "@/lib/backend-api";
 import { executeLLM, buildPensataAnalysisPrompt, buildVerbeteDefinologiaPrompt, buildVerbeteFatologiaPrompt, buildVerbeteFraseEnfaticaPrompt, buildVerbeteSinonimologiaPrompt } from "@/lib/openai";
 import { BOOK_LABELS, type BookCode } from "@/lib/bookCatalog";
 import { applySystemPromptOverride, getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
 import { normalizeIdList } from "@/features/ghost-writer/config/metadata";
 import type { AIResponse, AppActionId, AppPanelScope, LlmLogEntry, ParameterPanelTarget, RefBookMode, SemanticIndexOption } from "@/features/ghost-writer/types";
-import { buildLexicalSearchHistoryResponsePayload, buildSemanticSearchHistoryResponsePayload } from "@/features/ghost-writer/utils/historySearchResponses";
+import { buildLexicalOverviewHistoryResponsePayload, buildLexicalSearchHistoryResponsePayload, buildSemanticSearchHistoryResponsePayload } from "@/features/ghost-writer/utils/historySearchResponses";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 
 interface ToastApi {
@@ -92,6 +92,7 @@ interface UseGhostWriterAppsParams {
   setIsRunningBiblioGeral: Dispatch<SetStateAction<boolean>>;
   setIsRunningBiblioExterna: Dispatch<SetStateAction<boolean>>;
   setIsRunningLexicalSearch: Dispatch<SetStateAction<boolean>>;
+  setIsRunningLexicalOverview: Dispatch<SetStateAction<boolean>>;
   setIsRunningSemanticSearch: Dispatch<SetStateAction<boolean>>;
   setIsRunningVerbeteSearch: Dispatch<SetStateAction<boolean>>;
   setIsRunningVerbetografiaOpenTable: Dispatch<SetStateAction<boolean>>;
@@ -109,7 +110,7 @@ interface UseGhostWriterAppsParams {
   backendNotReadyMessage: () => string;
   executeAiActionsLLMWithLog: (payload: Parameters<typeof executeLLM>[0]) => Promise<Awaited<ReturnType<typeof executeLLM>>>;
   executeLLMWithLog: (payload: Parameters<typeof executeLLM>[0]) => Promise<Awaited<ReturnType<typeof executeLLM>>>;
-  addResponse: (type: AIResponse["type"], query: string, content: string) => void;
+  addResponse: (type: AIResponse["type"], query: string, content: string, payload?: AIResponse["payload"]) => void;
   toast: ToastApi;
 }
 
@@ -215,6 +216,7 @@ const useGhostWriterApps = ({
   setIsRunningBiblioGeral,
   setIsRunningBiblioExterna,
   setIsRunningLexicalSearch,
+  setIsRunningLexicalOverview,
   setIsRunningSemanticSearch,
   setIsRunningVerbeteSearch,
   setIsRunningVerbetografiaOpenTable,
@@ -444,7 +446,7 @@ const useGhostWriterApps = ({
   }, [semanticSearchIndexes, setIsLoadingSemanticSearchIndexes, setSemanticSearchIndexes, setSelectedSemanticSearchIndexId, toast]);
 
   const handleActionApps = useCallback((type: AppActionId) => {
-    if (type === "app4" || type === "app5") {
+    if (type === "app4" || type === "app13" || type === "app5") {
       setAppPanelScope("busca_termos");
     } else if (type === "app12") {
       setAppPanelScope("semantic_search");
@@ -718,6 +720,40 @@ const useGhostWriterApps = ({
     }
   }, [addResponse, lexicalMaxResults, lexicalTerm, selectedLexicalBook, setIsRunningLexicalSearch, toast]);
 
+  const handleRunLexicalOverview = useCallback(async () => {
+    const term = lexicalTerm.trim();
+    const limit = Math.max(1, Math.min(100, lexicalMaxResults || 1));
+    if (!term) {
+      toast.error("Informe um termo para busca.");
+      return;
+    }
+
+    setIsRunningLexicalOverview(true);
+    try {
+      const data = await searchLexicalOverviewApp({ term, limit });
+      const totalBooks = Number(data.result.totalBooks || 0);
+      const totalFound = Number(data.result.totalFound || 0);
+      const groups = data.result.groups || [];
+      if (groups.length <= 0 || totalFound <= 0) {
+        toast.info("Nenhuma ocorrencia encontrada.");
+        return;
+      }
+      const payload = buildLexicalOverviewHistoryResponsePayload({
+        term,
+        limit,
+        totalBooks,
+        totalFound,
+        groups,
+      });
+      addResponse("app_lexical_overview", payload.querySummary, payload.markdown, payload.payload);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Falha ao executar Lexical Overview.";
+      toast.error(msg);
+    } finally {
+      setIsRunningLexicalOverview(false);
+    }
+  }, [addResponse, lexicalMaxResults, lexicalTerm, setIsRunningLexicalOverview, toast]);
+
   const handleRunSemanticSearch = useCallback(async () => {
     const indexId = selectedSemanticSearchIndexId.trim();
     const query = semanticSearchQuery.trim();
@@ -846,6 +882,7 @@ const useGhostWriterApps = ({
     handleRunVerbeteFatologia,
     handleSelectVerbetografiaAction,
     handleRunLexicalSearch,
+    handleRunLexicalOverview,
     handleRunSemanticSearch,
     handleRunVerbeteSearch,
     handleRunRandomPensata,

@@ -5,6 +5,7 @@ import AiAssistantConfigPanel from "@/features/ghost-writer/components/AiAssista
 import BiblioExternaPanel from "@/features/ghost-writer/components/BiblioExternaPanel";
 import BiblioGeralPanel from "@/features/ghost-writer/components/BiblioGeralPanel";
 import BookSearchPanel from "@/features/ghost-writer/components/BookSearchPanel";
+import LexicalOverviewPanel from "@/features/ghost-writer/components/LexicalOverviewPanel";
 import InsertRefBookPanel from "@/features/ghost-writer/components/InsertRefBookPanel";
 import InsertRefVerbetePanel from "@/features/ghost-writer/components/InsertRefVerbetePanel";
 import SemanticSearchPanel from "@/features/ghost-writer/components/SemanticSearchPanel";
@@ -54,6 +55,7 @@ interface AppsParameterSectionProps {
   lexicalTerm: string;
   lexicalMaxResults: number;
   isRunningLexicalSearch: boolean;
+  isRunningLexicalOverview: boolean;
   selectedSemanticSearchIndexId: string;
   semanticSearchIndexes: SemanticIndexOption[];
   isLoadingSemanticSearchIndexes: boolean;
@@ -117,6 +119,7 @@ interface AppsParameterSectionProps {
   onLexicalTermChange: (value: string) => void;
   onLexicalMaxResultsChange: (value: number) => void;
   onRunLexicalSearch: () => void | Promise<void>;
+  onRunLexicalOverview: () => void | Promise<void>;
   onSelectedSemanticSearchIndexIdChange: (value: string) => void;
   onSemanticSearchQueryChange: (value: string) => void;
   onSemanticSearchMaxResultsChange: (value: number) => void;
@@ -183,6 +186,7 @@ const AppsParameterSection = ({
   lexicalTerm,
   lexicalMaxResults,
   isRunningLexicalSearch,
+  isRunningLexicalOverview,
   selectedSemanticSearchIndexId,
   semanticSearchIndexes,
   isLoadingSemanticSearchIndexes,
@@ -246,6 +250,7 @@ const AppsParameterSection = ({
   onLexicalTermChange,
   onLexicalMaxResultsChange,
   onRunLexicalSearch,
+  onRunLexicalOverview,
   onSelectedSemanticSearchIndexIdChange,
   onSemanticSearchQueryChange,
   onSemanticSearchMaxResultsChange,
@@ -412,6 +417,22 @@ const AppsParameterSection = ({
         onMaxResultsChange={onLexicalMaxResultsChange}
         onRunSearch={() => void onRunLexicalSearch()}
         isRunning={isRunningLexicalSearch}
+        showPanelChrome={false}
+      />
+    );
+  }
+
+  if (appId === "app13") {
+    return (
+      <LexicalOverviewPanel
+        title={parameterAppMeta.app13.title}
+        description={parameterAppMeta.app13.description}
+        term={lexicalTerm}
+        maxResults={lexicalMaxResults}
+        onTermChange={onLexicalTermChange}
+        onMaxResultsChange={onLexicalMaxResultsChange}
+        onRunSearch={() => void onRunLexicalOverview()}
+        isRunning={isRunningLexicalOverview}
         showPanelChrome={false}
       />
     );

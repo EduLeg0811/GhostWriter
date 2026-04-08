@@ -85,6 +85,7 @@ interface ParameterPanelContentProps {
   lexicalTerm: string;
   lexicalMaxResults: number;
   isRunningLexicalSearch: boolean;
+  isRunningLexicalOverview: boolean;
   selectedSemanticSearchIndexId: string;
   semanticSearchIndexes: SemanticIndexOption[];
   isLoadingSemanticSearchIndexes: boolean;
@@ -177,6 +178,7 @@ interface ParameterPanelContentProps {
   onLexicalTermChange: (value: string) => void;
   onLexicalMaxResultsChange: (value: number) => void;
   onRunLexicalSearch: () => void | Promise<void>;
+  onRunLexicalOverview: () => void | Promise<void>;
   onSelectedSemanticSearchIndexIdChange: (value: string) => void;
   onSemanticSearchQueryChange: (value: string) => void;
   onSemanticSearchMaxResultsChange: (value: number) => void;
@@ -271,6 +273,7 @@ const ParameterPanelContent = ({
   lexicalTerm,
   lexicalMaxResults,
   isRunningLexicalSearch,
+  isRunningLexicalOverview,
   selectedSemanticSearchIndexId,
   semanticSearchIndexes,
   isLoadingSemanticSearchIndexes,
@@ -363,6 +366,7 @@ const ParameterPanelContent = ({
   onLexicalTermChange,
   onLexicalMaxResultsChange,
   onRunLexicalSearch,
+  onRunLexicalOverview,
   onSelectedSemanticSearchIndexIdChange,
   onSemanticSearchQueryChange,
   onSemanticSearchMaxResultsChange,
@@ -547,6 +551,7 @@ const ParameterPanelContent = ({
             lexicalTerm={lexicalTerm}
             lexicalMaxResults={lexicalMaxResults}
             isRunningLexicalSearch={isRunningLexicalSearch}
+            isRunningLexicalOverview={isRunningLexicalOverview}
             selectedSemanticSearchIndexId={selectedSemanticSearchIndexId}
             semanticSearchIndexes={semanticSearchIndexes}
             isLoadingSemanticSearchIndexes={isLoadingSemanticSearchIndexes}
@@ -610,6 +615,7 @@ const ParameterPanelContent = ({
             onLexicalTermChange={onLexicalTermChange}
             onLexicalMaxResultsChange={onLexicalMaxResultsChange}
             onRunLexicalSearch={onRunLexicalSearch}
+            onRunLexicalOverview={onRunLexicalOverview}
             onSelectedSemanticSearchIndexIdChange={onSelectedSemanticSearchIndexIdChange}
             onSemanticSearchQueryChange={onSemanticSearchQueryChange}
             onSemanticSearchMaxResultsChange={onSemanticSearchMaxResultsChange}

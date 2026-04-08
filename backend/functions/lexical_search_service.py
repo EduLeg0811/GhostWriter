@@ -34,6 +34,26 @@ BOOK_CODE_TO_FILE: dict[str, str] = {
     "EC": "EC",
 }
 FILE_TO_BOOK_CODE: dict[str, str] = {filename: code for code, filename in BOOK_CODE_TO_FILE.items()}
+BOOK_CODE_LABELS: dict[str, str] = {
+    "PC": "Projecoes da Consciencia",
+    "PROJ": "Projeciologia",
+    "EXP": "700 Experimentos da Conscienciologia",
+    "CCG": "Conscienciograma",
+    "TNP": "Manual da Tenepes",
+    "MP": "Manual da Proexis",
+    "MDE": "Manual da Dupla Evolutiva",
+    "MRC": "Manual de Redacao da Conscienciologia",
+    "MMT": "Manual dos Megapensenes Trivocabulares",
+    "TC": "Temas da Conscienciologia",
+    "TEAT": "200 Teaticas da Conscienciologia",
+    "NE": "Nossa Evolucao",
+    "HSR": "Homo sapiens reurbanisatus",
+    "HSP": "Homo sapiens pacificus",
+    "DNC": "Dicionario de Neologismos da Conscienciologia",
+    "DAC": "Dicionario de Argumentos da Conscienciologia",
+    "LO": "Lexico de Ortopensatas",
+    "EC": "Enciclopedia da Conscienciologia",
+}
 
 # Limite proprio do backend para buscas lexicais em livro.
 # A varredura e interrompida quando atingir esse teto para evitar
@@ -319,13 +339,20 @@ def list_lexical_books() -> list[str]:
     return sorted(codes)
 
 
-def _search_lexical_book_internal(book: str, term: str, limit: int = 50) -> tuple[int, list[dict[str, Any]]]:
+def _iter_lexical_excel_files() -> list[Path]:
+    if not LEXICAL_DIR.exists():
+        return []
+    return [
+        path
+        for path in sorted(LEXICAL_DIR.glob("*.xlsx"), key=lambda item: item.stem.upper())
+        if path.is_file() and not path.name.startswith("~$")
+    ]
+
+
+def _resolve_book_identity(book: str) -> tuple[str, Path, str]:
     book_code = (book or "").strip().upper()
-    raw_term = _sanitize_search_text(term)
     if not book_code:
         raise ValueError("Parametro 'book' e obrigatorio.")
-    if not raw_term:
-        raise ValueError("Parametro 'term' e obrigatorio.")
 
     filename = BOOK_CODE_TO_FILE.get(book_code)
     if not filename:
@@ -334,6 +361,25 @@ def _search_lexical_book_internal(book: str, term: str, limit: int = 50) -> tupl
     source_path = LEXICAL_DIR / f"{filename}.xlsx"
     if not source_path.exists():
         raise FileNotFoundError(f"Livro lexical nao encontrado: {book_code}.")
+    return book_code, source_path, Path(filename).stem
+
+
+def _resolve_book_label(book_code: str, file_stem: str) -> str:
+    normalized_code = (book_code or "").strip().upper()
+    return BOOK_CODE_LABELS.get(normalized_code) or file_stem or normalized_code
+
+
+def _search_lexical_source_internal(
+    source_path: Path,
+    resolved_book_code: str,
+    resolved_book_label: str,
+    file_stem: str,
+    term: str,
+    limit: int = 50,
+) -> tuple[int, list[dict[str, Any]]]:
+    raw_term = _sanitize_search_text(term)
+    if not raw_term:
+        raise ValueError("Parametro 'term' e obrigatorio.")
 
     max_rows = max(1, min(int(limit or 50), MAX_BOOK_SEARCH))
     term_norm = _normalize_for_match(raw_term)
@@ -388,11 +434,14 @@ def _search_lexical_book_internal(book: str, term: str, limit: int = 50) -> tupl
             if len(rows) < max_rows:
                 rows.append(
                     {
-                        "book": book_code,
+                        "book": resolved_book_code,
+                        "book_label": resolved_book_label,
+                        "file_stem": file_stem,
                         "row": row_index,
                         "number": row_number,
                         "title": str(row_map.get("title") or "").strip(),
                         "text": processed_text,
+                        "pagina": str(row_map.get("pagina") or row_map.get("page") or "").strip(),
                         "data": row_map,
                     }
                 )
@@ -404,6 +453,19 @@ def _search_lexical_book_internal(book: str, term: str, limit: int = 50) -> tupl
         workbook.close()
 
 
+def _search_lexical_book_internal(book: str, term: str, limit: int = 50) -> tuple[int, list[dict[str, Any]]]:
+    book_code, source_path, file_stem = _resolve_book_identity(book)
+    book_label = _resolve_book_label(book_code, file_stem)
+    return _search_lexical_source_internal(
+        source_path=source_path,
+        resolved_book_code=book_code,
+        resolved_book_label=book_label,
+        file_stem=file_stem,
+        term=term,
+        limit=limit,
+    )
+
+
 def search_lexical_book(book: str, term: str, limit: int = 50) -> list[dict[str, Any]]:
     _, rows = _search_lexical_book_internal(book=book, term=term, limit=limit)
     return rows
@@ -411,6 +473,45 @@ def search_lexical_book(book: str, term: str, limit: int = 50) -> list[dict[str,
 
 def search_lexical_book_with_total(book: str, term: str, limit: int = 50) -> tuple[int, list[dict[str, Any]]]:
     return _search_lexical_book_internal(book=book, term=term, limit=limit)
+
+
+def search_lexical_overview_with_total(term: str, limit: int = 50) -> tuple[int, list[dict[str, Any]]]:
+    raw_term = _sanitize_search_text(term)
+    if not raw_term:
+        raise ValueError("Parametro 'term' e obrigatorio.")
+
+    max_rows = max(1, min(int(limit or 50), MAX_BOOK_SEARCH))
+    groups: list[dict[str, Any]] = []
+    total_found = 0
+
+    for source_path in _iter_lexical_excel_files():
+        file_stem = source_path.stem.strip()
+        resolved_book_code = FILE_TO_BOOK_CODE.get(file_stem, file_stem)
+        resolved_book_label = _resolve_book_label(resolved_book_code, file_stem)
+        group_total, matches = _search_lexical_source_internal(
+            source_path=source_path,
+            resolved_book_code=resolved_book_code,
+            resolved_book_label=resolved_book_label,
+            file_stem=file_stem,
+            term=raw_term,
+            limit=max_rows,
+        )
+        if group_total <= 0:
+            continue
+
+        total_found += group_total
+        groups.append(
+            {
+                "bookCode": resolved_book_code,
+                "bookLabel": resolved_book_label,
+                "fileStem": file_stem,
+                "totalFound": group_total,
+                "shownCount": min(len(matches), max_rows),
+                "matches": matches[:max_rows],
+            }
+        )
+
+    return total_found, groups
 
 
 def search_lexical_verbetes_with_total(

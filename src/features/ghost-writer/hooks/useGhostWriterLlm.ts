@@ -538,12 +538,13 @@ const useGhostWriterLlm = ({
     };
   }, [setBackendStatus]);
 
-  const addResponse = useCallback((type: AIResponse["type"], query: string, content: string) => {
+  const addResponse = useCallback((type: AIResponse["type"], query: string, content: string, payload?: AIResponse["payload"]) => {
     setResponses((prev) => [{
       id: crypto.randomUUID(),
       type,
       query,
       content,
+      payload,
       timestamp: new Date(),
     }, ...prev]);
   }, [setResponses]);

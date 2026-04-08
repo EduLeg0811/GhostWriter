@@ -100,7 +100,7 @@ const Index = () => {
     biblioExternaYear, setBiblioExternaYear, biblioExternaJournal, setBiblioExternaJournal, biblioExternaPublisher, setBiblioExternaPublisher, biblioExternaIdentifier,
     setBiblioExternaIdentifier, biblioExternaExtra, setBiblioExternaExtra, biblioExternaFreeText, setBiblioExternaFreeText, isRunningBiblioExterna, setIsRunningBiblioExterna,
     lexicalBooks, setLexicalBooks, selectedLexicalBook, setSelectedLexicalBook, lexicalTerm, setLexicalTerm, lexicalMaxResults, setLexicalMaxResults, isRunningLexicalSearch,
-    setIsRunningLexicalSearch, semanticSearchQuery, setSemanticSearchQuery, semanticSearchMaxResults, setSemanticSearchMaxResults, semanticSearchIndexes, setSemanticSearchIndexes,
+    setIsRunningLexicalSearch, isRunningLexicalOverview, setIsRunningLexicalOverview, semanticSearchQuery, setSemanticSearchQuery, semanticSearchMaxResults, setSemanticSearchMaxResults, semanticSearchIndexes, setSemanticSearchIndexes,
     selectedSemanticSearchIndexId, setSelectedSemanticSearchIndexId, isLoadingSemanticSearchIndexes, setIsLoadingSemanticSearchIndexes, isRunningSemanticSearch, setIsRunningSemanticSearch,
     verbeteSearchAuthor, setVerbeteSearchAuthor, verbeteSearchTitle, setVerbeteSearchTitle, verbeteSearchArea, setVerbeteSearchArea, verbeteSearchText, setVerbeteSearchText,
     verbeteSearchMaxResults, setVerbeteSearchMaxResults, isRunningVerbeteSearch, setIsRunningVerbeteSearch, verbetografiaTitle, setVerbetografiaTitle,
@@ -237,6 +237,7 @@ const Index = () => {
     handleRunVerbeteFatologia,
     handleSelectVerbetografiaAction,
     handleRunLexicalSearch,
+    handleRunLexicalOverview,
     handleRunSemanticSearch,
     handleRunVerbeteSearch,
     handleRunRandomPensata,
@@ -329,7 +330,7 @@ const Index = () => {
   }, [actionText, macro1Term, setMacro1Term, setParameterPanelTarget]);
 
   const isHistoryProcessing =
-    isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningSemanticSearch || isRunningVerbeteSearch || isRunningVerbetografiaOpenTable || isRunningVerbetografiaOpenTableWord || isRunningVerbeteDefinologia || isRunningVerbeteFraseEnfatica || isRunningVerbeteSinonimologia || isRunningVerbeteFatologia;
+    isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningLexicalOverview || isRunningSemanticSearch || isRunningVerbeteSearch || isRunningVerbetografiaOpenTable || isRunningVerbetografiaOpenTableWord || isRunningVerbeteDefinologia || isRunningVerbeteFraseEnfatica || isRunningVerbeteSinonimologia || isRunningVerbeteFatologia;
   const parameterPanelHeaderMeta = parameterPanelTarget
     ? getParameterPanelHeaderMeta(parameterPanelTarget, appPanelScope)
     : null;
@@ -509,6 +510,7 @@ const Index = () => {
         lexicalTerm={lexicalTerm}
         lexicalMaxResults={lexicalMaxResults}
         isRunningLexicalSearch={isRunningLexicalSearch}
+        isRunningLexicalOverview={isRunningLexicalOverview}
         selectedSemanticSearchIndexId={selectedSemanticSearchIndexId}
         semanticSearchIndexes={semanticSearchIndexes}
         isLoadingSemanticSearchIndexes={isLoadingSemanticSearchIndexes}
@@ -606,6 +608,7 @@ const Index = () => {
         onLexicalTermChange={setLexicalTerm}
         onLexicalMaxResultsChange={setLexicalMaxResults}
         onRunLexicalSearch={handleRunLexicalSearch}
+        onRunLexicalOverview={handleRunLexicalOverview}
         onSelectedSemanticSearchIndexIdChange={setSelectedSemanticSearchIndexId}
         onSemanticSearchQueryChange={setSemanticSearchQuery}
         onSemanticSearchMaxResultsChange={setSemanticSearchMaxResults}

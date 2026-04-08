@@ -21,6 +21,7 @@ vi.mock("@/lib/backend-api", () => ({
   searchOnlineDictionaryApp: vi.fn(),
   semanticSearchPensatasApp: vi.fn(),
   searchLexicalBookApp: vi.fn(),
+  searchLexicalOverviewApp: vi.fn(),
   searchVerbeteApp: vi.fn(),
   uploadFileToServer: vi.fn(),
 }));

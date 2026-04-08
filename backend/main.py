@@ -182,6 +182,11 @@ class LexicalSearchRequest(BaseModel):
     limit: int = 50
 
 
+class LexicalOverviewSearchRequest(BaseModel):
+    term: str
+    limit: int = 50
+
+
 class LexicalVerbeteSearchRequest(BaseModel):
     author: str = ""
     title: str = ""
@@ -1119,6 +1124,37 @@ def api_lexical_search(payload: LexicalSearchRequest) -> dict[str, Any]:
             "term": term,
             "total": total,
             "matches": matches,
+        },
+    }
+
+
+@app.post("/api/apps/lexical/overview")
+def api_lexical_overview(payload: LexicalOverviewSearchRequest) -> dict[str, Any]:
+    term = (payload.term or "").strip()
+    if not term:
+        raise HTTPException(status_code=400, detail="Parametro 'term' e obrigatorio.")
+    limit = max(1, min(int(payload.limit or 50), 200))
+
+    try:
+        from backend.functions.lexical_search_service import search_lexical_overview_with_total
+    except Exception:
+        from functions.lexical_search_service import search_lexical_overview_with_total
+
+    try:
+        total_found, groups = search_lexical_overview_with_total(term=term, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Falha ao executar lexical overview: {exc}")
+
+    return {
+        "ok": True,
+        "result": {
+            "term": term,
+            "limit": limit,
+            "totalBooks": len(groups),
+            "totalFound": total_found,
+            "groups": groups,
         },
     }
 

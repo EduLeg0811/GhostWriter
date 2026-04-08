@@ -1,6 +1,7 @@
 import { renderHistorySearchCardsHtml } from "@/lib/historySearchCards";
 import { markdownToEditorHtml, normalizeHistoryContentToMarkdown } from "@/lib/markdown";
 import type { AIResponse } from "@/features/ghost-writer/types";
+import { renderLexicalOverviewPayloadHtml } from "@/features/ghost-writer/utils/historyLexicalOverview";
 
 const RESULT_LINE_INDENT_PX = 28;
 const RESULT_NUMBER_GAP_PX = 8;
@@ -555,10 +556,22 @@ const renderHistorySearchResponseExportHtml = (
 export const isHistorySearchResponseType = (type: AIResponse["type"]): type is "app_book_search" | "app_semantic_search" =>
   type === "app_book_search" || type === "app_semantic_search";
 
+const isLexicalOverviewResponse = (response: AIResponse): boolean =>
+  response.type === "app_lexical_overview" && response.payload?.kind === "lexical_overview";
+
 export const renderHistoryResponseEditorHtml = (
   response: AIResponse,
   options: Pick<HistoryResponseRenderOptions, "applyNumbering" | "applyReferences" | "applyMetadata" | "applyHighlight">,
 ): string => {
+  if (isLexicalOverviewResponse(response)) {
+    return renderLexicalOverviewPayloadHtml(response.payload, response.query, {
+      applyNumbering: options.applyNumbering,
+      applyReferences: options.applyReferences,
+      applyMetadata: options.applyMetadata,
+      applyHighlight: options.applyHighlight ?? true,
+    });
+  }
+
   if (isHistorySearchResponseType(response.type)) {
     return renderHistorySearchResponseHtml(response, { ...options });
   }
@@ -582,6 +595,15 @@ export const renderHistoryResponseAppendBodyHtml = (
   response: AIResponse,
   options?: Pick<HistoryResponseRenderOptions, "applyNumbering" | "applyReferences" | "applyMetadata" | "applyHighlight">,
 ): string => {
+  if (isLexicalOverviewResponse(response)) {
+    return renderLexicalOverviewPayloadHtml(response.payload, response.query, {
+      applyNumbering: options?.applyNumbering ?? false,
+      applyReferences: options?.applyReferences ?? true,
+      applyMetadata: options?.applyMetadata ?? true,
+      applyHighlight: options?.applyHighlight ?? true,
+    });
+  }
+
   if (isHistorySearchResponseType(response.type)) {
     return renderHistorySearchResponseExportHtml(response, {
       applyNumbering: options?.applyNumbering ?? false,
@@ -605,6 +627,16 @@ export const renderHistoryResponseCopyHtml = (
   response: AIResponse,
   options: Pick<HistoryResponseRenderOptions, "applyNumbering" | "applyReferences" | "applyMetadata" | "applyHighlight">,
 ): string => {
+  if (isLexicalOverviewResponse(response)) {
+    const html = renderLexicalOverviewPayloadHtml(response.payload, response.query, {
+      applyNumbering: options.applyNumbering,
+      applyReferences: options.applyReferences,
+      applyMetadata: options.applyMetadata,
+      applyHighlight: options.applyHighlight ?? true,
+    });
+    return flattenNumberedBlocksForClipboard(html);
+  }
+
   if (isHistorySearchResponseType(response.type)) {
     return renderHistorySearchResponseExportHtml(response, options);
   }

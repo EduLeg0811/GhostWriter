@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLexicalSearchHistoryResponsePayload, buildSemanticSearchHistoryResponsePayload, resolveSemanticSearchIndexLabel } from "@/features/ghost-writer/utils/historySearchResponses";
+import { buildLexicalOverviewHistoryResponsePayload, buildLexicalSearchHistoryResponsePayload, buildSemanticSearchHistoryResponsePayload, resolveSemanticSearchIndexLabel } from "@/features/ghost-writer/utils/historySearchResponses";
 
 describe("historySearchResponses", () => {
   it("builds lexical markdown from explicit text and preserves query summary", () => {
@@ -69,6 +69,88 @@ describe("historySearchResponses", () => {
     });
 
     expect(payload.markdown).toBe("");
+  });
+
+  it("builds lexical overview payload grouped by book and appends page in text", () => {
+    const payload = buildLexicalOverviewHistoryResponsePayload({
+      term: "cosmoetica",
+      limit: 3,
+      totalBooks: 2,
+      totalFound: 5,
+      groups: [
+        {
+          bookCode: "LO",
+          bookLabel: "Lexico de Ortopensatas",
+          fileStem: "LO",
+          totalFound: 3,
+          shownCount: 3,
+          matches: [
+            {
+              book: "LO",
+              row: 5,
+              number: 1,
+              title: "Cosmoetica",
+              text: "Trecho do lexico",
+              pagina: "41",
+              data: { area: "Mentalsomatologia" },
+            },
+          ],
+        },
+        {
+          bookCode: "QUEST",
+          bookLabel: "QUEST",
+          fileStem: "QUEST",
+          totalFound: 2,
+          shownCount: 2,
+          matches: [
+            {
+              book: "QUEST",
+              row: 8,
+              number: 12,
+              title: "Questao",
+              text: "Trecho do quest",
+              pagina: "",
+              data: { author: "E.Q." },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(payload.querySummary).toBe("Termo: cosmoetica | Total: 5 | Livros: 2 | Limite por livro: 3");
+    expect(payload.payload.kind).toBe("lexical_overview");
+    expect(payload.payload.groups[0].matches[0].text).toBe("Trecho do lexico (p. 41)");
+    expect(payload.payload.groups[1].bookLabel).toBe("QUEST");
+    expect(payload.markdown).toContain("## Lexico de Ortopensatas (3/3)");
+    expect(payload.markdown).toContain("Trecho do lexico (p. 41)");
+  });
+
+  it("formats QUEST text and references with question bold plus W prefix", () => {
+    const payload = buildLexicalSearchHistoryResponsePayload({
+      book: "QUEST",
+      term: "abdicacoes",
+      totalFound: 1,
+      maxResults: 10,
+      matches: [
+        {
+          book: "QUEST",
+          row: 7,
+          number: 2725,
+          title: "Abdicaciologia",
+          text: "\"Pergunta de teste\" | Resposta de teste",
+          pagina: "39",
+          data: {
+            quest: "\"Pergunta de teste\"",
+            answer: "Resposta de teste",
+            date: "05/11/2014",
+            author: "E.Q.",
+          },
+        },
+      ],
+    });
+
+    expect(payload.markdown).toContain("**\"Pergunta de teste\"**[[HISTORY_SEARCH_BR]]**W:** Resposta de teste");
+    expect(payload.markdown).toContain("(**QUEST**, 05/11/2014, E.Q., p. 39)");
   });
 
   it("resolves semantic index label from match before selected index fallback", () => {
