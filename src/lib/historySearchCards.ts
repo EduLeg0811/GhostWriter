@@ -25,7 +25,7 @@ const CARD_TEXT_TOP_SPACING_EM = "0.5em";
 const SOURCEBOOK_FALLBACK = "s/fonte";
 const TITLE_FALLBACK = "s/titulo";
 const METADATA_PRIORITY = ["sourcebook", "title", "argumento", "area", "date", "author", "pagina", "number"] as const;
-const HIDDEN_METADATA_KEYS = new Set(["text", "row", "number"]);
+const HIDDEN_METADATA_KEYS = new Set(["text", "row", "number", "quest", "answer"]);
 const CANONICAL_ALIAS_GROUPS: Record<string, string[]> = {
   sourcebook: ["sourcebook"],
   title: ["title", "titulo", "verbete", "tema", "cabecalho", "heading"],

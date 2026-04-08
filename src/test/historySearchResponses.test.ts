@@ -153,6 +153,34 @@ describe("historySearchResponses", () => {
     expect(payload.markdown).toContain("(**QUEST**, 05/11/2014, E.Q., p. 39)");
   });
 
+  it("normalizes QUEST answers that already start with W prefix", () => {
+    const payload = buildLexicalSearchHistoryResponsePayload({
+      book: "QUEST",
+      term: "abdicacoes",
+      totalFound: 1,
+      maxResults: 10,
+      matches: [
+        {
+          book: "QUEST",
+          row: 7,
+          number: 2725,
+          title: "Abdicaciologia",
+          text: "\"Pergunta de teste\" | W: Resposta de teste",
+          pagina: "39",
+          data: {
+            quest: "\"Pergunta de teste\"",
+            answer: "W: Resposta de teste",
+            date: "05/11/2014",
+            author: "E.Q.",
+          },
+        },
+      ],
+    });
+
+    expect(payload.markdown).toContain("**\"Pergunta de teste\"**[[HISTORY_SEARCH_BR]]**W:** Resposta de teste");
+    expect(payload.markdown).not.toContain("**W:** W:");
+  });
+
   it("resolves semantic index label from match before selected index fallback", () => {
     const label = resolveSemanticSearchIndexLabel({
       selectedIndexId: "LO",

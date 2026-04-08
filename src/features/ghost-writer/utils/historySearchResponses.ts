@@ -58,18 +58,19 @@ const formatQuestMatchText = (match: LexicalHistoryMatch): string => {
   const separatorIndex = rawText.indexOf("|");
   if (separatorIndex < 0) {
     const question = quest || rawText;
-    return replaceHistorySearchInlineBreaks(`**${question}**`);
+    return `**${question}**`;
   }
 
   const question = quest || rawText.slice(0, separatorIndex).trim();
   const answer = rawText.slice(separatorIndex + 1).trim();
-  return replaceHistorySearchInlineBreaks(`**${question}** | **W:** ${answer}`.trim());
+  const normalizedAnswer = answer.replace(/^W:\s*/i, "").trim();
+  return `**${question}** | **W:** ${normalizedAnswer}`.trim();
 };
 
 const formatLexicalMatchText = (match: LexicalHistoryMatch): string => {
   const text = (match.text || "").trim();
   if (!text) return text;
-  return isQuestMatch(match) ? formatQuestMatchText(match) : replaceHistorySearchInlineBreaks(text);
+  return isQuestMatch(match) ? formatQuestMatchText(match) : text;
 };
 
 export const buildLexicalSearchHistoryResponsePayload = (params: {
@@ -82,7 +83,7 @@ export const buildLexicalSearchHistoryResponsePayload = (params: {
   const { book, term, totalFound, maxResults, matches } = params;
   const markdown = buildHistorySearchCards(matches, {
     getTextParagraphs: (item) => {
-      const text = formatLexicalMatchText(item);
+      const text = replaceHistorySearchInlineBreaks(formatLexicalMatchText(item));
       const fallbackBody = Object.values(item.data || {}).filter(Boolean).join(" | ");
       return [text || fallbackBody];
     },
@@ -101,7 +102,7 @@ export const buildLexicalOverviewGroupMarkdown = (group: Pick<LexicalOverviewHis
 const matchesToCards = (matches: LexicalHistoryMatch[]): HistorySearchCardInput[] =>
   matches
     .map((match) => ({
-      textParagraphs: normalizeParagraphs([formatLexicalMatchText(match) || Object.values(match.data || {}).filter(Boolean).join(" | ")]),
+      textParagraphs: normalizeParagraphs([replaceHistorySearchInlineBreaks(formatLexicalMatchText(match)) || Object.values(match.data || {}).filter(Boolean).join(" | ")]),
       metadata: buildLexicalHistorySearchMetadata(match, match.book),
     }))
     .filter((item) => item.textParagraphs.length > 0);
