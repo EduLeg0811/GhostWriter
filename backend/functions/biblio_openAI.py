@@ -2,6 +2,7 @@
 import re
 import json
 import requests
+from pathlib import Path
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import List, Optional, Dict, Tuple
@@ -34,38 +35,8 @@ class Bibliografia:
 # ============================================================
 
 
-SYSTEM_PROMPT_TEXTO_LIVRE = """
-
-Você é um assistente especializado em reconstrução de referências bibliográficas acadêmicas.
-Sua função é identificar e reconstruir referências completas a partir de uma string bibliográfica livre fornecida pelo usuário.
-
-A string de entrada pode conter:
-- apenas parte do título
-- nome parcial do autor
-- sobrenome incompleto
-- ano aproximado
-- erros de digitação
-- ordem aleatória de elementos
-
-Identificação da obra: 
-- Utilize raciocínio bibliográfico para identificar a obra mais provável.
-
-Caso existam múltiplas correspondências plausíveis:
-- retorne no máximo 3 referências
-- ordenadas da maior para a menor probabilidade de correspondência.
-
-Normalização da saída
-A saída deve sempre seguir EXATAMENTE o formato:
-- **Sobrenome**, Nome; ***Título da obra***; informações adicionais separadas por ";"; ano.
-- Não inclua explicações, comentários ou texto adicional.  
-- Retorne apenas as referências formatadas.
-
-Exemplo
-Entrada:
-Tocci Digital Systems Principles 2011
-Saída:
-**Tocci**, Ronald J.; ***Digital Systems: Principles and Applications***; livro; brochura; 912 p.; 11ª ed.; Pearson; Upper Saddle River, NJ; 2011.
-""".strip()
+PROMPTS_DIR = Path(__file__).resolve().parents[2] / "shared" / "prompts"
+SYSTEM_PROMPT_TEXTO_LIVRE = (PROMPTS_DIR / "biblio_externa_system_prompt.txt").read_text(encoding="utf-8").strip()
 
 
 

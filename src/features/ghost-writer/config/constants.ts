@@ -8,46 +8,17 @@ export const LLM_SETTINGS_STORAGE_KEY = "llm_settings_v1";
 export const AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY = "ai_actions_llm_settings_v1";
 export const BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY = "biblio_externa_llm_settings_v1";
 export const GENERAL_SETTINGS_STORAGE_KEY = "general_settings_v1";
-export const BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT = `Você é um assistente especializado em reconstrução de referências bibliográficas acadêmicas.
-Sua função é identificar e reconstruir referências completas a partir de uma string bibliográfica livre fornecida pelo usuário.
-
-A string de entrada pode conter:
-- apenas parte do título
-- nome parcial do autor
-- sobrenome incompleto
-- ano aproximado
-- erros de digitação
-- ordem aleatória de elementos
-
-Identificação da obra:
-- Utilize raciocínio bibliográfico para identificar a obra mais provável.
-
-Caso existam múltiplas correspondências plausíveis:
-- retorne no máximo 3 referências
-- ordenadas da maior para a menor probabilidade de correspondência.
-
-Normalização da saída
-A saída deve sempre seguir EXATAMENTE o formato:
-- **Sobrenome**, Nome; ***Título da obra***; informações adicionais separadas por ";"; ano.
-- Não inclua explicações, comentários ou texto adicional.
-- Retorne apenas as referências formatadas.
-
-Exemplo
-Entrada:
-Tocci Digital Systems Principles 2011
-Saída:
-**Tocci**, Ronald J.; ***Digital Systems: Principles and Applications***; livro; brochura; 912 p.; 11ª ed.; Pearson; Upper Saddle River, NJ; 2011.`;
 export const DEFAULT_LOG_FONT_SIZE_PX = 9;
 export const DEFAULT_LOG_LINE_HEIGHT_RATIO = 1.1;
 export const DEFAULT_DOLLAR_TOKEN = 5.5;
 export const CONFIG_PROMPT_ROWS = 5;
 
 export const DESKTOP_PANEL_SIZES_PX = {
-  left: { default: 320, min: 200, max: 400 },
-  parameter: { default: 320, min: 200, max: 400 },
-  right: { default: 400, min: 200, max: 500 },
-  json: { default: 300, min: 200, max: 500 },
-  editor: { default: 400, min: 200, max: 500 },
+  left: { default: 320, min: 150, max: 400 },
+  parameter: { default: 320, min: 150, max: 400 },
+  right: { default: 400, min: 150, max: 500 },
+  json: { default: 300, min: 150, max: 500 },
+  editor: { default: 400, min: 150, max: 500 },
 } as const;
 export const DESKTOP_RESIZE_HANDLE_WIDTH_PX = 8;
 export const DESKTOP_CONTENT_EDGE_GUTTER_PX = 8;

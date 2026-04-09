@@ -2,19 +2,23 @@ import type { AiActionId } from "@/features/ghost-writer/types";
 import {
   buildAnalogiesPrompt,
   buildAiCommandPrompt,
+  buildAntonymsConsPrompt,
+  buildAntonymsPrompt,
+  buildCognatosConsPrompt,
   buildCognatosPrompt,
   buildComparisonsPrompt,
   buildCounterpointsPrompt,
-  buildAntonymsPrompt,
-  buildDictionaryPrompt,
+  buildDictLookupPrompt,
+  buildDefineConsPrompt,
   buildDefinePrompt,
+  buildEtymologyConsPrompt,
   buildEtymologyPrompt,
   buildExamplesPrompt,
-  buildNeoparadigmaPrompt,
   buildEpigraphPrompt,
+  buildNeoparadigmaPrompt,
   buildRewritePrompt,
-  buildSinonimologiaPrompt,
   buildSummarizePrompt,
+  buildSynonymsConsPrompt,
   buildSynonymsPrompt,
   buildTranslatePrompt,
   buildVerbeteDefinologiaPrompt,
@@ -24,7 +28,15 @@ import {
   type ChatMessage,
 } from "@/lib/openai";
 
-export type ActionSystemPromptId = Exclude<AiActionId, "dict_lookup"> | "app8" | "app9" | "app10" | "app11";
+export type TermsConceptsBasicActionId = "dictionary" | "synonyms" | "antonyms" | "etymology" | "cognatos";
+export type TermsConceptsConsActionSystemPromptId = "dictionaryCons" | "synonymsCons" | "antonymsCons" | "etymologyCons" | "cognatosCons";
+export type ActionSystemPromptId =
+  | AiActionId
+  | TermsConceptsConsActionSystemPromptId
+  | "app8"
+  | "app9"
+  | "app10"
+  | "app11";
 
 const getFirstSystemPrompt = (messages: ChatMessage[] | unknown): string => {
   if (!Array.isArray(messages)) return "";
@@ -32,16 +44,19 @@ const getFirstSystemPrompt = (messages: ChatMessage[] | unknown): string => {
 };
 
 export const DEFAULT_ACTION_SYSTEM_PROMPTS: Record<ActionSystemPromptId, string> = {
-  define: getFirstSystemPrompt(buildDefinePrompt("texto")),
-  sinonimologia: getFirstSystemPrompt(buildSinonimologiaPrompt("texto")),
   synonyms: getFirstSystemPrompt(buildSynonymsPrompt("texto")),
+  synonymsCons: getFirstSystemPrompt(buildSynonymsConsPrompt("texto")),
   antonyms: getFirstSystemPrompt(buildAntonymsPrompt("texto")),
+  antonymsCons: getFirstSystemPrompt(buildAntonymsConsPrompt("texto")),
   etymology: getFirstSystemPrompt(buildEtymologyPrompt("texto")),
-  dictionary: getFirstSystemPrompt(buildDictionaryPrompt("texto")),
+  etymologyCons: getFirstSystemPrompt(buildEtymologyConsPrompt("texto")),
+  dictionary: getFirstSystemPrompt(buildDefinePrompt("texto")),
+  dictionaryCons: getFirstSystemPrompt(buildDefineConsPrompt("texto")),
   epigraph: getFirstSystemPrompt(buildEpigraphPrompt("texto")),
   rewrite: getFirstSystemPrompt(buildRewritePrompt("texto")),
   summarize: getFirstSystemPrompt(buildSummarizePrompt("texto")),
   translate: getFirstSystemPrompt(buildTranslatePrompt("texto", "Ingles")),
+  dict_lookup: getFirstSystemPrompt(buildDictLookupPrompt("texto")),
   ai_command: getFirstSystemPrompt(buildAiCommandPrompt("texto", "query")),
   analogies: getFirstSystemPrompt(buildAnalogiesPrompt("texto")),
   comparisons: getFirstSystemPrompt(buildComparisonsPrompt("texto")),
@@ -49,10 +64,27 @@ export const DEFAULT_ACTION_SYSTEM_PROMPTS: Record<ActionSystemPromptId, string>
   counterpoints: getFirstSystemPrompt(buildCounterpointsPrompt("texto")),
   neoparadigma: getFirstSystemPrompt(buildNeoparadigmaPrompt("texto")),
   cognatos: getFirstSystemPrompt(buildCognatosPrompt("texto")),
+  cognatosCons: getFirstSystemPrompt(buildCognatosConsPrompt("texto")),
   app8: getFirstSystemPrompt(buildVerbeteDefinologiaPrompt("titulo: exemplo | especialidade: exemplo")),
   app9: getFirstSystemPrompt(buildVerbeteSinonimologiaPrompt("titulo: exemplo | especialidade: exemplo")),
   app10: getFirstSystemPrompt(buildVerbeteFatologiaPrompt("titulo: exemplo | especialidade: exemplo")),
   app11: getFirstSystemPrompt(buildVerbeteFraseEnfaticaPrompt("titulo: exemplo | especialidade: exemplo")),
+};
+
+const TERMS_CONCEPTS_CONS_PROMPT_IDS: Record<TermsConceptsBasicActionId, TermsConceptsConsActionSystemPromptId> = {
+  dictionary: "dictionaryCons",
+  synonyms: "synonymsCons",
+  antonyms: "antonymsCons",
+  etymology: "etymologyCons",
+  cognatos: "cognatosCons",
+};
+
+export const getTermsConceptsActionSystemPromptId = (
+  actionId: TermsConceptsBasicActionId | null,
+  isConscienciografiaEnabled: boolean,
+): ActionSystemPromptId | null => {
+  if (!actionId) return null;
+  return isConscienciografiaEnabled ? TERMS_CONCEPTS_CONS_PROMPT_IDS[actionId] : actionId;
 };
 
 export const getActionSystemPrompt = (

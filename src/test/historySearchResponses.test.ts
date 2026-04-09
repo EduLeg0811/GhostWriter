@@ -181,6 +181,35 @@ describe("historySearchResponses", () => {
     expect(payload.markdown).not.toContain("**W:** W:");
   });
 
+  it("prefers QUEST answer metadata and strips repeated W prefixes from fallback text", () => {
+    const payload = buildLexicalSearchHistoryResponsePayload({
+      book: "QUEST",
+      term: "amparadoras",
+      totalFound: 1,
+      maxResults: 10,
+      matches: [
+        {
+          book: "QUEST",
+          row: 48,
+          number: 1,
+          title: "Amparologia",
+          text: "Qual o objetivo? | W: W: Texto contaminado",
+          pagina: "",
+          data: {
+            quest: "Qual o objetivo?",
+            answer: "Foi uma miniclarividencia impressionante.",
+            date: "06/05/2013",
+            author: "L.L.",
+          },
+        },
+      ],
+    });
+
+    expect(payload.markdown).toContain("**Qual o objetivo?**[[HISTORY_SEARCH_BR]]**W:** Foi uma miniclarividencia impressionante.");
+    expect(payload.markdown).not.toContain("**W:** W:");
+    expect(payload.markdown).not.toContain("Texto contaminado");
+  });
+
   it("resolves semantic index label from match before selected index fallback", () => {
     const label = resolveSemanticSearchIndexLabel({
       selectedIndexId: "LO",

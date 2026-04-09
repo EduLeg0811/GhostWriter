@@ -569,6 +569,7 @@ export const renderHistoryResponseEditorHtml = (
       applyReferences: options.applyReferences,
       applyMetadata: options.applyMetadata,
       applyHighlight: options.applyHighlight ?? true,
+      forExport: false,
     });
   }
 
@@ -601,6 +602,7 @@ export const renderHistoryResponseAppendBodyHtml = (
       applyReferences: options?.applyReferences ?? true,
       applyMetadata: options?.applyMetadata ?? true,
       applyHighlight: options?.applyHighlight ?? true,
+      forExport: true,
     });
   }
 
@@ -633,6 +635,7 @@ export const renderHistoryResponseCopyHtml = (
       applyReferences: options.applyReferences,
       applyMetadata: options.applyMetadata,
       applyHighlight: options.applyHighlight ?? true,
+      forExport: true,
     });
     return flattenNumberedBlocksForClipboard(html);
   }

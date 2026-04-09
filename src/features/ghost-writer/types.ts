@@ -3,9 +3,9 @@ import type { BookCode } from "@/lib/bookCatalog";
 export type MacroActionId = "macro1" | "macro2";
 export type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7" | "app8" | "app9" | "app10" | "app11" | "app12" | "app13";
 export type AppPanelScope = "bibliografia" | "busca_termos" | "semantic_search" | "verbetografia";
-export type AiPanelScope = "definitions_cons" | "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command";
-export type AiActionId = "define" | "sinonimologia" | "synonyms" | "antonyms" | "etymology" | "dictionary" | "epigraph" | "rewrite" | "summarize" | "cognatos" | "translate" | "dict_lookup" | "ai_command" | "analogies" | "comparisons" | "examples" | "counterpoints" | "neoparadigma";
-export type ParameterPanelSection = "document" | "sources" | "definitions_cons" | "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command" | "apps" | "applications";
+export type AiPanelScope = "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command";
+export type AiActionId = "synonyms" | "antonyms" | "etymology" | "dictionary" | "epigraph" | "rewrite" | "summarize" | "cognatos" | "translate" | "dict_lookup" | "ai_command" | "analogies" | "comparisons" | "examples" | "counterpoints" | "neoparadigma";
+export type ParameterPanelSection = "document" | "sources" | "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command" | "apps" | "applications";
 export type ParameterPanelTargetId = MacroActionId | AiActionId | AppActionId | null;
 export type ParameterPanelTarget = { section: ParameterPanelSection; id: ParameterPanelTargetId } | null;
 export type MobilePanelId = "left" | "center" | "right" | "editor" | "json";
@@ -69,8 +69,6 @@ export type AIResponsePayload = LexicalOverviewHistoryPayload;
 export interface AIResponse {
   id: string;
   type:
-    | "define"
-    | "sinonimologia"
     | "synonyms"
     | "antonyms"
     | "etymology"

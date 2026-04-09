@@ -7,6 +7,7 @@ type LexicalOverviewRenderOptions = {
   applyReferences: boolean;
   applyMetadata: boolean;
   applyHighlight: boolean;
+  forExport?: boolean;
 };
 
 const parseHtmlRoot = (html: string): { doc: Document; root: HTMLDivElement } | null => {
@@ -97,6 +98,57 @@ const buildGroupSubtitle = (group: LexicalOverviewHistoryGroup): string => {
   return `${fileStem} · ${group.shownCount}/${group.totalFound}`;
 };
 
+const convertLexicalOverviewGroupDivsToParagraphs = (html: string): string => {
+  const parsed = parseHtmlRoot(html);
+  if (!parsed) return html;
+  const { doc, root } = parsed;
+  const fragment = doc.createDocumentFragment();
+
+  const copyInlineStyles = (from: HTMLElement, to: HTMLElement) => {
+    const style = from.getAttribute("style");
+    if (style) to.setAttribute("style", style);
+  };
+
+  for (const wrapper of Array.from(root.children)) {
+    const wrapperElement = wrapper as HTMLElement;
+    const childBlocks = Array.from(wrapperElement.children);
+    if (childBlocks.length === 0) continue;
+
+    childBlocks.forEach((child) => {
+      const paragraph = doc.createElement("p");
+      const childElement = child as HTMLElement;
+
+      if (childElement.style.display === "flex") {
+        const childParts = Array.from(childElement.children) as HTMLElement[];
+        const numberPart = childParts[0];
+        const contentPart = childParts[1];
+        const numberText = (numberPart?.textContent || "").replace(/\u00a0/g, " ").trim();
+        const normalizedNumber = numberText.match(/^(\d{1,2})\.$/)?.[1] || "";
+        const contentHtml = contentPart?.innerHTML || childElement.innerHTML;
+        paragraph.innerHTML = normalizedNumber
+          ? `<strong>${escapeHtml(normalizedNumber)}.</strong>&nbsp;&nbsp;${contentHtml}`
+          : contentHtml;
+      } else {
+        paragraph.innerHTML = childElement.innerHTML;
+      }
+
+      copyInlineStyles(childElement, paragraph);
+      if (childElement.style.display === "flex") {
+        paragraph.style.display = "block";
+        paragraph.style.alignItems = "";
+        paragraph.style.gap = "0";
+        paragraph.style.paddingLeft = "0";
+        paragraph.style.textIndent = "0";
+      }
+      fragment.appendChild(paragraph);
+    });
+  }
+
+  root.innerHTML = "";
+  root.appendChild(fragment);
+  return root.innerHTML;
+};
+
 export const renderLexicalOverviewGroupHtml = (
   group: LexicalOverviewHistoryGroup,
   query: string,
@@ -108,7 +160,8 @@ export const renderLexicalOverviewGroupHtml = (
     showSourceLine: options.applyReferences,
     showMetadata: options.applyMetadata,
   });
-  return options.applyHighlight ? highlightLexicalOverviewHtml(renderedHtml, query) : renderedHtml;
+  const exportHtml = options.forExport ? convertLexicalOverviewGroupDivsToParagraphs(renderedHtml) : renderedHtml;
+  return options.applyHighlight ? highlightLexicalOverviewHtml(exportHtml, query) : exportHtml;
 };
 
 export const renderLexicalOverviewPayloadHtml = (

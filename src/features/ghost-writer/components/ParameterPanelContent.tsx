@@ -5,7 +5,8 @@ import AiActionsParameterSection from "@/features/ghost-writer/components/AiActi
 import AppsParameterSection from "@/features/ghost-writer/components/AppsParameterSection";
 import ParameterPanelToolbar from "@/features/ghost-writer/components/ParameterPanelToolbar";
 import type { ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
-import { BOOK_SOURCE, MACRO1_HIGHLIGHT_COLORS, TRANSLATE_LANGUAGE_OPTIONS, VECTOR_STORES_SOURCE } from "@/features/ghost-writer/config/options";
+import { NO_VECTOR_STORE_ID } from "@/features/ghost-writer/config/constants";
+import { BOOK_SOURCE, DEFAULT_BOOK_SOURCE_ID, MACRO1_HIGHLIGHT_COLORS, TRANSLATE_LANGUAGE_OPTIONS, VECTOR_STORES_SOURCE } from "@/features/ghost-writer/config/options";
 import type { TextStats } from "@/hooks/useTextStats";
 import type { BookCode } from "@/lib/bookCatalog";
 import type { UploadedLlmFile } from "@/lib/openai";
@@ -19,6 +20,7 @@ interface ParameterPanelContentProps {
   isAiCommandSelectionPending: boolean;
   isLoading: boolean;
   isAiActionsConfigOpen: boolean;
+  isTermsConceptsConscienciografiaEnabled: boolean;
   isUploadingChatFiles: boolean;
   currentFileId: string;
   selectedImportFileName: string;
@@ -109,6 +111,7 @@ interface ParameterPanelContentProps {
   isRunningVerbeteFatologia: boolean;
   hasVerbetografiaRequiredFields: boolean;
   onToggleAiActionsConfig: () => void;
+  onToggleTermsConceptsConscienciografia: () => void;
   onCreateBlankDocument: () => void | Promise<void>;
   onDocumentPanelFile: (file: File | null | undefined) => void | Promise<void>;
   onDocumentPanelDrop: (event: React.DragEvent<HTMLDivElement>) => void;
@@ -132,7 +135,7 @@ interface ParameterPanelContentProps {
   onLlmEffortChange: (value: string) => void;
   onLlmSystemPromptChange: (value: string) => void;
   onRunRandomPensata: () => void | Promise<void>;
-  onOpenAiActionParameters: (id: AiActionId) => void;
+  onOpenAiActionParameters: (id: AiActionId, sectionOverride?: "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command") => void;
   onActionTextChange: (value: string) => void;
   onAiCommandQueryChange: (value: string) => void;
   onTranslateLanguageChange: (value: (typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"]) => void;
@@ -207,6 +210,7 @@ const ParameterPanelContent = ({
   isAiCommandSelectionPending,
   isLoading,
   isAiActionsConfigOpen,
+  isTermsConceptsConscienciografiaEnabled,
   isUploadingChatFiles,
   currentFileId,
   selectedImportFileName,
@@ -297,6 +301,7 @@ const ParameterPanelContent = ({
   isRunningVerbeteFatologia,
   hasVerbetografiaRequiredFields,
   onToggleAiActionsConfig,
+  onToggleTermsConceptsConscienciografia,
   onCreateBlankDocument,
   onDocumentPanelFile,
   onDocumentPanelDrop,
@@ -389,6 +394,29 @@ const ParameterPanelContent = ({
   onVerbetografiaSpecialtyChange,
 }: ParameterPanelContentProps) => {
   const aiActionsSelectedVectorStoreId = aiActionsSelectedVectorStoreIds[0] ?? "";
+  const isTermsConceptsAction =
+    parameterPanelTarget.section === "actions"
+    && (parameterPanelTarget.id === "dictionary"
+      || parameterPanelTarget.id === "synonyms"
+      || parameterPanelTarget.id === "antonyms"
+      || parameterPanelTarget.id === "etymology"
+      || parameterPanelTarget.id === "cognatos");
+  const isVerbetografiaAiAction =
+    parameterPanelTarget.section === "apps"
+    && appPanelScope === "verbetografia"
+    && (parameterPanelTarget.id === "app8"
+      || parameterPanelTarget.id === "app9"
+      || parameterPanelTarget.id === "app10"
+      || parameterPanelTarget.id === "app11");
+
+  const termsConceptsForcedVectorStoreId = isTermsConceptsConscienciografiaEnabled
+    ? (VECTOR_STORES_SOURCE.find((item) => item.label === "WVBooks")?.id ?? "")
+    : NO_VECTOR_STORE_ID;
+  const verbetografiaDefaultVectorStoreId = DEFAULT_BOOK_SOURCE_ID;
+  const effectiveVerbetografiaVectorStoreId =
+    aiActionsSelectedVectorStoreId === NO_VECTOR_STORE_ID
+      ? NO_VECTOR_STORE_ID
+      : (aiActionsSelectedVectorStoreId || verbetografiaDefaultVectorStoreId);
 
   return (
     <div className="flex h-full flex-col">
@@ -397,13 +425,15 @@ const ParameterPanelContent = ({
         appPanelScope={appPanelScope}
         isLoading={isLoading}
         isAiActionsConfigOpen={isAiActionsConfigOpen}
+        isTermsConceptsConscienciografiaEnabled={isTermsConceptsConscienciografiaEnabled}
         hasVerbetografiaRequiredFields={hasVerbetografiaRequiredFields}
         onToggleAiActionsConfig={onToggleAiActionsConfig}
+        onToggleTermsConceptsConscienciografia={onToggleTermsConceptsConscienciografia}
         onOpenAiActionParameters={onOpenAiActionParameters}
         onSelectVerbetografiaAction={onSelectVerbetografiaAction}
         onRunAppAction={(id) => void onRunAppAction(id)}
       />
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         {parameterPanelTarget.section === "document" ? (
           <DocumentParameterSection
             activeMacroId={parameterPanelTarget.id}
@@ -474,7 +504,7 @@ const ParameterPanelContent = ({
           />
         ) : null}
 
-        {(parameterPanelTarget.section === "definitions_cons" || parameterPanelTarget.section === "actions" || parameterPanelTarget.section === "rewriting" || parameterPanelTarget.section === "translation" || parameterPanelTarget.section === "customized_prompts" || parameterPanelTarget.section === "ai_command") ? (
+        {(parameterPanelTarget.section === "actions" || parameterPanelTarget.section === "rewriting" || parameterPanelTarget.section === "translation" || parameterPanelTarget.section === "customized_prompts" || parameterPanelTarget.section === "ai_command") ? (
           <AiActionsParameterSection
             section={parameterPanelTarget.section}
             actionId={parameterPanelTarget.id}
@@ -485,6 +515,7 @@ const ParameterPanelContent = ({
             isLoading={isLoading}
             hasDocumentOpen={Boolean(currentFileId)}
             isConfigOpen={isAiActionsConfigOpen}
+            isTermsConceptsConscienciografiaEnabled={isTermsConceptsConscienciografiaEnabled}
             includeEditorContextInLlm={includeEditorContextInLlm}
             aiActionsLlmModel={aiActionsLlmModel}
             aiActionsLlmTemperature={aiActionsLlmTemperature}
@@ -492,7 +523,7 @@ const ParameterPanelContent = ({
             aiActionsLlmVerbosity={aiActionsLlmVerbosity}
             aiActionsLlmEffort={aiActionsLlmEffort}
             aiActionSystemPrompts={aiActionSystemPrompts}
-            aiActionsSelectedVectorStoreId={aiActionsSelectedVectorStoreId}
+            aiActionsSelectedVectorStoreId={isTermsConceptsAction ? termsConceptsForcedVectorStoreId : aiActionsSelectedVectorStoreId}
             aiActionVectorStoreOptions={aiActionVectorStoreOptions}
             uploadedChatFiles={uploadedChatFiles}
             isUploadingChatFiles={isUploadingChatFiles}
@@ -580,7 +611,7 @@ const ParameterPanelContent = ({
             aiActionsLlmVerbosity={aiActionsLlmVerbosity}
             aiActionsLlmEffort={aiActionsLlmEffort}
             aiActionSystemPrompts={aiActionSystemPrompts}
-            aiActionsSelectedVectorStoreId={aiActionsSelectedVectorStoreId}
+            aiActionsSelectedVectorStoreId={isVerbetografiaAiAction ? effectiveVerbetografiaVectorStoreId : aiActionsSelectedVectorStoreId}
             aiActionVectorStoreOptions={aiActionVectorStoreOptions}
             uploadedChatFiles={uploadedChatFiles}
             isUploadingChatFiles={isUploadingChatFiles}

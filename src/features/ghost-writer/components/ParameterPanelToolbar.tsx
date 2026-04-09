@@ -1,6 +1,13 @@
 import { PenLine, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ACTION_PANEL_BUTTONS_BY_SCOPE, ACTION_PANEL_ICONS, APP_PANEL_BUTTONS_BY_SCOPE, APP_PANEL_ICONS, parameterActionMeta, parameterAppMeta } from "@/features/ghost-writer/config/metadata";
+import {
+  ACTION_PANEL_BUTTONS_BY_SCOPE,
+  ACTION_PANEL_ICONS,
+  APP_PANEL_BUTTONS_BY_SCOPE,
+  APP_PANEL_ICONS,
+  parameterActionMeta,
+  parameterAppMeta,
+} from "@/features/ghost-writer/config/metadata";
 import type { AiActionId, AppActionId, AppPanelScope, ParameterPanelTarget } from "@/features/ghost-writer/types";
 import { sectionActionButtonClass } from "@/styles/buttonStyles";
 
@@ -11,9 +18,11 @@ interface ParameterPanelToolbarProps {
   appPanelScope: AppPanelScope | null;
   isLoading: boolean;
   isAiActionsConfigOpen: boolean;
+  isTermsConceptsConscienciografiaEnabled: boolean;
   hasVerbetografiaRequiredFields: boolean;
   onToggleAiActionsConfig: () => void;
-  onOpenAiActionParameters: (id: AiActionId) => void;
+  onToggleTermsConceptsConscienciografia: () => void;
+  onOpenAiActionParameters: (id: AiActionId, sectionOverride?: "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command") => void;
   onSelectVerbetografiaAction: (id: AppActionId) => void | Promise<void>;
   onRunAppAction: (id: AppActionId) => void | Promise<void>;
 }
@@ -23,8 +32,10 @@ const ParameterPanelToolbar = ({
   appPanelScope,
   isLoading,
   isAiActionsConfigOpen,
+  isTermsConceptsConscienciografiaEnabled,
   hasVerbetografiaRequiredFields,
   onToggleAiActionsConfig,
+  onToggleTermsConceptsConscienciografia,
   onOpenAiActionParameters,
   onSelectVerbetografiaAction,
   onRunAppAction,
@@ -50,18 +61,15 @@ const ParameterPanelToolbar = ({
   };
 
   const isAiActionSection =
-    parameterPanelTarget.section === "definitions_cons"
-    || parameterPanelTarget.section === "actions"
+    parameterPanelTarget.section === "actions"
     || parameterPanelTarget.section === "rewriting"
     || parameterPanelTarget.section === "translation"
     || parameterPanelTarget.section === "customized_prompts"
     || parameterPanelTarget.section === "ai_command";
-  const supportsAiConfig =
-    isAiActionSection
-    && parameterPanelTarget.section !== "translation"
-    && parameterPanelTarget.id !== "dict_lookup";
+  const supportsAiConfig = isAiActionSection;
   const isAiCommandSection = parameterPanelTarget.section === "ai_command" && parameterPanelTarget.id === "ai_command";
   const isVerbetografiaTablePanel = parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app7";
+  const showTermsConceptsConscienciografiaPill = parameterPanelTarget.section === "actions" || parameterPanelTarget.section === "rewriting";
   const showToolbar = parameterPanelTarget.section !== "document"
     && parameterPanelTarget.section !== "sources"
     && parameterPanelTarget.section !== "applications"
@@ -76,7 +84,23 @@ const ParameterPanelToolbar = ({
         {isAiActionSection ? (
           <>
             {supportsAiConfig ? (
-              <div className="mb-1 flex justify-end">
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  {showTermsConceptsConscienciografiaPill ? (
+                    <button
+                      type="button"
+                      onClick={onToggleTermsConceptsConscienciografia}
+                      aria-pressed={isTermsConceptsConscienciografiaEnabled}
+                      className={`inline-flex min-h-8 items-center rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                        isTermsConceptsConscienciografiaEnabled
+                          ? "border-orange-300 bg-orange-100 text-orange-900 shadow-sm"
+                          : "border-zinc-200 bg-white text-zinc-400 hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-500"
+                      }`}
+                    >
+                      Conscienciografia
+                    </button>
+                  ) : null}
+                </div>
                 <button
                   type="button"
                   onClick={onToggleAiActionsConfig}
@@ -108,9 +132,16 @@ const ParameterPanelToolbar = ({
 
               return null;
             })}
+
+
+
+
+
+            {/* Palavras */}
+            {/* _____________________________________________________________________ */}
             {parameterPanelTarget.section === "actions" && !isAiCommandSection ? (
               <div className="space-y-1.5">
-                {/*<p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Lexicologia</p>*/}
+                <p className="pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Palavras</p>
                 {ACTION_PANEL_BUTTONS_BY_SCOPE.actions.map(renderAiActionButton)}
               </div>
             ) : null}
@@ -137,7 +168,6 @@ const ParameterPanelToolbar = ({
                       <Settings className="h-4 w-4" />
                     </button>
                   </div>
-                  {/*<p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Seções do Verbete</p>*/}
                 </>
               ) : null}
               <Button

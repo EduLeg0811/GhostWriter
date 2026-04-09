@@ -50,6 +50,12 @@ const truncateQuery = (query: string, maxLength: number): string =>
 const isQuestMatch = (match: LexicalHistoryMatch): boolean =>
   (match.book || "").trim().toUpperCase() === "QUEST" || Boolean((match.data?.quest || "").trim());
 
+const normalizeQuestAnswer = (value: string): string =>
+  (value || "")
+    .trim()
+    .replace(/^(?:(?:\*{0,2})?W:(?:\*{0,2})?\s*)+/i, "")
+    .trim();
+
 const formatQuestMatchText = (match: LexicalHistoryMatch): string => {
   const rawText = (match.text || "").trim();
   if (!rawText) return rawText;
@@ -62,8 +68,8 @@ const formatQuestMatchText = (match: LexicalHistoryMatch): string => {
   }
 
   const question = quest || rawText.slice(0, separatorIndex).trim();
-  const answer = rawText.slice(separatorIndex + 1).trim();
-  const normalizedAnswer = answer.replace(/^W:\s*/i, "").trim();
+  const answer = String(match.data?.answer || rawText.slice(separatorIndex + 1) || "").trim();
+  const normalizedAnswer = normalizeQuestAnswer(answer);
   return `**${question}** | **W:** ${normalizedAnswer}`.trim();
 };
 

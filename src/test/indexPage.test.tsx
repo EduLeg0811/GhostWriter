@@ -1,6 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as backendApi from "@/lib/backend-api";
 import Index from "@/pages/Index";
 
 vi.mock("@/lib/backend-api", () => ({
@@ -42,18 +41,25 @@ vi.mock("@/lib/openai", () => ({
   CHAT_MAX_OUTPUT_TOKENS: 500,
   CHAT_MAX_NUM_RESULTS: 5,
   CHAT_SYSTEM_PROMPT: "system",
+  BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT: "biblio-system",
   LLM_VECTOR_STORE_LO: "vs_lo",
   LLM_VECTOR_STORE_TRANSLATE_RAG: "",
-  buildDefinePrompt: vi.fn(() => "define"),
+  buildDefinePrompt: vi.fn(() => "dictionary"),
+  buildDefineConsPrompt: vi.fn(() => "dictionaryCons"),
+  buildDefinologiaPrompt: vi.fn(() => "define"),
   buildSinonimologiaPrompt: vi.fn(() => "sinonimologia"),
+  buildEpigraphConsPrompt: vi.fn(() => "epigraph_cons"),
   buildSynonymsPrompt: vi.fn(() => "synonyms"),
+  buildSynonymsConsPrompt: vi.fn(() => "synonymsCons"),
   buildAntonymsPrompt: vi.fn(() => "antonyms"),
+  buildAntonymsConsPrompt: vi.fn(() => "antonymsCons"),
   buildEtymologyPrompt: vi.fn(() => "etymology"),
-  buildDictionaryPrompt: vi.fn(() => "dictionary"),
+  buildEtymologyConsPrompt: vi.fn(() => "etymologyCons"),
   buildEpigraphPrompt: vi.fn(() => "epigraph"),
   buildRewritePrompt: vi.fn(() => "rewrite"),
   buildSummarizePrompt: vi.fn(() => "summarize"),
   buildTranslatePrompt: vi.fn(() => "translate"),
+  buildDictLookupPrompt: vi.fn(() => "dict_lookup"),
   buildAiCommandPrompt: vi.fn(() => "command"),
   buildAnalogiesPrompt: vi.fn(() => "analogies"),
   buildComparisonsPrompt: vi.fn(() => "comparisons"),
@@ -61,6 +67,7 @@ vi.mock("@/lib/openai", () => ({
   buildCounterpointsPrompt: vi.fn(() => "counterpoints"),
   buildNeoparadigmaPrompt: vi.fn(() => "neoparadigma"),
   buildCognatosPrompt: vi.fn(() => "cognatos"),
+  buildCognatosConsPrompt: vi.fn(() => "cognatosCons"),
   buildChatPrompt: vi.fn(() => "chat"),
   buildVerbeteDefinologiaPrompt: vi.fn(() => "definologia"),
   buildVerbeteFraseEnfaticaPrompt: vi.fn(() => "frase"),
@@ -96,7 +103,7 @@ describe("Index page", () => {
   it("renders desktop shell and opens document parameters", async () => {
     render(<Index />);
 
-    expect(await screen.findByText(/Parapreceptor\s+●\s+Ghost Writer Editor/)).toBeInTheDocument();
+    expect(await screen.findByText(/Ghost Writer Editor/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Documento" }));
 
@@ -111,10 +118,12 @@ describe("Index page", () => {
     render(<Index />);
 
     await waitFor(() => {
-      expect(screen.getByText("Painel")).toBeInTheDocument();
+      expect(screen.getByText("Navegacao")).toBeInTheDocument();
     });
 
-    expect(screen.getByRole("button", { name: "Abrir menu de paineis" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Menu" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Parametros" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Historico" })).toBeInTheDocument();
   });
 
   it("shows the Etimologia action with the standard parameter panel", async () => {
@@ -131,7 +140,7 @@ describe("Index page", () => {
     expect(screen.getByPlaceholderText("Write a word, phrase or text")).toBeInTheDocument();
   });
 
-  it("shows the DicionÃ¡rio action with the standard parameter panel", async () => {
+  it("shows the Dicionario action with the standard parameter panel", async () => {
     render(<Index />);
 
     fireEvent.click(await screen.findByRole("button", { name: /trad.*dicion/i }));
@@ -146,95 +155,8 @@ describe("Index page", () => {
   });
 
   it("shows consulta dict in traducao e registra resultado no historico", async () => {
-    vi.mocked(backendApi.searchOnlineDictionaryApp).mockResolvedValue({
-      ok: true,
-      result: {
-        term: "casa",
-        sources_total: 5,
-        sources_ok: 2,
-        sources_failed: 3,
-        elapsed_ms: 120.5,
-        request_id: "abc123",
-        summary: {
-          definitions: ["Moradia habitual.", "Edificação para habitação."],
-          synonyms: ["lar", "residência"],
-          examples: ["A casa estava vazia."],
-          etymology: "Do latim casa.",
-        },
-        results: [
-          {
-            source: "Aulete",
-            ok: true,
-            url: "https://example.com/aulete",
-            elapsed_ms: 30,
-            quality_score: 100,
-            definitions: ["Moradia habitual."],
-            synonyms: ["lar"],
-            examples: ["A casa estava vazia."],
-            etymology: "Do latim casa.",
-            query_term: "casa",
-            retry_without_accents: false,
-            error: null,
-          },
-          {
-            source: "Michaelis",
-            ok: true,
-            url: "https://example.com/michaelis",
-            elapsed_ms: 40,
-            quality_score: 95,
-            definitions: ["Edificação para habitação."],
-            synonyms: ["residência"],
-            examples: [],
-            etymology: null,
-            query_term: "casa",
-            retry_without_accents: false,
-            error: null,
-          },
-          {
-            source: "Priberam",
-            ok: false,
-            url: "https://example.com/priberam",
-            elapsed_ms: 50,
-            quality_score: 10,
-            definitions: [],
-            synonyms: [],
-            examples: [],
-            etymology: null,
-            query_term: "casa",
-            retry_without_accents: false,
-            error: "falha",
-          },
-          {
-            source: "Wiktionary",
-            ok: false,
-            url: "https://example.com/wiktionary",
-            elapsed_ms: 60,
-            quality_score: 10,
-            definitions: [],
-            synonyms: [],
-            examples: [],
-            etymology: null,
-            query_term: "casa",
-            retry_without_accents: false,
-            error: "falha",
-          },
-          {
-            source: "Dicio",
-            ok: false,
-            url: "https://example.com/dicio",
-            elapsed_ms: 70,
-            quality_score: 10,
-            definitions: [],
-            synonyms: [],
-            examples: [],
-            etymology: null,
-            query_term: "casa",
-            retry_without_accents: false,
-            error: "falha",
-          },
-        ],
-      },
-    });
+    const openai = await import("@/lib/openai");
+    vi.mocked(openai.executeLLM).mockResolvedValue({ content: "Moradia habitual." });
 
     render(<Index />);
 
@@ -251,14 +173,14 @@ describe("Index page", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /^dicion/i })[1]);
 
     await waitFor(() => {
-      expect(screen.getByText("Consulta Dicionários")).toBeInTheDocument();
+      expect(openai.executeLLM).toHaveBeenCalled();
     });
 
-    expect((await screen.findAllByText(/Moradia habitual/i)).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Nome da Fonte/i)).toBeInTheDocument();
-    expect(screen.getByText(/Definições \(resumo\)/i)).toBeInTheDocument();
-    expect((await screen.findAllByText(/Aulete/i)).length).toBeGreaterThan(0);
+    expect(openai.buildDictLookupPrompt).toHaveBeenCalledWith("casa");
+    expect((await screen.findAllByText(/dicion/i)).length).toBeGreaterThan(0);
+    expect(await screen.findByText(/Moradia habitual/i)).toBeInTheDocument();
   });
+
   it("opens customized prompts and runs analogias with the standard parameter panel", async () => {
     const openai = await import("@/lib/openai");
     vi.mocked(openai.executeLLM).mockResolvedValue({ content: "Resposta de analogias." });
@@ -311,8 +233,33 @@ describe("Index page", () => {
 
     const payload = vi.mocked(openai.executeLLM).mock.calls.at(-1)?.[0];
     expect(openai.buildCognatosPrompt).toHaveBeenCalledWith("holopensene");
+    expect(payload?.previousResponseId).toBeUndefined();
     expect(payload?.vectorStoreIds).toEqual([]);
     expect(await screen.findByText(/cognato-um/i)).toBeInTheDocument();
+  });
+
+  it("switches Termos & Conceitos to WVBooks and prompt Cons when Conscienciografia is active", async () => {
+    const openai = await import("@/lib/openai");
+    vi.mocked(openai.executeLLM).mockResolvedValue({ content: "definicao conscienciografica" });
+
+    render(<Index />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /termos & conceitos/i }));
+    fireEvent.click(screen.getByRole("button", { name: /conscienciografia/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^definiÃ§Ã£o\b|^definicao\b/i }));
+
+    fireEvent.change(screen.getByPlaceholderText("Write a word, phrase or text"), {
+      target: { value: "holopensene" },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: /^definiÃ§Ã£o\b|^definicao\b/i })[1]);
+
+    await waitFor(() => {
+      expect(openai.executeLLM).toHaveBeenCalled();
+    });
+
+    const payload = vi.mocked(openai.executeLLM).mock.calls.at(-1)?.[0];
+    expect(openai.buildDefineConsPrompt).toHaveBeenCalledWith("holopensene");
+    expect(payload?.vectorStoreIds).toEqual(["vs_6912908250e4819197e23fe725e04fae"]);
   });
 
   it("shows the new customized prompt buttons", async () => {
@@ -320,8 +267,9 @@ describe("Index page", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /customized prompts/i }));
 
+    expect(screen.getByRole("button", { name: /^comando ia\b/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^analogias\b/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^comparações\b/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^compara/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^exemplos\b/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^contrapontos\b/i })).toBeInTheDocument();
   });

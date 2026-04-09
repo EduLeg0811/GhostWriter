@@ -12,7 +12,6 @@ const useGhostWriterLayout = ({ hasEditorPanel }: UseGhostWriterLayoutParams) =>
   const [isJsonLogPanelOpen, setIsJsonLogPanelOpen] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
   const [activeMobilePanel, setActiveMobilePanel] = useState<MobilePanelId>("left");
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [sourcesPanelView, setSourcesPanelView] = useState<SourcesPanelView>(null);
   const previousHasEditorPanelRef = useRef(false);
 
@@ -22,11 +21,11 @@ const useGhostWriterLayout = ({ hasEditorPanel }: UseGhostWriterLayoutParams) =>
   const hasCenterPanel = Boolean(parameterPanelTarget);
   const hasJsonPanel = isJsonLogPanelOpen;
   const mobilePanelOptions: Array<{ id: MobilePanelId; label: string; disabled?: boolean }> = useMemo(() => [
-    { id: "json", label: "Json", disabled: !hasJsonPanel },
-    { id: "left", label: "Painel" },
+    { id: "left", label: "Menu" },
     { id: "center", label: "Parametros", disabled: !hasCenterPanel },
-    { id: "right", label: "Chat" },
+    { id: "right", label: "Historico" },
     { id: "editor", label: "Editor", disabled: !hasEditorPanel },
+    { id: "json", label: "Logs", disabled: !hasJsonPanel },
   ], [hasCenterPanel, hasEditorPanel, hasJsonPanel]);
 
   const showJsonPanel = hasJsonPanel && (!isMobileView || activeMobilePanel === "json");
@@ -47,7 +46,6 @@ const useGhostWriterLayout = ({ hasEditorPanel }: UseGhostWriterLayoutParams) =>
     const mediaQuery = window.matchMedia("(max-width: 768px)");
     const applyMobileState = (isMobile: boolean) => {
       setIsMobileView(isMobile);
-      setIsMobileMenuOpen(false);
     };
     applyMobileState(mediaQuery.matches);
     const handleChange = (event: MediaQueryListEvent) => applyMobileState(event.matches);
@@ -93,8 +91,6 @@ const useGhostWriterLayout = ({ hasEditorPanel }: UseGhostWriterLayoutParams) =>
     isMobileView,
     activeMobilePanel,
     setActiveMobilePanel,
-    isMobileMenuOpen,
-    setIsMobileMenuOpen,
     sourcesPanelView,
     setSourcesPanelView,
     isChatConfigOpen,

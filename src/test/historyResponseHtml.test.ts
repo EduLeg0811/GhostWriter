@@ -316,7 +316,7 @@ describe("historyResponseHtml", () => {
       applyHighlight: true,
     });
     const appendHtml = renderHistoryResponseAppendBodyHtml(response, {
-      applyNumbering: false,
+      applyNumbering: true,
       applyReferences: false,
       applyMetadata: false,
       applyHighlight: false,
@@ -332,7 +332,10 @@ describe("historyResponseHtml", () => {
     expect(editorHtml).toContain("<mark");
     expect(editorHtml).toContain("p. 41");
     expect(copyHtml).toContain("<strong>1.</strong>");
+    expect(copyHtml).not.toContain("display: flex");
     expect(copyHtml).toContain("QUEST");
+    expect(appendHtml).toContain("<strong>1.</strong>&nbsp;&nbsp;Trecho com cosmoetica (p. 41)");
+    expect(appendHtml).not.toContain("display: flex");
     expect(appendHtml).toContain("Outro trecho");
     expect(appendHtml).not.toContain("Mentalsomatologia");
     expect(historyHtmlToPlainText(copyHtml)).toContain("Trecho com cosmoetica");

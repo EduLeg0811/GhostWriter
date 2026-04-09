@@ -1,23 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { healthCheck, searchOnlineDictionaryApp } from "@/lib/backend-api";
+import { healthCheck } from "@/lib/backend-api";
 import {
   buildAiCommandPrompt,
   buildAnalogiesPrompt,
   buildAntonymsPrompt,
+  buildAntonymsConsPrompt,
   buildChatPrompt,
   buildComparisonsPrompt,
   buildCounterpointsPrompt,
-  buildDictionaryPrompt,
+  buildDictLookupPrompt,
   buildDefinePrompt,
+  buildDefineConsPrompt,
   buildEtymologyPrompt,
+  buildEtymologyConsPrompt,
   buildExamplesPrompt,
   buildNeoparadigmaPrompt,
   buildEpigraphPrompt,
   buildRewritePrompt,
-  buildSinonimologiaPrompt,
   buildSummarizePrompt,
   buildSynonymsPrompt,
+  buildSynonymsConsPrompt,
   buildTranslatePrompt,
   CHAT_GPT5_EFFORT,
   CHAT_GPT5_VERBOSITY,
@@ -31,6 +34,7 @@ import {
   type ChatMessage,
   type UploadedLlmFile,
   buildCognatosPrompt,
+  buildCognatosConsPrompt,
 } from "@/lib/openai";
 import type {
   AIResponse,
@@ -51,10 +55,9 @@ import {
   LLM_SETTINGS_STORAGE_KEY,
   NO_VECTOR_STORE_ID,
 } from "@/features/ghost-writer/config/constants";
-import { applySystemPromptOverride, getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
+import { applySystemPromptOverride, getActionSystemPrompt, getTermsConceptsActionSystemPromptId, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
 import { BOOK_SOURCE, VECTOR_STORES_SOURCE } from "@/features/ghost-writer/config/options";
-import { getParameterPanelTargetByAiAction, normalizeIdList } from "@/features/ghost-writer/config/metadata";
-import { buildOnlineDictionaryHistoryResponsePayload } from "@/features/ghost-writer/utils/historyDictionaryResponse";
+import { getParameterPanelTargetByAiAction, getParameterPanelTargetByAiActionInSection, normalizeIdList } from "@/features/ghost-writer/config/metadata";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 
 interface ToastApi {
@@ -114,6 +117,7 @@ interface UseGhostWriterLlmParams {
   setAiActionsSelectedVectorStoreIds: Dispatch<SetStateAction<string[]>>;
   aiActionsSelectedInputFileIds: string[];
   setAiActionsSelectedInputFileIds: Dispatch<SetStateAction<string[]>>;
+  isTermsConceptsConscienciografiaEnabled: boolean;
   biblioExternaLlmModel: string;
   setBiblioExternaLlmModel: Dispatch<SetStateAction<string>>;
   biblioExternaLlmTemperature: number;
@@ -174,12 +178,7 @@ interface AiActionsLlmConfigRefValue {
 }
 
 const TRANSLATE_FIXED_VECTOR_STORE_IDS = ["vs_69931da436e48191b43453e845e63bd3"];
-const TRANSLATE_FIXED_INPUT_FILE_IDS: string[] = [];
-const TRANSLATE_FIXED_MODEL = "gpt-4.1-mini";
-const TRANSLATE_FIXED_TEMPERATURE = 0;
-const TRANSLATE_FIXED_MAX_OUTPUT_TOKENS = 5000;
-const TRANSLATE_FIXED_VERBOSITY: "low" | "medium" | "high" = "low";
-const TRANSLATE_FIXED_EFFORT: "none" | "low" | "medium" | "high" = "none";
+const TERMS_CONCEPTS_WVBOOKS_VECTOR_STORE_IDS = ["vs_6912908250e4819197e23fe725e04fae"];
 
 const normalizeVerbosity = (value: string | undefined): "low" | "medium" | "high" | undefined => {
   if (!value) return undefined;
@@ -245,6 +244,7 @@ const useGhostWriterLlm = ({
   setAiActionsSelectedVectorStoreIds,
   aiActionsSelectedInputFileIds,
   setAiActionsSelectedInputFileIds,
+  isTermsConceptsConscienciografiaEnabled,
   biblioExternaLlmModel,
   setBiblioExternaLlmModel,
   biblioExternaLlmTemperature,
@@ -640,8 +640,9 @@ const useGhostWriterLlm = ({
     const query = aiCommandQuery.trim();
     const currentConfig = aiActionsLlmConfigRef.current;
     const inputFileIds = normalizeIdList(currentConfig.inputFileIds);
-    const vectorStoreIds = normalizeIdList(currentConfig.vectorStoreIds);
+    const vectorStoreIds = normalizeIdList(currentConfig.vectorStoreIds).filter((id) => id !== NO_VECTOR_STORE_ID);
     const translateVectorStoreIds = TRANSLATE_FIXED_VECTOR_STORE_IDS;
+    const isTermsConceptsAction = type === "dictionary" || type === "synonyms" || type === "antonyms" || type === "etymology" || type === "cognatos";
 
     if (type !== "ai_command" && !text) {
       toast.error("Selecione um trecho no documento ou escreva na caixa de texto.");
@@ -649,23 +650,6 @@ const useGhostWriterLlm = ({
     }
     if (type === "ai_command" && !query) {
       toast.error("Informe a Query do Comando IA.");
-      return;
-    }
-    if (type === "dict_lookup") {
-      setIsLoading(true);
-      try {
-        const data = await searchOnlineDictionaryApp({ term: text });
-        if ((data.result.sources_ok || 0) <= 0) {
-          toast.info("Nenhuma definição útil encontrada nas fontes consultadas.");
-          return;
-        }
-        const payload = buildOnlineDictionaryHistoryResponsePayload(data.result);
-        addResponse("dict_lookup", payload.querySummary, payload.markdown);
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : "Falha ao executar Consulta Dicionários.");
-      } finally {
-        setIsLoading(false);
-      }
       return;
     }
     if (!openAiReady) {
@@ -685,18 +669,16 @@ const useGhostWriterLlm = ({
         editorPlainTextContext = normalizedEditorText.slice(0, llmEditorContextMaxChars);
       }
       const promptMap = {
-        define: (value: string) => buildDefinePrompt(value),
-        sinonimologia: (value: string) => buildSinonimologiaPrompt(value),
-        synonyms: (value: string) => buildSynonymsPrompt(value),
-        antonyms: (value: string) => buildAntonymsPrompt(value),
-        etymology: (value: string) => buildEtymologyPrompt(value),
-        dictionary: (value: string) => buildDictionaryPrompt(value),
-        
-        cognatos: (value: string) => buildCognatosPrompt(value),
+        synonyms: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildSynonymsConsPrompt(value) : buildSynonymsPrompt(value),
+        antonyms: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildAntonymsConsPrompt(value) : buildAntonymsPrompt(value),
+        etymology: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildEtymologyConsPrompt(value) : buildEtymologyPrompt(value),
+        dictionary: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildDefineConsPrompt(value) : buildDefinePrompt(value),
+        cognatos: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildCognatosConsPrompt(value) : buildCognatosPrompt(value),
         epigraph: (value: string) => buildEpigraphPrompt(value),
         rewrite: (value: string) => buildRewritePrompt(value),
         summarize: (value: string) => buildSummarizePrompt(value),
         translate: (value: string) => buildTranslatePrompt(value, translateLanguage),
+        dict_lookup: (value: string) => buildDictLookupPrompt(value),
         ai_command: (value: string) => buildAiCommandPrompt(value, query),
         analogies: (value: string) => buildAnalogiesPrompt(value),
         comparisons: (value: string) => buildComparisonsPrompt(value),
@@ -705,7 +687,10 @@ const useGhostWriterLlm = ({
         neoparadigma: (value: string) => buildNeoparadigmaPrompt(value),
       };
 
-      const specificSystemPrompt = getActionSystemPrompt(aiActionSystemPrompts, type);
+      const effectivePromptId = type === "dictionary" || type === "synonyms" || type === "antonyms" || type === "etymology" || type === "cognatos"
+        ? getTermsConceptsActionSystemPromptId(type, isTermsConceptsConscienciografiaEnabled)
+        : type;
+      const specificSystemPrompt = getActionSystemPrompt(aiActionSystemPrompts, effectivePromptId);
       const messages = applySystemPromptOverride(promptMap[type](text), specificSystemPrompt);
       if (type === "ai_command" && includeEditorContextInLlm && editorPlainTextContext.trim()) {
         const truncTag = editorContextTruncated ? " [TRUNCADO]" : "";
@@ -716,18 +701,23 @@ const useGhostWriterLlm = ({
             `<<<EDITOR_HTML_TEXT>>>\n${editorPlainTextContext}\n<<<END_EDITOR_HTML_TEXT>>>`,
         });
       }
-      const effectiveVectorStoreIds = type === "translate" ? translateVectorStoreIds : vectorStoreIds;
-      const effectiveInputFileIds = type === "translate" ? TRANSLATE_FIXED_INPUT_FILE_IDS : inputFileIds;
+      const effectiveVectorStoreIds = type === "translate"
+        ? translateVectorStoreIds
+        : isTermsConceptsAction
+          ? (isTermsConceptsConscienciografiaEnabled ? TERMS_CONCEPTS_WVBOOKS_VECTOR_STORE_IDS : [])
+          : vectorStoreIds;
+      const effectiveInputFileIds = inputFileIds;
       const tools = type === "etymology" ? [{ type: "web_search" }] : undefined;
       const result = (await executeAiActionsLLMWithLog({
         messages,
+        previousResponseId: undefined,
         vectorStoreIds: effectiveVectorStoreIds,
         inputFileIds: effectiveInputFileIds,
-        model: type === "translate" ? TRANSLATE_FIXED_MODEL : undefined,
-        temperature: type === "translate" ? TRANSLATE_FIXED_TEMPERATURE : undefined,
-        maxOutputTokens: type === "translate" ? TRANSLATE_FIXED_MAX_OUTPUT_TOKENS : undefined,
-        gpt5Verbosity: type === "translate" ? TRANSLATE_FIXED_VERBOSITY : undefined,
-        gpt5Effort: type === "translate" ? TRANSLATE_FIXED_EFFORT : undefined,
+        model: currentConfig.model,
+        temperature: currentConfig.temperature,
+        maxOutputTokens: currentConfig.maxOutputTokens,
+        gpt5Verbosity: normalizeVerbosity(currentConfig.gpt5Verbosity),
+        gpt5Effort: normalizeEffort(currentConfig.gpt5Effort),
         tools,
       })).content;
       addResponse(type, type === "ai_command" ? query : text.slice(0, 80), result);
@@ -736,10 +726,14 @@ const useGhostWriterLlm = ({
     } finally {
       setIsLoading(false);
     }
-  }, [actionText, addResponse, aiActionSystemPrompts, aiCommandQuery, backendNotReadyMessage, currentFileId, documentText, executeAiActionsLLMWithLog, getEditorApi, includeEditorContextInLlm, llmEditorContextMaxChars, openAiReady, setIsLoading, toast, translateLanguage]);
+  }, [actionText, addResponse, aiActionSystemPrompts, aiCommandQuery, backendNotReadyMessage, currentFileId, documentText, executeAiActionsLLMWithLog, getEditorApi, includeEditorContextInLlm, isTermsConceptsConscienciografiaEnabled, llmEditorContextMaxChars, openAiReady, setIsLoading, toast, translateLanguage]);
 
-  const handleOpenAiActionParameters = useCallback((type: AiActionId) => {
-    setParameterPanelTarget(getParameterPanelTargetByAiAction(type));
+  const handleOpenAiActionParameters = useCallback((type: AiActionId, sectionOverride?: "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command") => {
+    setParameterPanelTarget(
+      sectionOverride
+        ? getParameterPanelTargetByAiActionInSection(type, sectionOverride)
+        : getParameterPanelTargetByAiAction(type),
+    );
   }, [setParameterPanelTarget]);
 
   const handleOpenAiCommandPanel = useCallback(() => {

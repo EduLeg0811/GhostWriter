@@ -24,18 +24,18 @@ const UploadedFilesList = ({
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="space-y-1.5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+    <div className="space-y-1">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
       <Button
         variant="ghost"
-        className={sectionActionButtonClass}
+        className={`${sectionActionButtonClass} min-h-8 px-2.5 py-1.5`}
         onClick={() => {
           uploadInputRef.current?.click();
         }}
       >
-        <Upload className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
+        <Upload className="mr-2 h-3.5 w-3.5 shrink-0 text-blue-500" />
         <span className="min-w-0 flex-1 text-left">
-          <span className="block break-words text-sm font-medium text-foreground">{buttonLabel}</span>
+          <span className="block break-words text-[10px] font-medium text-foreground">{buttonLabel}</span>
         </span>
       </Button>
       <input
@@ -52,24 +52,24 @@ const UploadedFilesList = ({
         }}
       />
       {isUploadingFiles ? (
-        <div className="rounded border border-border bg-white px-2 py-2 text-xs text-muted-foreground">
+        <div className="rounded border border-border bg-white px-2 py-1.5 text-[10px] text-muted-foreground">
           Enviando arquivos para a OpenAI...
         </div>
       ) : null}
       {uploadedFiles.length > 0 ? (
-        <div className="max-h-32 space-y-2 overflow-y-auto pr-1">
+        <div className="max-h-24 space-y-1.5 overflow-y-auto pr-1">
           {uploadedFiles.map((file) => (
-            <div key={file.id} className="rounded border border-border bg-white px-2 py-2">
+            <div key={file.id} className="rounded border border-border bg-white px-2 py-1.5">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="break-words text-xs font-medium text-foreground">{file.filename}</p>
-                  <p className="text-[11px] text-muted-foreground">{file.bytes} bytes</p>
+                  <p className="break-words text-[10px] font-medium leading-tight text-foreground">{file.filename}</p>
+                  <p className="text-[10px] leading-tight text-muted-foreground">{file.bytes} bytes</p>
                 </div>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-2 text-[11px]"
+                  className="h-5 px-1.5 text-[10px]"
                   onClick={() => onRemoveUploadedFile(file.id)}
                 >
                   Remover
@@ -79,7 +79,7 @@ const UploadedFilesList = ({
           ))}
         </div>
       ) : (
-        <div className="rounded border border-dashed border-border bg-white px-2 py-2 text-xs text-muted-foreground">
+        <div className="rounded border border-dashed border-border bg-white px-2 py-1.5 text-[10px] text-muted-foreground">
           Nenhum arquivo anexado
         </div>
       )}

@@ -46,7 +46,6 @@ import {
   CHAT_SYSTEM_PROMPT,
   LLM_VECTOR_STORE_LO,
   LLM_VECTOR_STORE_TRANSLATE_RAG,
-  buildDefinePrompt,
   buildSynonymsPrompt,
   buildEpigraphPrompt,
   buildRewritePrompt,
@@ -61,7 +60,7 @@ import { sectionActionButtonClass } from "@/styles/buttonStyles";
 import type { BookCode } from "@/lib/bookCatalog";
 import type { AIResponse, AiActionId, AiPanelScope, AppActionId, AppPanelScope, BackendStatus, Macro2SpacingMode, MacroActionId, MobilePanelId, ParameterPanelHeaderMeta, ParameterPanelSection, ParameterPanelTarget, SelectOption, SemanticIndexOption, SourcesPanelView } from "@/features/ghost-writer/types";
 import { ACTION_PANEL_BUTTONS_BY_SCOPE, ACTION_PANEL_ICONS, APP_PANEL_BUTTONS_BY_SCOPE, APP_PANEL_ICONS, getAiPanelScopeByAction, getParameterPanelHeaderMeta, normalizeIdList, parameterActionMeta, parameterAppMeta, parameterMacroMeta } from "@/features/ghost-writer/config/metadata";
-import { AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY, BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT, BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY, CHAT_EDITOR_CONTEXT_MAX_CHARS, DEFAULT_BOOK_SEARCH_MAX_RESULTS, DEFAULT_LOG_FONT_SIZE_PX, DESKTOP_CONTENT_EDGE_GUTTER_PX, DESKTOP_PANEL_SIZES_PX, GENERAL_SETTINGS_STORAGE_KEY, LLM_LOG_FONT_MAX, LLM_LOG_FONT_MIN, LLM_LOG_FONT_STEP, LLM_SETTINGS_STORAGE_KEY, NO_VECTOR_STORE_ID } from "@/features/ghost-writer/config/constants";
+import { AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY, BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY, CHAT_EDITOR_CONTEXT_MAX_CHARS, DEFAULT_BOOK_SEARCH_MAX_RESULTS, DEFAULT_LOG_FONT_SIZE_PX, DESKTOP_CONTENT_EDGE_GUTTER_PX, DESKTOP_PANEL_SIZES_PX, GENERAL_SETTINGS_STORAGE_KEY, LLM_LOG_FONT_MAX, LLM_LOG_FONT_MIN, LLM_LOG_FONT_STEP, LLM_SETTINGS_STORAGE_KEY, NO_VECTOR_STORE_ID } from "@/features/ghost-writer/config/constants";
 import { BOOK_SOURCE, DEFAULT_BOOK_SOURCE_ID, MACRO1_HIGHLIGHT_COLORS, TRANSLATE_LANGUAGE_OPTIONS, VECTOR_STORES_SOURCE } from "@/features/ghost-writer/config/options";
 import useGhostWriterLayout from "@/features/ghost-writer/hooks/useGhostWriterLayout";
 import useGhostWriterDocument from "@/features/ghost-writer/hooks/useGhostWriterDocument";
@@ -114,7 +113,7 @@ const Index = () => {
     llmEditorContextMaxChars, setLlmEditorContextMaxChars, llmVerbosity, setLlmVerbosity, llmEffort, setLlmEffort, llmSystemPrompt, setLlmSystemPrompt, aiActionsLlmModel,
     setAiActionsLlmModel, aiActionsLlmTemperature, setAiActionsLlmTemperature, aiActionsLlmMaxOutputTokens, setAiActionsLlmMaxOutputTokens, aiActionsLlmVerbosity, setAiActionsLlmVerbosity,
     aiActionsLlmEffort, setAiActionsLlmEffort, aiActionsLlmSystemPrompt, setAiActionsLlmSystemPrompt, aiActionSystemPrompts, setAiActionSystemPrompts, aiActionsSelectedVectorStoreIds, setAiActionsSelectedVectorStoreIds,
-    aiActionsSelectedInputFileIds, setAiActionsSelectedInputFileIds, biblioExternaLlmModel, setBiblioExternaLlmModel, biblioExternaLlmTemperature, setBiblioExternaLlmTemperature,
+    aiActionsSelectedInputFileIds, setAiActionsSelectedInputFileIds, isTermsConceptsConscienciografiaEnabled, setIsTermsConceptsConscienciografiaEnabled, biblioExternaLlmModel, setBiblioExternaLlmModel, biblioExternaLlmTemperature, setBiblioExternaLlmTemperature,
     biblioExternaLlmMaxOutputTokens, setBiblioExternaLlmMaxOutputTokens, biblioExternaLlmVerbosity, setBiblioExternaLlmVerbosity, biblioExternaLlmEffort, setBiblioExternaLlmEffort,
     biblioExternaLlmSystemPrompt, setBiblioExternaLlmSystemPrompt, chatPreviousResponseId, setChatPreviousResponseId, llmLogs, setLlmLogs, llmSessionLogs, setLlmSessionLogs,
     llmLogFontScale, setLlmLogFontScale, enableHistoryNumbering, setEnableHistoryNumbering, enableHistoryReferences, setEnableHistoryReferences, enableHistoryMetadata, setEnableHistoryMetadata, enableHistoryHighlight, setEnableHistoryHighlight, selectedBookSourceIds, setSelectedBookSourceIds,
@@ -135,8 +134,6 @@ const Index = () => {
     isMobileView,
     activeMobilePanel,
     setActiveMobilePanel,
-    isMobileMenuOpen,
-    setIsMobileMenuOpen,
     sourcesPanelView,
     setSourcesPanelView,
     isChatConfigOpen,
@@ -316,6 +313,15 @@ const Index = () => {
     });
   }, [setSelectedBookSourceIds]);
 
+  const handleToggleTermsConceptsConscienciografia = useCallback(() => {
+    setIsTermsConceptsConscienciografiaEnabled((prev) => {
+      const next = !prev;
+      const wvBooksId = VECTOR_STORES_SOURCE.find((item) => item.label === "WVBooks")?.id ?? "";
+      setAiActionsSelectedVectorStoreIds(next ? (wvBooksId ? [wvBooksId] : []) : [NO_VECTOR_STORE_ID]);
+      return next;
+    });
+  }, [setAiActionsSelectedVectorStoreIds, setIsTermsConceptsConscienciografiaEnabled]);
+
   const handleActionMacros = useCallback(async (type: MacroActionId) => {
     setParameterPanelTarget((prev) => {
       if (prev?.section === "document" && prev.id === type) {
@@ -444,6 +450,7 @@ const Index = () => {
         isAiCommandSelectionPending={isAiCommandSelectionPending}
         isLoading={isLoading}
         isAiActionsConfigOpen={isAiActionsConfigOpen}
+        isTermsConceptsConscienciografiaEnabled={isTermsConceptsConscienciografiaEnabled}
         isUploadingChatFiles={isUploadingChatFiles}
         currentFileId={currentFileId}
         selectedImportFileName={selectedImportFileName}
@@ -534,6 +541,7 @@ const Index = () => {
         isRunningVerbeteFatologia={isRunningVerbeteFatologia}
         hasVerbetografiaRequiredFields={hasVerbetografiaRequiredFields}
         onToggleAiActionsConfig={() => toggleLlmConfigPanel("ai_actions")}
+        onToggleTermsConceptsConscienciografia={handleToggleTermsConceptsConscienciografia}
         onCreateBlankDocument={handleCreateBlankDocument}
         onDocumentPanelFile={handleDocumentPanelFile}
         onDocumentPanelDrop={handleDocumentPanelDrop}
@@ -575,7 +583,18 @@ const Index = () => {
           if (!currentFileId) return;
           setIncludeEditorContextInLlm((prev) => !prev);
         }}
-        onAiActionsSelectedVectorStoreIdsChange={setAiActionsSelectedVectorStoreIds}
+        onAiActionsSelectedVectorStoreIdsChange={(value) => {
+          if (parameterPanelTarget?.section === "actions") {
+            const wvBooksId = VECTOR_STORES_SOURCE.find((item) => item.label === "WVBooks")?.id ?? "";
+            if (isTermsConceptsConscienciografiaEnabled) {
+              setAiActionsSelectedVectorStoreIds(wvBooksId ? [wvBooksId] : []);
+              return;
+            }
+            setAiActionsSelectedVectorStoreIds([NO_VECTOR_STORE_ID]);
+            return;
+          }
+          setAiActionsSelectedVectorStoreIds(value);
+        }}
         onUploadSourceFiles={handleUploadSourceFiles}
         onSelectRefBook={handleSelectRefBook}
         onRefBookModeChange={setRefBookMode}
@@ -754,25 +773,22 @@ const Index = () => {
 
   return (
     <div ref={layoutContainerRef} className="h-screen w-screen overflow-hidden bg-background">
-      {isMobileView && (
-        <MobilePanelHeader
-          activeMobilePanel={activeMobilePanel}
-          options={mobilePanelOptions}
-          isMobileMenuOpen={isMobileMenuOpen}
-          onToggleMobileMenu={() => setIsMobileMenuOpen((open) => !open)}
-          onSelectPanel={(panelId) => {
-            setActiveMobilePanel(panelId);
-            setIsMobileMenuOpen(false);
-          }}
-        />
-      )}
       {isMobileView ? (
-        <div className="h-[calc(100vh-3.5rem)] min-h-0">
-          {showLeftPanel && renderPanelContainer(leftPanelElement, "h-full min-h-0 bg-card")}
-          {showCenterPanel && parameterPanelElement && renderPanelContainer(parameterPanelElement, `h-full min-h-0 ${sidePanelClass}`)}
-          {showRightPanel && renderPanelContainer(rightPanelElement, `h-full min-h-0 ${sidePanelClass}`)}
-          {showEditorPanel && renderPanelContainer(editorPanelElement, "h-full min-h-0")}
-          {showJsonPanel && renderPanelContainer(jsonPanelElement, `h-full min-h-0 ${sidePanelClass}`)}
+        <div className="flex h-full min-h-0 flex-col">
+          <MobilePanelHeader
+            activeMobilePanel={activeMobilePanel}
+            options={mobilePanelOptions}
+            onSelectPanel={(panelId) => {
+              setActiveMobilePanel(panelId);
+            }}
+          />
+          <div className="min-h-0 flex-1">
+            {showLeftPanel && renderPanelContainer(leftPanelElement, "h-full min-h-0 bg-card")}
+            {showCenterPanel && parameterPanelElement && renderPanelContainer(parameterPanelElement, `h-full min-h-0 ${sidePanelClass}`)}
+            {showRightPanel && renderPanelContainer(rightPanelElement, `h-full min-h-0 ${sidePanelClass}`)}
+            {showEditorPanel && renderPanelContainer(editorPanelElement, "h-full min-h-0")}
+            {showJsonPanel && renderPanelContainer(jsonPanelElement, `h-full min-h-0 ${sidePanelClass}`)}
+          </div>
         </div>
       ) : desktopContainerWidthPx !== null ? (
         <div className="flex h-full min-h-0 overflow-x-auto overflow-y-hidden">

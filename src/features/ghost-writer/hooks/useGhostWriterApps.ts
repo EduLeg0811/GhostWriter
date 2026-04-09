@@ -4,7 +4,9 @@ import { biblioExternaApp, biblioGeralApp, insertRefBookMacro, insertRefVerbeteA
 import { executeLLM, buildPensataAnalysisPrompt, buildVerbeteDefinologiaPrompt, buildVerbeteFatologiaPrompt, buildVerbeteFraseEnfaticaPrompt, buildVerbeteSinonimologiaPrompt } from "@/lib/openai";
 import { BOOK_LABELS, type BookCode } from "@/lib/bookCatalog";
 import { applySystemPromptOverride, getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
+import { NO_VECTOR_STORE_ID } from "@/features/ghost-writer/config/constants";
 import { normalizeIdList } from "@/features/ghost-writer/config/metadata";
+import { DEFAULT_BOOK_SOURCE_ID } from "@/features/ghost-writer/config/options";
 import type { AIResponse, AppActionId, AppPanelScope, LlmLogEntry, ParameterPanelTarget, RefBookMode, SemanticIndexOption } from "@/features/ghost-writer/types";
 import { buildLexicalOverviewHistoryResponsePayload, buildLexicalSearchHistoryResponsePayload, buildSemanticSearchHistoryResponsePayload } from "@/features/ghost-writer/utils/historySearchResponses";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
@@ -532,14 +534,21 @@ const useGhostWriterApps = ({
 
   const buildVerbetografiaQueryContext = useCallback(async () => {
     const currentConfig = aiActionsLlmConfigRef.current;
-    const vectorStoreIds = normalizeIdList(currentConfig.vectorStoreIds);
+    const normalizedVectorStoreIds = normalizeIdList(currentConfig.vectorStoreIds);
+    const hasExplicitNone = normalizedVectorStoreIds.includes(NO_VECTOR_STORE_ID);
+    const vectorStoreIds = normalizedVectorStoreIds.filter((id) => id.startsWith("vs_"));
+    const effectiveVectorStoreIds = hasExplicitNone
+      ? []
+      : vectorStoreIds.length > 0
+        ? vectorStoreIds
+        : [DEFAULT_BOOK_SOURCE_ID].filter(Boolean);
     const inputFileIds = normalizeIdList(currentConfig.inputFileIds);
     const editorApi = await getEditorApi();
     const latestEditorText = editorApi ? await editorApi.getDocumentText() : documentText;
     const normalizedEditorText = (latestEditorText || "").trim();
     const editorContextTruncated = normalizedEditorText.length > llmEditorContextMaxChars;
     const editorPlainTextContext = normalizedEditorText.slice(0, llmEditorContextMaxChars);
-    return { vectorStoreIds, inputFileIds, editorContextTruncated, editorPlainTextContext };
+    return { vectorStoreIds: effectiveVectorStoreIds, inputFileIds, editorContextTruncated, editorPlainTextContext };
   }, [aiActionsLlmConfigRef, documentText, getEditorApi, llmEditorContextMaxChars]);
 
   const handleRunVerbeteDefinologia = useCallback(async () => {

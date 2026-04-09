@@ -15,8 +15,6 @@ const historyToolbarButtonActiveClass = "bg-green-100 text-blue-700 ring-1 ring-
 const historyToolbarSeparatorClass = "mx-1.5 h-6 w-px bg-zinc-400/90 shadow-[0_0_0_1px_rgba(255,255,255,0.22)]";
 
 const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactNode }> = {
-  define: { label: "Definologia", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
-  sinonimologia: { label: "Sinonimologia", icon: <Repeat2 className="h-3.5 w-3.5 text-primary" /> },
   dictionary: { label: "Definição", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
   synonyms: { label: "Sinonímia", icon: <Repeat2 className="h-3.5 w-3.5 text-primary" /> },
   antonyms: { label: "Antonímia", icon: <Repeat2 className="h-3.5 w-3.5 text-primary" /> },

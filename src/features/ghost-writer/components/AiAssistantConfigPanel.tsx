@@ -25,6 +25,7 @@ interface AiAssistantConfigPanelProps {
   onRemoveUploadedFile: (id: string) => void;
   isUploadingFiles?: boolean;
   showVectorStore?: boolean;
+  fixedVectorStoreLabel?: string;
   showUploadedFiles?: boolean;
   includeEditorContextInLlm?: boolean;
   onToggleIncludeEditorContextInLlm?: () => void;
@@ -51,64 +52,99 @@ const AiAssistantConfigPanel = ({
   onRemoveUploadedFile,
   isUploadingFiles = false,
   showVectorStore = true,
+  fixedVectorStoreLabel,
   showUploadedFiles = true,
   includeEditorContextInLlm = false,
   onToggleIncludeEditorContextInLlm,
   canToggleIncludeEditorContextInLlm = true,
   extraContent,
 }: AiAssistantConfigPanelProps) => (
-  <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
-    <div className="space-y-3">
-      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações LLM</Label>
-      <div className="flex items-center gap-2">
-        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Modelo</Label>
-        <select value={llmModel} onChange={(e) => onLlmModelChange(e.target.value)} className="h-8 w-full rounded-md border border-input bg-background px-3 text-[11px] text-foreground outline-none">
+  <div className="min-h-0 space-y-3 overflow-y-auto pr-1">
+    <div className="space-y-1.5">
+      <Label className="block pb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Configuracoes LLM</Label>
+      <div className="flex items-center gap-0">
+        <Label className="w-24 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Modelo</Label>
+        <select
+          value={llmModel}
+          onChange={(e) => onLlmModelChange(e.target.value)}
+          className="h-7 w-full rounded-md border border-input bg-background px-2.5 text-[10px] text-foreground outline-none"
+        >
           <option value="gpt-4.1-mini">gpt-4.1-mini</option>
-          <option value="gpt-5-mini">gpt-5-mini</option>
-          <option value="gpt-5.2">gpt-5.2</option>
+          <option value="gpt-5.4-mini">gpt-5.4-nano</option>
+          <option value="gpt-5.2">gpt-5.4-mini</option>
           <option value="gpt-5.4">gpt-5.4</option>
         </select>
       </div>
-      <div className="flex items-center gap-2">
-        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Temperatura</Label>
-        <Input type="number" step="0.1" min="0" max="2" value={llmTemperature} onChange={(e) => onLlmTemperatureChange(Number(e.target.value))} className="h-8 text-[11px]" />
+      <div className="flex items-center gap-0">
+        <Label className="w-24 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Temperatura</Label>
+        <Input
+          type="number"
+          step="0.1"
+          min="0"
+          max="2"
+          value={llmTemperature}
+          onChange={(e) => onLlmTemperatureChange(Number(e.target.value))}
+          className="h-7 px-2.5 !text-[10px] md:!text-[10px]"
+        />
       </div>
-      <div className="flex items-center gap-2">
-        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Output Tokens</Label>
-        <Input type="number" min="1" value={llmMaxOutputTokens} onChange={(e) => onLlmMaxOutputTokensChange(e.target.value ? Number(e.target.value) : 500)} className="h-8 text-[11px]" />
+      <div className="flex items-center gap-0">
+        <Label className="w-24 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Max Tokens</Label>
+        <Input
+          type="number"
+          min="1"
+          value={llmMaxOutputTokens}
+          onChange={(e) => onLlmMaxOutputTokensChange(e.target.value ? Number(e.target.value) : 500)}
+          className="h-7 px-2.5 !text-[10px] md:!text-[10px]"
+        />
       </div>
-      <div className="flex items-center gap-2">
-        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Verbosity</Label>
-        <Input value={llmVerbosity} onChange={(e) => onLlmVerbosityChange(e.target.value)} placeholder="low | medium | high" className="h-8 text-[11px]" />
+      <div className="flex items-center gap-0">
+        <Label className="w-24 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Verbosity</Label>
+        <Input
+          value={llmVerbosity}
+          onChange={(e) => onLlmVerbosityChange(e.target.value)}
+          placeholder="low | medium | high"
+          className="h-7 px-2.5 !text-[10px] md:!text-[10px]"
+        />
       </div>
-      <div className="flex items-center gap-2">
-        <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Effort</Label>
-        <Input value={llmEffort} onChange={(e) => onLlmEffortChange(e.target.value)} placeholder="none | low | medium | high" className="h-8 text-[11px]" />
+      <div className="flex items-center gap-0">
+        <Label className="w-24 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Effort</Label>
+        <Input
+          value={llmEffort}
+          onChange={(e) => onLlmEffortChange(e.target.value)}
+          placeholder="none | low | medium | high"
+          className="h-7 px-2.5 !text-[10px] md:!text-[10px]"
+        />
       </div>
       {showVectorStore ? (
-        <div className="space-y-2">
-          <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Vector Store</Label>
-          <select
-            value={selectedVectorStoreId}
-            onChange={(e) => onSelectedVectorStoreIdChange(e.target.value)}
-            className="h-8 w-full rounded-md border border-input bg-background px-3 text-[11px] text-foreground outline-none"
-          >
-            <option value="">none</option>
-            {vectorStoreOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+        <div className="space-y-1.5">
+          <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Vector Store</Label>
+          {fixedVectorStoreLabel ? (
+            <div className="flex min-h-7 w-full items-center rounded-md border border-input bg-background px-2.5 text-[10px] text-foreground">
+              {fixedVectorStoreLabel}
+            </div>
+          ) : (
+            <select
+              value={selectedVectorStoreId}
+              onChange={(e) => onSelectedVectorStoreIdChange(e.target.value)}
+              className="h-7 w-full rounded-md border border-input bg-background px-2.5 text-[10px] text-foreground outline-none"
+            >
+              <option value="">none</option>
+              {vectorStoreOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       ) : null}
       {extraContent}
       {typeof onToggleIncludeEditorContextInLlm === "function" ? (
-        <div className="pt-1">
+        <div className="pt-0.5">
           <Button
             type="button"
             variant="ghost"
-            className={`h-9 w-full justify-start rounded-lg border border-border px-3 text-left text-[11px] font-semibold shadow-sm ${
+            className={`h-8 w-full justify-start rounded-lg border border-border px-2.5 text-left text-[10px] font-semibold shadow-sm ${
               includeEditorContextInLlm
                 ? "bg-pink-200 text-pink-800 ring-1 ring-pink-300/80 hover:bg-pink-300 hover:text-pink-900"
                 : "bg-white text-muted-foreground hover:bg-zinc-50 hover:text-foreground"
@@ -117,7 +153,7 @@ const AiAssistantConfigPanel = ({
             onClick={onToggleIncludeEditorContextInLlm}
             disabled={!canToggleIncludeEditorContextInLlm}
           >
-            <Paperclip className="mr-2 h-3.5 w-3.5 shrink-0" />
+            <Paperclip className="mr-2 h-3 w-3 shrink-0" />
             <span>Enviar texto do editor</span>
           </Button>
         </div>

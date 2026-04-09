@@ -1,7 +1,7 @@
 import AiActionParametersPanel from "@/features/ghost-writer/components/AiActionParametersPanel";
 import AiAssistantConfigPanel from "@/features/ghost-writer/components/AiAssistantConfigPanel";
 import { Label } from "@/components/ui/label";
-import { getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
+import { getActionSystemPrompt, getTermsConceptsActionSystemPromptId, type ActionSystemPromptId, type TermsConceptsBasicActionId } from "@/features/ghost-writer/config/actionSystemPrompts";
 import { CONFIG_PROMPT_ROWS } from "@/features/ghost-writer/config/constants";
 import { parameterActionMeta } from "@/features/ghost-writer/config/metadata";
 import { TRANSLATE_LANGUAGE_OPTIONS } from "@/features/ghost-writer/config/options";
@@ -18,6 +18,7 @@ interface AiActionsParameterSectionProps {
   isLoading: boolean;
   hasDocumentOpen: boolean;
   isConfigOpen: boolean;
+  isTermsConceptsConscienciografiaEnabled: boolean;
   includeEditorContextInLlm: boolean;
   aiActionsLlmModel: string;
   aiActionsLlmTemperature: number;
@@ -56,6 +57,7 @@ const AiActionsParameterSection = ({
   isLoading,
   hasDocumentOpen,
   isConfigOpen,
+  isTermsConceptsConscienciografiaEnabled,
   includeEditorContextInLlm,
   aiActionsLlmModel,
   aiActionsLlmTemperature,
@@ -84,9 +86,14 @@ const AiActionsParameterSection = ({
   onRemoveUploadedFile,
 }: AiActionsParameterSectionProps) => {
   const shouldShowActionPanel = Boolean(actionId) && !(actionId === "ai_command" && isAiCommandSelectionPending);
-  const supportsAiConfig = Boolean(actionId && section !== "translation" && actionId !== "dict_lookup");
+  const supportsAiConfig = Boolean(actionId);
+  const isTermsConceptsAction = (value: AiActionId | null): value is TermsConceptsBasicActionId =>
+    value === "dictionary" || value === "synonyms" || value === "antonyms" || value === "etymology" || value === "cognatos";
+  const activeActionSystemPromptId = actionId && section === "actions" && isTermsConceptsAction(actionId)
+    ? getTermsConceptsActionSystemPromptId(actionId, isTermsConceptsConscienciografiaEnabled)
+    : (actionId as ActionSystemPromptId | null);
   const selectedActionSystemPrompt = supportsAiConfig
-    ? getActionSystemPrompt(aiActionSystemPrompts, actionId as ActionSystemPromptId)
+    ? getActionSystemPrompt(aiActionSystemPrompts, activeActionSystemPromptId)
     : "";
 
   return (
@@ -136,7 +143,7 @@ const AiActionsParameterSection = ({
         )}
       </div>
       {isConfigOpen && supportsAiConfig ? (
-        <div className="min-h-0 overflow-y-auto border-t border-border p-4 pr-3">
+        <div className="min-h-0 overflow-y-auto border-t border-border p-3 pr-2">
           <AiAssistantConfigPanel
             llmModel={aiActionsLlmModel}
             onLlmModelChange={onAiActionsLlmModelChange}
@@ -151,6 +158,8 @@ const AiActionsParameterSection = ({
             selectedVectorStoreId={aiActionsSelectedVectorStoreId}
             onSelectedVectorStoreIdChange={onAiActionsSelectedVectorStoreIdChange}
             vectorStoreOptions={aiActionVectorStoreOptions}
+            showVectorStore
+            fixedVectorStoreLabel={actionId === "translate" ? "Translate RAG" : undefined}
             onUploadFiles={(files) => void onUploadFiles(files)}
             uploadedFiles={uploadedChatFiles}
             onRemoveUploadedFile={onRemoveUploadedFile}
@@ -159,17 +168,17 @@ const AiActionsParameterSection = ({
             onToggleIncludeEditorContextInLlm={onToggleIncludeEditorContextInLlm}
             canToggleIncludeEditorContextInLlm={hasDocumentOpen}
             extraContent={supportsAiConfig ? (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt da Ação</Label>
                 <textarea
                   value={selectedActionSystemPrompt}
                   onChange={(event) => {
-                    if (supportsAiConfig && actionId && actionId !== "dict_lookup") {
-                      onAiActionSystemPromptChange(actionId as ActionSystemPromptId, event.target.value);
+                    if (supportsAiConfig && activeActionSystemPromptId) {
+                      onAiActionSystemPromptChange(activeActionSystemPromptId, event.target.value);
                     }
                   }}
                   rows={CONFIG_PROMPT_ROWS}
-                  className="w-full rounded-md border border-input bg-white px-3 py-2 text-[11px] text-foreground outline-none resize-none overflow-y-auto"
+                  className="w-full rounded-md border border-input bg-white px-2.5 py-1.5 text-[10px] text-foreground outline-none resize-none overflow-y-auto"
                 />
               </div>
             ) : null}

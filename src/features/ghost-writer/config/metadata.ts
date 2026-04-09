@@ -5,12 +5,11 @@ import type { AiActionId, AiPanelScope, AppActionId, AppPanelScope, MacroActionI
 export const BOOK_OPTION_LABELS: Record<string, string> = BOOK_LABELS;
 
 export const ACTION_PANEL_BUTTONS_BY_SCOPE: Record<AiPanelScope, AiActionId[]> = {
-  definitions_cons: ["define", "sinonimologia"],
   actions: ["dictionary", "synonyms", "antonyms", "etymology", "cognatos"],
   rewriting: ["rewrite", "summarize", "epigraph"],
   translation: ["translate", "dict_lookup"],
-  customized_prompts: ["analogies", "comparisons", "examples", "counterpoints", "neoparadigma"],
-  ai_command: []
+  customized_prompts: [ "analogies", "comparisons", "examples", "counterpoints", "neoparadigma", "ai_command"],
+  ai_command: [],
 };
 
 export const APP_PANEL_BUTTONS_BY_SCOPE: Record<AppPanelScope, AppActionId[]> = {
@@ -23,8 +22,6 @@ export const APP_PANEL_BUTTONS_BY_SCOPE: Record<AppPanelScope, AppActionId[]> = 
 export const MACRO_PANEL_BUTTONS: MacroActionId[] = ["macro1", "macro2"];
 
 export const ACTION_PANEL_ICONS: Record<AiActionId, LucideIcon> = {
-  define: BookOpen,
-  sinonimologia: Repeat2,
   synonyms: Repeat2,
   antonyms: Repeat2,
   etymology: Search,
@@ -71,66 +68,54 @@ export const parameterAppMeta: Record<AppActionId, { title: string; description:
   app4: { title: "Busca em Livros", description: "Busca termos nos livros de Waldo Vieira." },
   app13: { title: "Lexical Overview", description: "Busca o termo em todos os livros." },
   app5: { title: "Busca em Verbetes", description: "Busca termos nos verbetes em geral." },
-  app6: { title: "Bibliografia Externa", description: "Busca referências externas na internet." },
-  app12: { title: "Semantic Search", description: "Busca semântica por similaridade." },
+  app6: { title: "Bibliografia Externa", description: "Busca referencias externas na internet." },
+  app12: { title: "Semantic Search", description: "Busca semantica por similaridade." },
   app7: { title: "Tabela Automatizada", description: "Abre tabela Word e editor HTML." },
   app8: { title: "Definologia", description: "Gera Definologia do verbete." },
   app9: { title: "Sinonimologia", description: "Gera Sinonimologia do verbete." },
   app10: { title: "Fatologia", description: "Gera Fatologia do verbete." },
-  app11: { title: "Frase Enfática", description: "Gera Frase Enfática do verbete." },
+  app11: { title: "Frase Enfatica", description: "Gera Frase Enfatica do verbete." },
 };
 
 export const parameterMacroMeta: Record<MacroActionId, { title: string; description: string }> = {
   macro1: { title: "Highlight", description: "Destaca termos no documento." },
-  macro2: { title: "Numerar lista", description: "Aplica numeração manual à lista de itens." },
+  macro2: { title: "Numerar lista", description: "Aplica numeracao manual a lista de itens." },
 };
 
 export const parameterActionMeta: Record<AiActionId, { title: string; description: string }> = {
-  define: { title: "Definologia", description: "Definologia conscienciológica." },
-  sinonimologia: { title: "Sinonimologia", description: "Sinonimologia conscienciológia." },
-
-
-  dictionary: { title: "Definição", description: "Definição dicionarizada." },
-  synonyms: { title: "Sinonímia", description: "Lista de sinônimos." },
-  antonyms: { title: "Antonímia", description: "Lista de antônimos." },
+  dictionary: { title: "Definicao", description: "Definicao dicionarizada." },
+  synonyms: { title: "Sinonimia", description: "Lista de sinonimos." },
+  antonyms: { title: "Antonimia", description: "Lista de antonimos." },
   etymology: { title: "Etimologia", description: "Etimologia do termo." },
   cognatos: { title: "Cognatos", description: "Cognatos do termo." },
-
-  epigraph: { title: "Epígrafe", description: "Sugere epígrafe do termo." },
+  epigraph: { title: "Epigrafe", description: "Sugere epigrafe do termo." },
   rewrite: { title: "Reescrever", description: "Melhora clareza e fluidez." },
-  summarize: { title: "Resumir", description: "Síntese concisa." },
-  
+  summarize: { title: "Resumir", description: "Sintese concisa." },
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
-  dict_lookup: { title: "Dicionários", description: "Consulta dicionários online." },
-
+  dict_lookup: { title: "Dicionarios", description: "Consulta dicionarios online." },
   ai_command: { title: "Comando IA", description: "Envia uma query livre para a LLM." },
-
   analogies: { title: "Analogias", description: "Analogias da Conscienciologia." },
-  comparisons: { title: "Comparações", description: "Comparações na Conscienciologia." },
+  comparisons: { title: "Comparacoes", description: "Comparacoes na Conscienciologia." },
   examples: { title: "Exemplos", description: "Exemplos segundo a Conscienciologia." },
   counterpoints: { title: "Contrapontos", description: "Contrapontos pela Conscienciologia." },
-  neoparadigma: { title: "Neoparadigma", description: "Análise comparativa paradigmática." },
+  neoparadigma: { title: "Neoparadigma", description: "Analise comparativa paradigmatica." },
 };
 
 export const getAiPanelScopeByAction = (id: AiActionId): AiPanelScope =>
-  ACTION_PANEL_BUTTONS_BY_SCOPE.definitions_cons.includes(id)
-    ? "definitions_cons"
-    : id === "ai_command"
+  id === "ai_command"
     ? "ai_command"
     : ACTION_PANEL_BUTTONS_BY_SCOPE.rewriting.includes(id)
-    ? "rewriting"
-    : ACTION_PANEL_BUTTONS_BY_SCOPE.translation.includes(id)
-      ? "translation"
-      : ACTION_PANEL_BUTTONS_BY_SCOPE.customized_prompts.includes(id)
-        ? "customized_prompts"
-      : "actions";
+      ? "rewriting"
+      : ACTION_PANEL_BUTTONS_BY_SCOPE.translation.includes(id)
+        ? "translation"
+        : ACTION_PANEL_BUTTONS_BY_SCOPE.customized_prompts.includes(id)
+          ? "customized_prompts"
+          : "actions";
 
 export const getParameterPanelTargetByAiAction = (id: AiActionId): ParameterPanelTarget => {
   const section = getAiPanelScopeByAction(id);
 
   switch (section) {
-    case "definitions_cons":
-      return { section, id };
     case "actions":
       return { section, id };
     case "rewriting":
@@ -146,6 +131,11 @@ export const getParameterPanelTargetByAiAction = (id: AiActionId): ParameterPane
   }
 };
 
+export const getParameterPanelTargetByAiActionInSection = (
+  id: AiActionId,
+  section: Extract<AiPanelScope, "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command">,
+): ParameterPanelTarget => ({ section, id });
+
 export const getParameterPanelHeaderMeta = (
   target: ParameterPanelTarget,
   appScope: AppPanelScope | null,
@@ -159,23 +149,21 @@ export const getParameterPanelHeaderMeta = (
       return { title: "LLM Sources", description: "Vector stores e arquivos" };
     case "actions":
       return { title: "Termos & Conceitos", description: "Definir, sinonimos, etimologia e cognatos" };
-    case "definitions_cons":
-      return { title: "Definições Cons", description: "Definologia e sinonimologia conscienciológica" };
+    case "rewriting":
+      return { title: "Trechos & Parágrafos", description: "Reescrever, resumir e criar epigrafe" };
     case "ai_command":
       return { title: "Comando IA", description: "Envia uma query livre para a LLM" };
-    case "rewriting":
-      return { title: "Paragrafos & Trechos", description: "Reescrever, resumir e criar epigrafe" };
     case "translation":
-      return { title: "Traducao & Dicionario", description: "Traduzir texto e consultar termos" };
+      return { title: "Tradução & Dicionário", description: "Traduzir texto e consultar termos" };
     case "customized_prompts":
       return { title: "Customized Prompts", description: "Painel de prompts customizados" };
     case "applications":
-      return { title: "Aplicativos", description: "Cons-IA, Bibliomancia, Canal de Videos, PDFs" };
+      return { title: "Aplicativos", description: "Cons-IA, Bibliomancia, Canal de Vídeos, PDFs" };
     case "apps":
       if (target.id === "app12") return { title: "Semantic Search", description: "Busca por afinidade semantica" };
       if (target.id === "app7") return { title: "Tabela Automatizada", description: "Abre tabela Word e editor HTML" };
       if (appScope === "busca_termos") return { title: "Lexical Search", description: "Busca lexica nos livros e verbetes" };
-      if (appScope === "verbetografia") return { title: "Seções do Verbete", description: "Escreve seções com auxílio da IA" };
+      if (appScope === "verbetografia") return { title: "Seções do Verbete", description: "Escreve seções com auxilio da IA" };
       return { title: "Bibliografia", description: "Busca as referencias bibliograficas" };
     default:
       return { title: "Parameters", description: "" };
