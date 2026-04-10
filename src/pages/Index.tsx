@@ -291,17 +291,20 @@ const Index = () => {
     if (section === "sources") setSourcesPanelView("books");
     else setSourcesPanelView(null);
     setParameterPanelTarget({ section, id: null });
-  }, [setAppPanelScope, setParameterPanelTarget, setSourcesPanelView]);
+    focusMobilePanel("center");
+  }, [focusMobilePanel, setAppPanelScope, setParameterPanelTarget, setSourcesPanelView]);
 
   const handleOpenAiActionParameters = useCallback((type: AiActionId) => {
     setIsAiCommandSelectionPending(false);
     baseHandleOpenAiActionParameters(type);
-  }, [baseHandleOpenAiActionParameters]);
+    focusMobilePanel("center");
+  }, [baseHandleOpenAiActionParameters, focusMobilePanel]);
 
   const handleOpenAiCommandPanel = useCallback(() => {
     setIsAiCommandSelectionPending(true);
     baseHandleOpenAiCommandPanel();
-  }, [baseHandleOpenAiCommandPanel]);
+    focusMobilePanel("center");
+  }, [baseHandleOpenAiCommandPanel, focusMobilePanel]);
 
   const handleToggleBookSource = useCallback((id: string, checked: boolean) => {
     setSelectedBookSourceIds((prev) => {
@@ -334,7 +337,8 @@ const Index = () => {
       const input = actionText.trim();
       if (!macro1Term.trim() && input) setMacro1Term(input);
     }
-  }, [actionText, macro1Term, setMacro1Term, setParameterPanelTarget]);
+    focusMobilePanel("center");
+  }, [actionText, focusMobilePanel, macro1Term, setMacro1Term, setParameterPanelTarget]);
 
   const isHistoryProcessing =
     isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningLexicalOverview || isRunningSemanticSearch || isRunningVerbeteSearch || isRunningVerbetografiaOpenTable || isRunningVerbetografiaOpenTableWord || isRunningVerbeteDefinologia || isRunningVerbeteFraseEnfatica || isRunningVerbeteSinonimologia || isRunningVerbeteFatologia;
@@ -342,6 +346,12 @@ const Index = () => {
     ? getParameterPanelHeaderMeta(parameterPanelTarget, appPanelScope)
     : null;
   const hasVerbetografiaRequiredFields = Boolean(verbetografiaTitle.trim());
+  const lastHistoryResponseIdRef = useRef<string | null>(null);
+  const focusMobilePanel = useCallback((panel: MobilePanelId) => {
+    if (!isMobileView) return;
+    setActiveMobilePanel(panel);
+  }, [isMobileView, setActiveMobilePanel]);
+
   useEffect(() => {
     const element = layoutContainerRef.current;
     if (!element) return;
@@ -360,6 +370,18 @@ const Index = () => {
 
     return () => observer.disconnect();
   }, []);
+  useEffect(() => {
+    const latestResponseId = responses[0]?.id ?? null;
+    if (!latestResponseId) {
+      lastHistoryResponseIdRef.current = null;
+      return;
+    }
+    if (latestResponseId !== lastHistoryResponseIdRef.current) {
+      lastHistoryResponseIdRef.current = latestResponseId;
+      focusMobilePanel("right");
+    }
+  }, [focusMobilePanel, responses]);
+
   const resizeDesktopFixedPanel = useCallback((panel: DesktopResizablePanelKey, deltaPx: number) => {
     setDesktopFixedPanelWidthsPx((prev) => ({
       ...prev,
@@ -425,13 +447,25 @@ const Index = () => {
   const leftPanelElement = (
     <LeftPanel
       onOpenParameterSection={handleOpenParameterSection}
-      onOpenVerbetografiaTable={handleOpenVerbetografiaTableFromLeft}
-      onOpenBookSearch={handleOpenBookSearchFromLeft}
-      onOpenSemanticSearch={handleOpenSemanticSearchFromLeft}
-      onOpenVerbetografia={handleOpenVerbetografiaFromLeft}
+      onOpenVerbetografiaTable={() => {
+        handleOpenVerbetografiaTableFromLeft();
+        focusMobilePanel("center");
+      }}
+      onOpenBookSearch={() => {
+        handleOpenBookSearchFromLeft();
+        focusMobilePanel("center");
+      }}
+      onOpenSemanticSearch={() => {
+        handleOpenSemanticSearchFromLeft();
+        focusMobilePanel("center");
+      }}
+      onOpenVerbetografia={() => {
+        handleOpenVerbetografiaFromLeft();
+        focusMobilePanel("center");
+      }}
       onToggleJsonPanel={() => {
         setIsJsonLogPanelOpen((prev) => !prev);
-        if (isMobileView) setActiveMobilePanel("json");
+        focusMobilePanel("json");
       }}
       isJsonPanelOpen={isJsonLogPanelOpen}
       isLoading={isLoading}
