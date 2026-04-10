@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Paperclip } from "lucide-react";
 import type { UploadedLlmFile } from "@/lib/openai";
 import UploadedFilesList from "@/features/ghost-writer/components/UploadedFilesList";
-import { CONFIG_PROMPT_ROWS } from "@/features/ghost-writer/config/constants";
+import { CONFIG_PROMPT_ROWS, LLM_MODEL_OPTIONS } from "@/features/ghost-writer/config/constants";
 
 interface SourcesPanelProps {
   onUploadFiles: (files: File[]) => void;
@@ -115,10 +115,11 @@ const SourcesPanel = ({
             <div className="flex items-center gap-2">
               <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Modelo</Label>
               <select value={llmModel} onChange={(e) => onLlmModelChange(e.target.value)} className="h-8 w-full rounded-md border border-input bg-background px-3 text-[11px] text-foreground outline-none">
-                <option value="gpt-4.1-mini">gpt-4.1-mini</option>
-                <option value="gpt-5-mini">gpt-5-mini</option>
-                <option value="gpt-5.2">gpt-5.2</option>
-                <option value="gpt-5.4">gpt-5.4</option>
+                {LLM_MODEL_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="flex items-center gap-2">

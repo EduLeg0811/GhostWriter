@@ -340,7 +340,7 @@ const Index = () => {
   const parameterPanelHeaderMeta = parameterPanelTarget
     ? getParameterPanelHeaderMeta(parameterPanelTarget, appPanelScope)
     : null;
-  const hasVerbetografiaRequiredFields = Boolean(verbetografiaTitle.trim() && verbetografiaSpecialty.trim());
+  const hasVerbetografiaRequiredFields = Boolean(verbetografiaTitle.trim());
   useEffect(() => {
     const element = layoutContainerRef.current;
     if (!element) return;
@@ -424,7 +424,6 @@ const Index = () => {
   const leftPanelElement = (
     <LeftPanel
       onOpenParameterSection={handleOpenParameterSection}
-      onOpenAiCommand={handleOpenAiCommandPanel}
       onOpenVerbetografiaTable={handleOpenVerbetografiaTableFromLeft}
       onOpenBookSearch={handleOpenBookSearchFromLeft}
       onOpenSemanticSearch={handleOpenSemanticSearchFromLeft}

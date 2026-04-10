@@ -11,7 +11,7 @@ describe("useGhostWriterLlmLogs", () => {
       request: { prompt: "test" },
       response: {
         meta: {
-          model: "gpt-5-mini",
+          model: "gpt-5.4-mini",
           status: "ok",
           rag_references: ["Ref A", "Ref B"],
           usage: {
@@ -35,7 +35,7 @@ describe("useGhostWriterLlmLogs", () => {
     const { result } = renderHook(() => useGhostWriterLlmLogs({
       llmLogs: [latestLog],
       llmSessionLogs: [latestLog, errorLog],
-      llmModel: "gpt-5-mini",
+      llmModel: "gpt-5.4-mini",
       llmLogFontScale: 1,
     }));
 
@@ -50,10 +50,10 @@ describe("useGhostWriterLlmLogs", () => {
     expect(result.current.outputTokens).toBe(500);
     expect(result.current.successfulCallsCount).toBe(1);
     expect(result.current.errorCallsCount).toBe(1);
-    expect(result.current.effectiveModel).toBe("gpt-5-mini");
-    expect(result.current.estimatedUsd).toBeCloseTo(0.001205, 6);
-    expect(result.current.estimatedBrl).toBeCloseTo(0.0066275, 6);
-    expect(result.current.latestEstimatedUsd).toBeCloseTo(0.001205, 6);
-    expect(result.current.latestEstimatedBrl).toBeCloseTo(0.0066275, 6);
+    expect(result.current.effectiveModel).toBe("gpt-5.4-mini");
+    expect(result.current.estimatedUsd).toBeCloseTo(0.002865, 6);
+    expect(result.current.estimatedBrl).toBeCloseTo(0.0157575, 6);
+    expect(result.current.latestEstimatedUsd).toBeCloseTo(0.002865, 6);
+    expect(result.current.latestEstimatedBrl).toBeCloseTo(0.0157575, 6);
   });
 });

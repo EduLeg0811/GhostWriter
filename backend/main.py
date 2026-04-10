@@ -122,7 +122,7 @@ for prefix, namespace in DOCX_XML_NAMESPACES.items():
 
 
 class ExecuteLLMRequest(BaseModel):
-    model: str = "gpt-4.1-mini"
+    model: str = ""
     messages: list[dict[str, Any]]
     previousResponseId: str | None = None
     systemPrompt: str = ""

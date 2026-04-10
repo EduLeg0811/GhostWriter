@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { DEFAULT_DOLLAR_TOKEN, DEFAULT_LOG_LINE_HEIGHT_RATIO, MODEL_PRICING_USD_PER_1M } from "@/features/ghost-writer/config/constants";
+import { DEFAULT_DOLLAR_TOKEN, DEFAULT_LOG_LINE_HEIGHT_RATIO, MODEL_PRICING_BRL_PER_1M } from "@/features/ghost-writer/config/constants";
 import type { LlmLogEntry } from "@/features/ghost-writer/types";
 
 interface UseGhostWriterLlmLogsParams {
@@ -27,14 +27,17 @@ const reasoningTokensFromUsage = (usage: Record<string, unknown>) => Number((usa
 
 const pricingForModelAndInput = (model: string, modelInputTokens: number) => {
   const normalizedModel = model.toLowerCase();
-  const isGpt54 = normalizedModel.startsWith("gpt-5.4");
-  const matchedPricingKey = isGpt54
-    ? (modelInputTokens > 272_000 ? "gpt-5.4-over-272k" : "gpt-5.4-under-272k")
-    : (Object.keys(MODEL_PRICING_USD_PER_1M).find((key) => normalizedModel.startsWith(key)) ?? "");
-  return matchedPricingKey ? MODEL_PRICING_USD_PER_1M[matchedPricingKey] : null;
+  const matchedPricingKey = normalizedModel.startsWith("gpt-5.4-mini")
+    ? "gpt-5.4-mini"
+    : normalizedModel.startsWith("gpt-5.4-nano")
+      ? "gpt-5.4-nano"
+      : normalizedModel === "gpt-5.4"
+        ? (modelInputTokens > 272_000 ? "gpt-5.4-over-272k" : "gpt-5.4-under-272k")
+        : (Object.keys(MODEL_PRICING_BRL_PER_1M).find((key) => normalizedModel.startsWith(key)) ?? "");
+  return matchedPricingKey ? MODEL_PRICING_BRL_PER_1M[matchedPricingKey] : null;
 };
 
-const estimateUsdFromMeta = (meta: Record<string, unknown>) => {
+const estimateBrlFromMeta = (meta: Record<string, unknown>) => {
   const usage = usageFromMeta(meta);
   const model = String(meta.model ?? "").trim();
   if (!model) return null;
@@ -100,19 +103,21 @@ const useGhostWriterLlmLogs = ({
     }
   }
 
-  let estimatedUsdAccumulator = 0;
-  let estimatedUsdAvailableCount = 0;
+  let estimatedBrlAccumulator = 0;
+  let estimatedBrlAvailableCount = 0;
   for (const log of llmSessionLogs) {
     if (!log.response || typeof log.response !== "object" || !("meta" in (log.response as Record<string, unknown>))) continue;
     const meta = ((log.response as { meta?: Record<string, unknown> }).meta ?? {});
-    const estimated = estimateUsdFromMeta(meta);
+    const estimated = estimateBrlFromMeta(meta);
     if (estimated == null) continue;
-    estimatedUsdAccumulator += estimated;
-    estimatedUsdAvailableCount += 1;
+    estimatedBrlAccumulator += estimated;
+    estimatedBrlAvailableCount += 1;
   }
 
-  const estimatedUsd = estimatedUsdAvailableCount > 0 ? estimatedUsdAccumulator : null;
-  const latestEstimatedUsd = estimateUsdFromMeta(latestLlmMeta);
+  const estimatedBrl = estimatedBrlAvailableCount > 0 ? estimatedBrlAccumulator : null;
+  const latestEstimatedBrl = estimateBrlFromMeta(latestLlmMeta);
+  const estimatedUsd = estimatedBrl != null ? estimatedBrl / DEFAULT_DOLLAR_TOKEN : null;
+  const latestEstimatedUsd = latestEstimatedBrl != null ? latestEstimatedBrl / DEFAULT_DOLLAR_TOKEN : null;
 
   return {
     llmLogFontStyle,
@@ -133,9 +138,9 @@ const useGhostWriterLlmLogs = ({
     errorCallsCount,
     effectiveModel: String(latestLlmMeta.model ?? llmModel ?? ""),
     estimatedUsd,
-    estimatedBrl: estimatedUsd != null ? estimatedUsd * DEFAULT_DOLLAR_TOKEN : null,
+    estimatedBrl,
     latestEstimatedUsd,
-    latestEstimatedBrl: latestEstimatedUsd != null ? latestEstimatedUsd * DEFAULT_DOLLAR_TOKEN : null,
+    latestEstimatedBrl,
   };
 }, [llmLogFontScale, llmLogs, llmModel, llmSessionLogs]);
 

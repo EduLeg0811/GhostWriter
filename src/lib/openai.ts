@@ -12,7 +12,7 @@ const apiUrl = (path: string): string => `${API_BASE_URL}${path}`;
 // LLM DEFAULTS (CENTRALIZADOS)
 // ============================================================
 // Modelo padrao global.
-export const LLM_DEFAULT_MODEL = "gpt-4.1-mini";
+export const LLM_DEFAULT_MODEL = "gpt-5.4-mini";
 // Temperatura padrao global.
 export const LLM_DEFAULT_TEMPERATURE = 0.7;
 // Parametro GPT-5.x (text.verbosity na Responses API).
@@ -29,7 +29,7 @@ export const LLM_VECTOR_STORE_TRANSLATE_RAG = (import.meta.env.VITE_OPENAI_VECTO
 // ============================================================
 // CHAT DEFAULTS (AJUSTE ESPECIFICO DO CHAT)
 // ============================================================
-export const CHAT_MODEL = "gpt-4.1-mini";
+export const CHAT_MODEL = "gpt-5.4-mini";
 export const CHAT_TEMPERATURE = LLM_DEFAULT_TEMPERATURE;
 export const CHAT_GPT5_VERBOSITY: "low" | "medium" | "high" = LLM_DEFAULT_GPT5_VERBOSITY;
 export const CHAT_GPT5_EFFORT: "none" | "low" | "medium" | "high" = LLM_DEFAULT_GPT5_EFFORT;
@@ -748,14 +748,13 @@ export function buildEpigraphConsPrompt(text: string): ChatMessage[] {
 // Botao correspondente no painel de parametros: "Analogias".
 // Este prompt gera analogias conceituais com classificacao e score.
 export function buildAnalogiesPrompt(text: string): ChatMessage[] {
-  const systemBase = `
-  Você é um especialista em análise conceitual e construção de analogias profundas, com foco em correspondências funcionais, estruturais e processuais entre ideias.
+  const systemBase = `Você é um especialista em análise conceitual e construção de analogias profundas, com foco em correspondências funcionais, estruturais e processuais entre ideias.
 Sua tarefa é receber um TERMO do usuário e gerar analogias de alta qualidade com base em:
 1. Conteúdo recuperado dos vector stores e arquivos fornecidos (prioridade máxima);
 2. Corpus de conhecimento da Conscienciologia;
 3. Conhecimento geral, apenas como complemento quando necessário.
 
-────────────────────────────────────────
+
 DEFINIÇÃO OPERACIONAL DE ANALOGIA
 Uma analogia válida deve apresentar correspondência clara entre o conceito original do TERMO de entrada e outro conceito, segundo pelo menos um dos seguintes eixos:
 - FUNCIONAL: desempenha papel equivalente
@@ -769,7 +768,6 @@ Analogias inválidas:
 - Metáforas vagas ou decorativas
 - Relações sem correspondência explícita
 
-────────────────────────────────────────
 PROCESSO
 1. Analisar o TERMO:
    - Identificar o conceito central
@@ -783,7 +781,6 @@ PROCESSO
    - Clareza explicativa
    - Precisão da correspondência
 
-────────────────────────────────────────
 CLASSIFICAÇÃO DO TIPO
 Cada analogia deve ser classificada com UM tipo principal:
 * Funcional
@@ -792,7 +789,6 @@ Cada analogia deve ser classificada com UM tipo principal:
 * Sistêmica
 * Operacional
 
-────────────────────────────────────────
 FORMATO DE SAÍDA (OBRIGATÓRIO)
 Resposta em Markdown, lista numerada (1 a 5)
 Cada item deve seguir EXATAMENTE este formato:
@@ -804,7 +800,6 @@ REGRAS:
 - Evitar redundância
 - Não incluir introdução ou conclusão
 
-────────────────────────────────────────
 RESTRIÇÃO CRÍTICA
 Todas as analogias devem apresentar correspondência funcional explícita com o TEXTO.
 Se não houver correspondência clara, descarte e gere outra.
@@ -932,7 +927,6 @@ Sua tarefa é receber um TERMO do usuário e elaborar uma comparação rigorosa 
 - A interpretação do mesmo TERMO no paradigma consciencial (Conscienciologia)
 A análise deve ser baseada prioritariamente nos conteúdos dos vector stores e arquivos fornecidos. Conhecimento geral pode ser usado como complemento.
 
-────────────────────────────────────────
 DEFINIÇÃO DA TAREFA
 Você deve comparar o TERMO sob dois paradigmas distintos, identificando:
 - Pontos de convergência (semelhanças conceituais)
@@ -940,7 +934,6 @@ Você deve comparar o TERMO sob dois paradigmas distintos, identificando:
 - Diferenças de pressupostos ontológicos, epistemológicos e metodológicos
 - Implicações práticas e teóricas
 
-────────────────────────────────────────
 FORMATO DE SAÍDA (OBRIGATÓRIO)
 Resposta em Markdown, com a seguinte estrutura:
 
@@ -958,14 +951,12 @@ Lista numerada com 3 itens
 
 ### 5. **Síntese comparativa:** {Parágrafo final integrando as principais relações entre o TERMO nos dois paradigmas}
 
-────────────────────────────────────────
 REGRAS DE ESTILO
 - Usar Markdown para destacar o termo central e os conceitos-chave
 - Linguagem precisa, técnica
 - Evitar generalizações vagas
 - Não incluir comentários fora da estrutura
 
-────────────────────────────────────────
 RESTRIÇÃO CRÍTICA
 - Se não houver correspondência suficiente, explicite as limitações.
 

@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+﻿import { useCallback } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { biblioExternaApp, biblioGeralApp, insertRefBookMacro, insertRefVerbeteApp, listLexicalBooksApp, listSemanticIndexesApp, openVerbetografiaTableApp, openVerbetografiaTableWordApp, randomPensataApp, searchLexicalBookApp, searchLexicalOverviewApp, searchVerbeteApp, semanticSearchPensatasApp } from "@/lib/backend-api";
 import { executeLLM, buildPensataAnalysisPrompt, buildVerbeteDefinologiaPrompt, buildVerbeteFatologiaPrompt, buildVerbeteFraseEnfaticaPrompt, buildVerbeteSinonimologiaPrompt } from "@/lib/openai";
@@ -148,7 +148,7 @@ const buildVerbeteSearchMarkdown = (matches: Array<{
     const datePart = rowDate || "s/data";
     const definologiaPart = `${rowText || ""}`.trim();
     const linkPart = rowLink ? `[PDF](${rowLink})` : "";
-    const headerLine = `**${titlePart}** (*${areaPart}*) ● *${authorPart}* ● ${numberPart} ● ${datePart}`;
+    const headerLine = `**${titlePart}** (*${areaPart}*) â— *${authorPart}* â— ${numberPart} â— ${datePart}`;
     return [headerLine, definologiaPart, linkPart].filter(Boolean).join("\n");
   })
   .join("\n");
@@ -551,6 +551,16 @@ const useGhostWriterApps = ({
     return { vectorStoreIds: effectiveVectorStoreIds, inputFileIds, editorContextTruncated, editorPlainTextContext };
   }, [aiActionsLlmConfigRef, documentText, getEditorApi, llmEditorContextMaxChars]);
 
+  const buildVerbetografiaActionLabel = useCallback((title: string, specialty: string) => (
+    specialty ? `TÃ­tulo: ${title} | Especialidade: ${specialty}` : `TÃ­tulo: ${title}`
+  ), []);
+
+  const buildVerbetografiaActionQuery = useCallback((sectionLabel: string, title: string, specialty: string) => (
+    specialty
+      ? `Escreva uma ${sectionLabel} do tema do verbete com tÃ­tulo: ${title} e especialidade: ${specialty}.`
+      : `Escreva uma ${sectionLabel} do tema do verbete com tÃ­tulo: ${title}.`
+  ), []);
+
   const handleRunVerbeteDefinologia = useCallback(async () => {
     if (!openAiReady) {
       toast.error(backendNotReadyMessage());
@@ -559,32 +569,28 @@ const useGhostWriterApps = ({
     const title = verbetografiaTitle.trim();
     const specialty = verbetografiaSpecialty.trim();
     if (!title) {
-      toast.error("Informe o título do verbete.");
-      return;
-    }
-    if (!specialty) {
-      toast.error("Informe a especialidade do verbete.");
+      toast.error("Informe o tÃ­tulo do verbete.");
       return;
     }
 
     setIsRunningVerbeteDefinologia(true);
     try {
       const { vectorStoreIds, inputFileIds, editorContextTruncated, editorPlainTextContext } = await buildVerbetografiaQueryContext();
-      const query = `Escreva uma Definologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
+      const query = buildVerbetografiaActionQuery("Definologia", title, specialty);
       const messages = applySystemPromptOverride(
         buildVerbeteDefinologiaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm),
         getActionSystemPrompt(aiActionSystemPrompts, "app8"),
       );
       const result = (await executeAiActionsLLMWithLog({ messages, systemPrompt: "", vectorStoreIds, inputFileIds })).content.trim();
-      addResponse("app_verbete_definologia", `Título: ${title} | Especialidade: ${specialty}`, result || "Sem conteudo retornado pela IA.");
+      addResponse("app_verbete_definologia", buildVerbetografiaActionLabel(title, specialty), result || "Sem conteudo retornado pela IA.");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Definologia.";
       toast.error(msg);
-      addResponse("app_verbete_definologia", `Título: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Definologia: ${msg}`);
+      addResponse("app_verbete_definologia", buildVerbetografiaActionLabel(verbetografiaTitle.trim(), verbetografiaSpecialty.trim()), `Erro na Definologia: ${msg}`);
     } finally {
       setIsRunningVerbeteDefinologia(false);
     }
-  }, [addResponse, aiActionSystemPrompts, backendNotReadyMessage, buildVerbetografiaQueryContext, executeAiActionsLLMWithLog, includeEditorContextInLlm, openAiReady, setIsRunningVerbeteDefinologia, toast, verbetografiaSpecialty, verbetografiaTitle]);
+  }, [addResponse, aiActionSystemPrompts, backendNotReadyMessage, buildVerbetografiaActionLabel, buildVerbetografiaActionQuery, buildVerbetografiaQueryContext, executeAiActionsLLMWithLog, includeEditorContextInLlm, openAiReady, setIsRunningVerbeteDefinologia, toast, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunVerbeteFraseEnfatica = useCallback(async () => {
     if (!openAiReady) {
@@ -594,32 +600,28 @@ const useGhostWriterApps = ({
     const title = verbetografiaTitle.trim();
     const specialty = verbetografiaSpecialty.trim();
     if (!title) {
-      toast.error("Informe o título do verbete.");
-      return;
-    }
-    if (!specialty) {
-      toast.error("Informe a especialidade do verbete.");
+      toast.error("Informe o tÃ­tulo do verbete.");
       return;
     }
 
     setIsRunningVerbeteFraseEnfatica(true);
     try {
       const { vectorStoreIds, inputFileIds, editorContextTruncated, editorPlainTextContext } = await buildVerbetografiaQueryContext();
-      const query = `Escreva uma Frase Enfática do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
+      const query = buildVerbetografiaActionQuery("Frase EnfÃ¡tica", title, specialty);
       const messages = applySystemPromptOverride(
         buildVerbeteFraseEnfaticaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm),
         getActionSystemPrompt(aiActionSystemPrompts, "app11"),
       );
       const result = (await executeAiActionsLLMWithLog({ messages, systemPrompt: "", vectorStoreIds, inputFileIds })).content.trim();
-      addResponse("app_verbete_frase_enfatica", `Título: ${title} | Especialidade: ${specialty}`, result || "Sem conteudo retornado pela IA.");
+      addResponse("app_verbete_frase_enfatica", buildVerbetografiaActionLabel(title, specialty), result || "Sem conteudo retornado pela IA.");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Falha ao executar Frase Enfática.";
+      const msg = err instanceof Error ? err.message : "Falha ao executar Frase EnfÃ¡tica.";
       toast.error(msg);
-      addResponse("app_verbete_frase_enfatica", `Título: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Frase Enfática: ${msg}`);
+      addResponse("app_verbete_frase_enfatica", buildVerbetografiaActionLabel(verbetografiaTitle.trim(), verbetografiaSpecialty.trim()), `Erro na Frase EnfÃ¡tica: ${msg}`);
     } finally {
       setIsRunningVerbeteFraseEnfatica(false);
     }
-  }, [addResponse, aiActionSystemPrompts, backendNotReadyMessage, buildVerbetografiaQueryContext, executeAiActionsLLMWithLog, includeEditorContextInLlm, openAiReady, setIsRunningVerbeteFraseEnfatica, toast, verbetografiaSpecialty, verbetografiaTitle]);
+  }, [addResponse, aiActionSystemPrompts, backendNotReadyMessage, buildVerbetografiaActionLabel, buildVerbetografiaActionQuery, buildVerbetografiaQueryContext, executeAiActionsLLMWithLog, includeEditorContextInLlm, openAiReady, setIsRunningVerbeteFraseEnfatica, toast, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunVerbeteSinonimologia = useCallback(async () => {
     if (!openAiReady) {
@@ -629,32 +631,28 @@ const useGhostWriterApps = ({
     const title = verbetografiaTitle.trim();
     const specialty = verbetografiaSpecialty.trim();
     if (!title) {
-      toast.error("Informe o título do verbete.");
-      return;
-    }
-    if (!specialty) {
-      toast.error("Informe a especialidade do verbete.");
+      toast.error("Informe o tÃ­tulo do verbete.");
       return;
     }
 
     setIsRunningVerbeteSinonimologia(true);
     try {
       const { vectorStoreIds, inputFileIds, editorContextTruncated, editorPlainTextContext } = await buildVerbetografiaQueryContext();
-      const query = `Escreva uma Sinonimologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
+      const query = buildVerbetografiaActionQuery("Sinonimologia", title, specialty);
       const messages = applySystemPromptOverride(
         buildVerbeteSinonimologiaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm),
         getActionSystemPrompt(aiActionSystemPrompts, "app9"),
       );
       const result = (await executeAiActionsLLMWithLog({ messages, systemPrompt: "", vectorStoreIds, inputFileIds })).content.trim();
-      addResponse("app_verbete_sinonimologia", `Título: ${title} | Especialidade: ${specialty}`, result || "Sem conteudo retornado pela IA.");
+      addResponse("app_verbete_sinonimologia", buildVerbetografiaActionLabel(title, specialty), result || "Sem conteudo retornado pela IA.");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Sinonimologia.";
       toast.error(msg);
-      addResponse("app_verbete_sinonimologia", `Título: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Sinonimologia: ${msg}`);
+      addResponse("app_verbete_sinonimologia", buildVerbetografiaActionLabel(verbetografiaTitle.trim(), verbetografiaSpecialty.trim()), `Erro na Sinonimologia: ${msg}`);
     } finally {
       setIsRunningVerbeteSinonimologia(false);
     }
-  }, [addResponse, aiActionSystemPrompts, backendNotReadyMessage, buildVerbetografiaQueryContext, executeAiActionsLLMWithLog, includeEditorContextInLlm, openAiReady, setIsRunningVerbeteSinonimologia, toast, verbetografiaSpecialty, verbetografiaTitle]);
+  }, [addResponse, aiActionSystemPrompts, backendNotReadyMessage, buildVerbetografiaActionLabel, buildVerbetografiaActionQuery, buildVerbetografiaQueryContext, executeAiActionsLLMWithLog, includeEditorContextInLlm, openAiReady, setIsRunningVerbeteSinonimologia, toast, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleRunVerbeteFatologia = useCallback(async () => {
     if (!openAiReady) {
@@ -664,32 +662,28 @@ const useGhostWriterApps = ({
     const title = verbetografiaTitle.trim();
     const specialty = verbetografiaSpecialty.trim();
     if (!title) {
-      toast.error("Informe o título do verbete.");
-      return;
-    }
-    if (!specialty) {
-      toast.error("Informe a especialidade do verbete.");
+      toast.error("Informe o tÃ­tulo do verbete.");
       return;
     }
 
     setIsRunningVerbeteFatologia(true);
     try {
       const { vectorStoreIds, inputFileIds, editorContextTruncated, editorPlainTextContext } = await buildVerbetografiaQueryContext();
-      const query = `Escreva uma Fatologia do tema do verbete com título: ${title} e especialidade: ${specialty}.`;
+      const query = buildVerbetografiaActionQuery("Fatologia", title, specialty);
       const messages = applySystemPromptOverride(
         buildVerbeteFatologiaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm),
         getActionSystemPrompt(aiActionSystemPrompts, "app10"),
       );
       const result = (await executeAiActionsLLMWithLog({ messages, systemPrompt: "", vectorStoreIds, inputFileIds })).content.trim();
-      addResponse("app_verbete_fatologia", `Título: ${title} | Especialidade: ${specialty}`, result || "Sem conteudo retornado pela IA.");
+      addResponse("app_verbete_fatologia", buildVerbetografiaActionLabel(title, specialty), result || "Sem conteudo retornado pela IA.");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Fatologia.";
       toast.error(msg);
-      addResponse("app_verbete_fatologia", `Título: ${verbetografiaTitle.trim()} | Especialidade: ${verbetografiaSpecialty.trim()}`, `Erro na Fatologia: ${msg}`);
+      addResponse("app_verbete_fatologia", buildVerbetografiaActionLabel(verbetografiaTitle.trim(), verbetografiaSpecialty.trim()), `Erro na Fatologia: ${msg}`);
     } finally {
       setIsRunningVerbeteFatologia(false);
     }
-  }, [addResponse, aiActionSystemPrompts, backendNotReadyMessage, buildVerbetografiaQueryContext, executeAiActionsLLMWithLog, includeEditorContextInLlm, openAiReady, setIsRunningVerbeteFatologia, toast, verbetografiaSpecialty, verbetografiaTitle]);
+  }, [addResponse, aiActionSystemPrompts, backendNotReadyMessage, buildVerbetografiaActionLabel, buildVerbetografiaActionQuery, buildVerbetografiaQueryContext, executeAiActionsLLMWithLog, includeEditorContextInLlm, openAiReady, setIsRunningVerbeteFatologia, toast, verbetografiaSpecialty, verbetografiaTitle]);
 
   const handleSelectVerbetografiaAction = useCallback((type: "app7" | "app8" | "app11" | "app9" | "app10") => {
     setAppPanelScope("verbetografia");
@@ -860,7 +854,7 @@ const useGhostWriterApps = ({
         messages: analysisMessages,
         vectorStoreIds: ["vs_6912908250e4819197e23fe725e04fae"],
       })).content.trim();
-      const content = analysis ? `${pensata}\n\n**Análise IA:** ${analysis}` : pensata;
+      const content = analysis ? `${pensata}\n\n**AnÃ¡lise IA:** ${analysis}` : pensata;
       addResponse("app_random_pensata", header, content);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Pensata do Dia.";
@@ -899,3 +893,4 @@ const useGhostWriterApps = ({
 };
 
 export default useGhostWriterApps;
+

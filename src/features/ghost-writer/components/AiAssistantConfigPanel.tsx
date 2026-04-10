@@ -4,6 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Paperclip } from "lucide-react";
 import UploadedFilesList from "@/features/ghost-writer/components/UploadedFilesList";
+import { LLM_MODEL_OPTIONS } from "@/features/ghost-writer/config/constants";
 import type { UploadedLlmFile } from "@/lib/openai";
 
 interface AiAssistantConfigPanelProps {
@@ -69,10 +70,11 @@ const AiAssistantConfigPanel = ({
           onChange={(e) => onLlmModelChange(e.target.value)}
           className="h-7 w-full rounded-md border border-input bg-background px-2.5 text-[10px] text-foreground outline-none"
         >
-          <option value="gpt-4.1-mini">gpt-4.1-mini</option>
-          <option value="gpt-5.4-mini">gpt-5.4-nano</option>
-          <option value="gpt-5.2">gpt-5.4-mini</option>
-          <option value="gpt-5.4">gpt-5.4</option>
+          {LLM_MODEL_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
       </div>
       <div className="flex items-center gap-0">

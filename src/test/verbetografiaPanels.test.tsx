@@ -262,11 +262,11 @@ describe("verbetografia panels", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: /busca semântica/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /busca sem.*ntica/i })).toBeInTheDocument();
     expect(screen.queryByText("Base Vetorial")).not.toBeInTheDocument();
     expect(screen.queryByText("Query")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /busca semântica/i }));
+    fireEvent.click(screen.getByRole("button", { name: /busca sem.*ntica/i }));
 
     expect(screen.getByText("Base Vetorial")).toBeInTheDocument();
     expect(screen.getByText("Query")).toBeInTheDocument();

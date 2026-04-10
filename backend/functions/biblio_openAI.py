@@ -874,7 +874,7 @@ Regras:
             final_prompt = prompt if not self.llm_system_prompt else f"{self.llm_system_prompt}\n\n{prompt}"
             result = execute_llm_request(
                 api_key=self.api_key,
-                model=self.llm_model or "gpt-4.1-mini",
+                model=self.llm_model or "gpt-5.4-mini",
                 messages=[
                     {"role": "system", "content": final_prompt},
                     {"role": "user", "content": json.dumps({"consulta": consulta, "candidatos": pacote}, ensure_ascii=False)},

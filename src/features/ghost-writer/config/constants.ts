@@ -12,6 +12,11 @@ export const DEFAULT_LOG_FONT_SIZE_PX = 9;
 export const DEFAULT_LOG_LINE_HEIGHT_RATIO = 1.1;
 export const DEFAULT_DOLLAR_TOKEN = 5.5;
 export const CONFIG_PROMPT_ROWS = 5;
+export const LLM_MODEL_OPTIONS = [
+  { value: "gpt-5.4-nano", label: "gpt-5.4-nano" },
+  { value: "gpt-5.4-mini", label: "gpt-5.4-mini" },
+  { value: "gpt-5.4", label: "gpt-5.4" },
+] as const;
 
 export const DESKTOP_PANEL_SIZES_PX = {
   left: { default: 320, min: 150, max: 400 },
@@ -63,10 +68,9 @@ export const getDefaultDesktopPanelLayout = ({
 export const DEFAULT_BOOK_SEARCH_MAX_RESULTS = 10;
 export const PDF_HEADER_SIGNATURE_RE = /enciclop(?:é|e)dia\s+da\s+conscienciologia/i;
 export const CHAT_EDITOR_CONTEXT_MAX_CHARS = 10000;
-export const MODEL_PRICING_USD_PER_1M: Record<string, { input: number; cached_input: number; output: number }> = {
-  "gpt-5.4-under-272k": { input: 2.5, cached_input: 0.25, output: 15.0 },
-  "gpt-5.4-over-272k": { input: 5.0, cached_input: 0.5, output: 22.5 },
-  "gpt-5.2": { input: 1.75, cached_input: 0.175, output: 14.0 },
-  "gpt-5-mini": { input: 0.25, cached_input: 0.025, output: 2.0 },
-  "gpt-4.1-mini": { input: 0.4, cached_input: 0.1, output: 1.6 },
+export const MODEL_PRICING_BRL_PER_1M: Record<string, { input: number; cached_input: number; output: number }> = {
+  "gpt-5.4-under-272k": { input: 13.75, cached_input: 1.375, output: 82.5 },
+  "gpt-5.4-over-272k": { input: 13.75, cached_input: 1.375, output: 82.5 },
+  "gpt-5.4-mini": { input: 4.125, cached_input: 0.4125, output: 24.75 },
+  "gpt-5.4-nano": { input: 1.1, cached_input: 0.11, output: 6.875 },
 };

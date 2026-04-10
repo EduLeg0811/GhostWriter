@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import AiAssistantConfigPanel from "@/features/ghost-writer/components/AiAssistantConfigPanel";
@@ -451,7 +451,7 @@ const AppsParameterSection = ({
           >
             <SemanticSearchIcon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
             <span className="min-w-0 flex-1 text-left">
-              <span className="block break-words text-sm font-medium text-foreground">Busca Semântica</span>
+              <span className="block break-words text-sm font-medium text-foreground">Busca SemÃ¢ntica</span>
               <span className="block break-words text-xs text-muted-foreground">{parameterAppMeta.app12.description}</span>
             </span>
           </Button>
@@ -605,8 +605,8 @@ const AppsParameterSection = ({
               </div>
             ) : (
           <VerbetografiaPanel
-            title={selectedVerbetografiaAction ? parameterAppMeta[selectedVerbetografiaAction].title : "Seções do Verbete"}
-            description={selectedVerbetografiaAction ? parameterAppMeta[selectedVerbetografiaAction].description : "Informe Título e Especialidade para habilitar as ações."}
+            title={selectedVerbetografiaAction ? parameterAppMeta[selectedVerbetografiaAction].title : "SeÃ§Ãµes do Verbete"}
+            description={selectedVerbetografiaAction ? parameterAppMeta[selectedVerbetografiaAction].description : "Informe Titulo para habilitar as acoes. Especialidade opcional."}
             actionLabel={selectedVerbetografiaAction ? parameterAppMeta[selectedVerbetografiaAction].title : undefined}
             verbeteTitle={verbetografiaTitle}
             specialty={verbetografiaSpecialty}
@@ -621,8 +621,8 @@ const AppsParameterSection = ({
             )
           ) : (
             <VerbetografiaPanel
-              title="Seções do Verbete"
-              description="Informe Título e Especialidade para habilitar as ações."
+              title="SeÃ§Ãµes do Verbete"
+              description="Informe Titulo para habilitar as acoes. Especialidade opcional."
               verbeteTitle={verbetografiaTitle}
               specialty={verbetografiaSpecialty}
               onVerbeteTitleChange={onVerbetografiaTitleChange}
@@ -663,7 +663,7 @@ const AppsParameterSection = ({
                 || selectedVerbetografiaAction === "app11"
               ) ? (
                 <div className="space-y-2">
-                  <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt da Ação</Label>
+                  <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt da AÃ§Ã£o</Label>
                   <textarea
                     value={selectedVerbetografiaSystemPrompt}
                     onChange={(event) => {
@@ -692,3 +692,4 @@ const AppsParameterSection = ({
 };
 
 export default AppsParameterSection;
+
