@@ -234,6 +234,34 @@ describe("verbetografia panels", () => {
     expect(onRunVerbetografiaOpenTable).not.toHaveBeenCalled();
   });
 
+  it("enables verbetografia section actions with title only", () => {
+    const onRunVerbeteDefinologia = vi.fn();
+
+    render(
+      <AppsParameterSection
+        hasDocumentOpen={false}
+        includeEditorContextInLlm={false}
+        onToggleIncludeEditorContextInLlm={function (): void {
+          throw new Error("Function not implemented.");
+        }}
+        aiActionSystemPrompts={undefined}
+        onAiActionSystemPromptChange={function (actionId: ActionSystemPromptId, value: string): void {
+          throw new Error("Function not implemented.");
+        }}
+        {...baseAppsProps}
+        appId="app8"
+        verbetografiaSpecialty=""
+        onRunVerbeteDefinologia={onRunVerbeteDefinologia}
+      />,
+    );
+
+    const actionButton = screen.getByRole("button", { name: /definologia/i });
+    expect(actionButton).toBeEnabled();
+
+    fireEvent.click(actionButton);
+    expect(onRunVerbeteDefinologia).toHaveBeenCalledTimes(1);
+  });
+
   it("shows semantic search fields only after clicking the main panel button", () => {
     render(
       <AppsParameterSection

@@ -58,8 +58,9 @@ const VerbetografiaPanel = ({
   onClose,
   showPanelChrome = true,
 }: VerbetografiaPanelProps) => {
-  const canRun = Boolean(verbeteTitle.trim() && specialty.trim() && onRun);
-  const canRunSecondary = Boolean(verbeteTitle.trim() && specialty.trim() && onSecondaryRun);
+  const hasVerbeteTitle = Boolean(verbeteTitle.trim());
+  const canRun = Boolean(hasVerbeteTitle && onRun);
+  const canRunSecondary = Boolean(hasVerbeteTitle && onSecondaryRun);
 
   const content = (
     <div className="scrollbar-thin flex-1 overflow-y-auto p-4">

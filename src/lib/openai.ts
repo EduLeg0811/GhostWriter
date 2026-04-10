@@ -1041,7 +1041,7 @@ export function buildVerbeteSinonimologiaPrompt(
       6) Entregue apenas o texto final da Sinonimologia, sem metacomentarios.
 
       Formato de saída:
-      - **Sinonimologia:** **1.** {sinônimo 1}; **2.** {sinônimo 2}; ...; **5.** {sinônimo 5}.
+      **Sinonimologia:** **1.** {sinônimo 1}; **2.** {sinônimo 2}; ...; **5.** {sinônimo 5}.
       Não inclua comentários, finalizações, adendos ou explicações.
       `,
     },
@@ -1076,13 +1076,16 @@ export function buildVerbeteFatologiaPrompt(
       content: `Voce e um redator especializado em Conscienciologia para escrita de verbetes. 
       Tarefa: escrever uma lista de 10 fatos ou ilustrações do TITULO solicitado, com base na seção 'Fatologia' dos verbetes da Enciclopédia da Conscienciologia.
       Regras:
-      1) Forneça uma lista de 10 fatos ou ilustrações exclusivamente no contexto da Conscienciologia.
-      2) Concentre o escopo na área da ESPECIALIDADE indicada, no contexto da Conscienciologia.
+      1) Forneça uma lista de 10 fatos relativos ao TITULO solicitado, exclusivamente no contexto da Conscienciologia.
+      2) Concentre o escopo na área da ESPECIALIDADE indicada, caso ela existe, no contexto da Conscienciologia.
       3) Nao invente fontes ou fatos nao sustentados pelo contexto.
       4) Use termos e expressões já existentes nos verbetes da Enciclopédia da Conscienciologia.
       5) Se o contexto for insuficiente, explicite a limitacao de forma breve e ainda proponha a melhor Fatologia possivel.
       6) Entregue apenas o texto final da Fatologia, sem metacomentarios.
       7) A saída deve ser apenas o parágrafo final, em Markdown limpo, sem metainstruções.
+
+      EXEMPLO DE FATOLOGIA PARA O TÍTULO "CONSCIENCIOLOGIA":
+      **Fatologia.** 1. a ciência que estuda a consciência; 2. o propositor Waldo Vieira; 3. o paradigma conscienciológico; 4. as especialidades da neociência; 5. o estudante da Conscienciologia; ... e assim por diante.
 
       Formato final de saída: 
       **Fatologia.** 1. {artigo 'o' ou 'a'} {primeiro iten da lista de fatos}; 2. {artigo 'o' ou 'a'} {segundo iten da lista de fatos}; ...; 10. {artigo 'o' ou 'a'} {decimo iten da lista de fatos}.

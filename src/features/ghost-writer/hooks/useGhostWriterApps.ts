@@ -554,13 +554,13 @@ const useGhostWriterApps = ({
   }, [aiActionsLlmConfigRef, documentText, getEditorApi, llmEditorContextMaxChars, uploadedChatFiles]);
 
   const buildVerbetografiaActionLabel = useCallback((title: string, specialty: string) => (
-    specialty ? `TÃ­tulo: ${title} | Especialidade: ${specialty}` : `TÃ­tulo: ${title}`
+    specialty ? `Título: ${title} | Especialidade: ${specialty}` : `Título: ${title}`
   ), []);
 
   const buildVerbetografiaActionQuery = useCallback((sectionLabel: string, title: string, specialty: string) => (
     specialty
-      ? `Escreva uma ${sectionLabel} do tema do verbete com tÃ­tulo: ${title} e especialidade: ${specialty}.`
-      : `Escreva uma ${sectionLabel} do tema do verbete com tÃ­tulo: ${title}.`
+      ? `Escreva uma ${sectionLabel} do tema do verbete com título: ${title} e especialidade: ${specialty}.`
+      : `Escreva uma ${sectionLabel} do tema do verbete com título: ${title}.`
   ), []);
 
   const handleRunVerbeteDefinologia = useCallback(async () => {
@@ -571,7 +571,7 @@ const useGhostWriterApps = ({
     const title = verbetografiaTitle.trim();
     const specialty = verbetografiaSpecialty.trim();
     if (!title) {
-      toast.error("Informe o tÃ­tulo do verbete.");
+      toast.error("Informe o título do verbete.");
       return;
     }
 
@@ -602,7 +602,7 @@ const useGhostWriterApps = ({
     const title = verbetografiaTitle.trim();
     const specialty = verbetografiaSpecialty.trim();
     if (!title) {
-      toast.error("Informe o tÃ­tulo do verbete.");
+      toast.error("Informe o título do verbete.");
       return;
     }
 
@@ -633,7 +633,7 @@ const useGhostWriterApps = ({
     const title = verbetografiaTitle.trim();
     const specialty = verbetografiaSpecialty.trim();
     if (!title) {
-      toast.error("Informe o tÃ­tulo do verbete.");
+      toast.error("Informe o título do verbete.");
       return;
     }
 
@@ -664,7 +664,7 @@ const useGhostWriterApps = ({
     const title = verbetografiaTitle.trim();
     const specialty = verbetografiaSpecialty.trim();
     if (!title) {
-      toast.error("Informe o tÃ­tulo do verbete.");
+      toast.error("Informe o título do verbete.");
       return;
     }
 

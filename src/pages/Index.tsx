@@ -285,6 +285,11 @@ const Index = () => {
     await handleOpenVerbetografiaTable();
   }, [currentFileId, handleExportDocx, handleOpenVerbetografiaTable]);
 
+  const focusMobilePanel = useCallback((panel: MobilePanelId) => {
+    if (!isMobileView) return;
+    setActiveMobilePanel(panel);
+  }, [isMobileView, setActiveMobilePanel]);
+
   const handleOpenParameterSection = useCallback((section: ParameterPanelSection) => {
     setIsAiCommandSelectionPending(false);
     setAppPanelScope(section === "apps" ? "bibliografia" : null);
@@ -347,10 +352,6 @@ const Index = () => {
     : null;
   const hasVerbetografiaRequiredFields = Boolean(verbetografiaTitle.trim());
   const lastHistoryResponseIdRef = useRef<string | null>(null);
-  const focusMobilePanel = useCallback((panel: MobilePanelId) => {
-    if (!isMobileView) return;
-    setActiveMobilePanel(panel);
-  }, [isMobileView, setActiveMobilePanel]);
 
   useEffect(() => {
     const element = layoutContainerRef.current;
