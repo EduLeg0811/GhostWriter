@@ -174,7 +174,6 @@ interface AiActionsLlmConfigRefValue {
   gpt5Effort?: string;
   systemPrompt?: string;
   vectorStoreIds: string[];
-  inputFileIds: string[];
 }
 
 const TRANSLATE_FIXED_VECTOR_STORE_IDS = ["vs_69931da436e48191b43453e845e63bd3"];
@@ -299,7 +298,6 @@ const useGhostWriterLlm = ({
     gpt5Effort: CHAT_GPT5_EFFORT as string | undefined,
     systemPrompt: CHAT_SYSTEM_PROMPT as string | undefined,
     vectorStoreIds: [],
-    inputFileIds: [],
   });
 
   const openAiReady = backendStatus === "ready";
@@ -374,9 +372,8 @@ const useGhostWriterLlm = ({
       gpt5Effort: aiActionsLlmEffort || undefined,
       systemPrompt: aiActionsLlmSystemPrompt.trim() || CHAT_SYSTEM_PROMPT,
       vectorStoreIds: normalizeIdList(aiActionsSelectedVectorStoreIds),
-      inputFileIds: normalizeIdList(aiActionsSelectedInputFileIds),
     };
-  }, [aiActionsLlmEffort, aiActionsLlmMaxOutputTokens, aiActionsLlmModel, aiActionsLlmSystemPrompt, aiActionsLlmTemperature, aiActionsLlmVerbosity, aiActionsSelectedInputFileIds, aiActionsSelectedVectorStoreIds]);
+  }, [aiActionsLlmEffort, aiActionsLlmMaxOutputTokens, aiActionsLlmModel, aiActionsLlmSystemPrompt, aiActionsLlmTemperature, aiActionsLlmVerbosity, aiActionsSelectedVectorStoreIds]);
 
   useEffect(() => {
     setAiActionsSelectedInputFileIds(normalizeIdList(uploadedChatFiles.map((file) => file.id)));
@@ -456,7 +453,7 @@ const useGhostWriterLlm = ({
 
   useEffect(() => {
     const safeTemperature = Number.isFinite(llmTemperature) ? Math.max(0, Math.min(llmTemperature, 2)) : CHAT_TEMPERATURE;
-    const safeMaxOutputTokens = Number.isFinite(llmMaxOutputTokens) ? Math.max(1, Math.floor(llmMaxOutputTokens)) : (CHAT_MAX_OUTPUT_TOKENS ?? 500);
+    const safeMaxOutputTokens = Number.isFinite(llmMaxOutputTokens) ? Math.max(1, Math.floor(llmMaxOutputTokens)) : (CHAT_MAX_OUTPUT_TOKENS ?? 1000);
     const safeMaxNumResults = Number.isFinite(llmMaxNumResults) ? Math.max(1, Math.min(Math.floor(llmMaxNumResults), 20)) : CHAT_MAX_NUM_RESULTS;
     const safeEditorContextMaxChars = Number.isFinite(llmEditorContextMaxChars) ? Math.max(500, Math.floor(llmEditorContextMaxChars)) : CHAT_EDITOR_CONTEXT_MAX_CHARS;
     window.localStorage.setItem(LLM_SETTINGS_STORAGE_KEY, JSON.stringify({
@@ -474,7 +471,7 @@ const useGhostWriterLlm = ({
     window.localStorage.setItem(AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY, JSON.stringify({
       model: aiActionsLlmModel,
       temperature: Number.isFinite(aiActionsLlmTemperature) ? Math.max(0, Math.min(aiActionsLlmTemperature, 2)) : CHAT_TEMPERATURE,
-      maxOutputTokens: Number.isFinite(aiActionsLlmMaxOutputTokens) ? Math.max(1, Math.floor(aiActionsLlmMaxOutputTokens)) : (CHAT_MAX_OUTPUT_TOKENS ?? 500),
+      maxOutputTokens: Number.isFinite(aiActionsLlmMaxOutputTokens) ? Math.max(1, Math.floor(aiActionsLlmMaxOutputTokens)) : (CHAT_MAX_OUTPUT_TOKENS ?? 1000),
       gpt5Verbosity: aiActionsLlmVerbosity,
       gpt5Effort: aiActionsLlmEffort,
       vectorStoreIds: normalizeIdList(aiActionsSelectedVectorStoreIds),
@@ -517,7 +514,7 @@ const useGhostWriterLlm = ({
     window.localStorage.setItem(BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY, JSON.stringify({
       model: biblioExternaLlmModel,
       temperature: Number.isFinite(biblioExternaLlmTemperature) ? Math.max(0, Math.min(biblioExternaLlmTemperature, 2)) : 0,
-      maxOutputTokens: Number.isFinite(biblioExternaLlmMaxOutputTokens) ? Math.max(1, Math.floor(biblioExternaLlmMaxOutputTokens)) : 500,
+      maxOutputTokens: Number.isFinite(biblioExternaLlmMaxOutputTokens) ? Math.max(1, Math.floor(biblioExternaLlmMaxOutputTokens)) : 1000,
       gpt5Verbosity: biblioExternaLlmVerbosity,
       gpt5Effort: biblioExternaLlmEffort,
     }));
@@ -639,7 +636,7 @@ const useGhostWriterLlm = ({
     const text = actionText.trim();
     const query = aiCommandQuery.trim();
     const currentConfig = aiActionsLlmConfigRef.current;
-    const inputFileIds = normalizeIdList(currentConfig.inputFileIds);
+    const inputFileIds = normalizeIdList(uploadedChatFiles.map((file) => file.id));
     const vectorStoreIds = normalizeIdList(currentConfig.vectorStoreIds).filter((id) => id !== NO_VECTOR_STORE_ID);
     const translateVectorStoreIds = TRANSLATE_FIXED_VECTOR_STORE_IDS;
     const isTermsConceptsAction = type === "dictionary" || type === "synonyms" || type === "antonyms" || type === "etymology" || type === "cognatos";
@@ -726,7 +723,7 @@ const useGhostWriterLlm = ({
     } finally {
       setIsLoading(false);
     }
-  }, [actionText, addResponse, aiActionSystemPrompts, aiCommandQuery, backendNotReadyMessage, currentFileId, documentText, executeAiActionsLLMWithLog, getEditorApi, includeEditorContextInLlm, isTermsConceptsConscienciografiaEnabled, llmEditorContextMaxChars, openAiReady, setIsLoading, toast, translateLanguage]);
+  }, [actionText, addResponse, aiActionSystemPrompts, aiCommandQuery, backendNotReadyMessage, currentFileId, documentText, executeAiActionsLLMWithLog, getEditorApi, includeEditorContextInLlm, isTermsConceptsConscienciografiaEnabled, llmEditorContextMaxChars, openAiReady, setIsLoading, toast, translateLanguage, uploadedChatFiles]);
 
   const handleOpenAiActionParameters = useCallback((type: AiActionId, sectionOverride?: "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command") => {
     setParameterPanelTarget(

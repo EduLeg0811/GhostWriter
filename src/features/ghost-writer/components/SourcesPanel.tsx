@@ -128,7 +128,7 @@ const SourcesPanel = ({
             </div>
             <div className="flex items-center gap-2">
               <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Output Tokens</Label>
-              <Input type="number" min="1" value={llmMaxOutputTokens} onChange={(e) => onLlmMaxOutputTokensChange(e.target.value ? Number(e.target.value) : 500)} className="h-8 text-[11px]" />
+              <Input type="number" min="1" value={llmMaxOutputTokens} onChange={(e) => onLlmMaxOutputTokensChange(e.target.value ? Number(e.target.value) : 1000)} className="h-8 text-[11px]" />
             </div>
             <div className="flex items-center gap-2">
               <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Num Results</Label>

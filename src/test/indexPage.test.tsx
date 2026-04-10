@@ -38,7 +38,7 @@ vi.mock("@/lib/openai", () => ({
   CHAT_TEMPERATURE: 0,
   CHAT_GPT5_VERBOSITY: "low",
   CHAT_GPT5_EFFORT: "none",
-  CHAT_MAX_OUTPUT_TOKENS: 500,
+  CHAT_MAX_OUTPUT_TOKENS: 1000,
   CHAT_MAX_NUM_RESULTS: 5,
   CHAT_SYSTEM_PROMPT: "system",
   BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT: "biblio-system",
@@ -246,12 +246,12 @@ describe("Index page", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /termos & conceitos/i }));
     fireEvent.click(screen.getByRole("button", { name: /conscienciografia/i }));
-    fireEvent.click(screen.getByRole("button", { name: /^definiÃ§Ã£o\b|^definicao\b/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^definição\b|^definicao\b/i }));
 
     fireEvent.change(screen.getByPlaceholderText("Write a word, phrase or text"), {
       target: { value: "holopensene" },
     });
-    fireEvent.click(screen.getAllByRole("button", { name: /^definiÃ§Ã£o\b|^definicao\b/i })[1]);
+    fireEvent.click(screen.getAllByRole("button", { name: /^definição\b|^definicao\b/i })[1]);
 
     await waitFor(() => {
       expect(openai.executeLLM).toHaveBeenCalled();

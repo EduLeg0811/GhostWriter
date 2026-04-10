@@ -246,7 +246,7 @@ export const useGhostWriterLlmState = (llmLogFontDefault: number) => {
   const [aiCommandQuery, setAiCommandQuery] = useState("");
   const [llmModel, setLlmModel] = useState(CHAT_MODEL);
   const [llmTemperature, setLlmTemperature] = useState(CHAT_TEMPERATURE);
-  const [llmMaxOutputTokens, setLlmMaxOutputTokens] = useState<number>(CHAT_MAX_OUTPUT_TOKENS ?? 500);
+  const [llmMaxOutputTokens, setLlmMaxOutputTokens] = useState<number>(CHAT_MAX_OUTPUT_TOKENS ?? 1000);
   const [llmMaxNumResults, setLlmMaxNumResults] = useState<number>(CHAT_MAX_NUM_RESULTS);
   const [llmEditorContextMaxChars, setLlmEditorContextMaxChars] = useState<number>(CHAT_EDITOR_CONTEXT_MAX_CHARS);
   const [llmVerbosity, setLlmVerbosity] = useState(CHAT_GPT5_VERBOSITY ?? "");
@@ -254,7 +254,7 @@ export const useGhostWriterLlmState = (llmLogFontDefault: number) => {
   const [llmSystemPrompt, setLlmSystemPrompt] = useState(CHAT_SYSTEM_PROMPT ?? "");
   const [aiActionsLlmModel, setAiActionsLlmModel] = useState(CHAT_MODEL);
   const [aiActionsLlmTemperature, setAiActionsLlmTemperature] = useState(CHAT_TEMPERATURE);
-  const [aiActionsLlmMaxOutputTokens, setAiActionsLlmMaxOutputTokens] = useState<number>(CHAT_MAX_OUTPUT_TOKENS ?? 500);
+  const [aiActionsLlmMaxOutputTokens, setAiActionsLlmMaxOutputTokens] = useState<number>(CHAT_MAX_OUTPUT_TOKENS ?? 1000);
   const [aiActionsLlmVerbosity, setAiActionsLlmVerbosity] = useState(CHAT_GPT5_VERBOSITY ?? "");
   const [aiActionsLlmEffort, setAiActionsLlmEffort] = useState(CHAT_GPT5_EFFORT ?? "");
   const [aiActionsLlmSystemPrompt, setAiActionsLlmSystemPrompt] = useState(CHAT_SYSTEM_PROMPT ?? "");
@@ -264,7 +264,7 @@ export const useGhostWriterLlmState = (llmLogFontDefault: number) => {
   const [isTermsConceptsConscienciografiaEnabled, setIsTermsConceptsConscienciografiaEnabled] = useState(false);
   const [biblioExternaLlmModel, setBiblioExternaLlmModel] = useState("gpt-5.4");
   const [biblioExternaLlmTemperature, setBiblioExternaLlmTemperature] = useState<number>(0);
-  const [biblioExternaLlmMaxOutputTokens, setBiblioExternaLlmMaxOutputTokens] = useState<number>(500);
+  const [biblioExternaLlmMaxOutputTokens, setBiblioExternaLlmMaxOutputTokens] = useState<number>(1000);
   const [biblioExternaLlmVerbosity, setBiblioExternaLlmVerbosity] = useState("low");
   const [biblioExternaLlmEffort, setBiblioExternaLlmEffort] = useState("none");
   const [biblioExternaLlmSystemPrompt, setBiblioExternaLlmSystemPrompt] = useState(BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT);

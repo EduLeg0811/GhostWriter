@@ -95,7 +95,7 @@ const AiAssistantConfigPanel = ({
           type="number"
           min="1"
           value={llmMaxOutputTokens}
-          onChange={(e) => onLlmMaxOutputTokensChange(e.target.value ? Number(e.target.value) : 500)}
+          onChange={(e) => onLlmMaxOutputTokensChange(e.target.value ? Number(e.target.value) : 1000)}
           className="h-7 px-2.5 !text-[10px] md:!text-[10px]"
         />
       </div>

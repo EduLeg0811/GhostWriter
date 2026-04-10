@@ -264,6 +264,7 @@ const Index = () => {
     setAppPanelScope,
     setParameterPanelTarget,
     aiActionsLlmConfigRef,
+    uploadedChatFiles,
     getEditorApi,
     backendNotReadyMessage,
     executeAiActionsLLMWithLog,

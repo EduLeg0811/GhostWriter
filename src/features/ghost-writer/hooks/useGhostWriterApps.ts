@@ -108,6 +108,7 @@ interface UseGhostWriterAppsParams {
   setAppPanelScope: Dispatch<SetStateAction<AppPanelScope | null>>;
   setParameterPanelTarget: Dispatch<SetStateAction<ParameterPanelTarget>>;
   aiActionsLlmConfigRef: MutableRefObject<AiActionsLlmConfig>;
+  uploadedChatFiles: Array<{ id: string }>;
   getEditorApi: () => Promise<HtmlEditorControlApi | null>;
   backendNotReadyMessage: () => string;
   executeAiActionsLLMWithLog: (payload: Parameters<typeof executeLLM>[0]) => Promise<Awaited<ReturnType<typeof executeLLM>>>;
@@ -232,6 +233,7 @@ const useGhostWriterApps = ({
   setAppPanelScope,
   setParameterPanelTarget,
   aiActionsLlmConfigRef,
+  uploadedChatFiles,
   getEditorApi,
   backendNotReadyMessage,
   executeAiActionsLLMWithLog,
@@ -542,14 +544,14 @@ const useGhostWriterApps = ({
       : vectorStoreIds.length > 0
         ? vectorStoreIds
         : [DEFAULT_BOOK_SOURCE_ID].filter(Boolean);
-    const inputFileIds = normalizeIdList(currentConfig.inputFileIds);
+    const inputFileIds = normalizeIdList(uploadedChatFiles.map((file) => file.id));
     const editorApi = await getEditorApi();
     const latestEditorText = editorApi ? await editorApi.getDocumentText() : documentText;
     const normalizedEditorText = (latestEditorText || "").trim();
     const editorContextTruncated = normalizedEditorText.length > llmEditorContextMaxChars;
     const editorPlainTextContext = normalizedEditorText.slice(0, llmEditorContextMaxChars);
     return { vectorStoreIds: effectiveVectorStoreIds, inputFileIds, editorContextTruncated, editorPlainTextContext };
-  }, [aiActionsLlmConfigRef, documentText, getEditorApi, llmEditorContextMaxChars]);
+  }, [aiActionsLlmConfigRef, documentText, getEditorApi, llmEditorContextMaxChars, uploadedChatFiles]);
 
   const buildVerbetografiaActionLabel = useCallback((title: string, specialty: string) => (
     specialty ? `TÃ­tulo: ${title} | Especialidade: ${specialty}` : `TÃ­tulo: ${title}`

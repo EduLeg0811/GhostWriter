@@ -265,7 +265,7 @@ class BibliografiaService:
                 messages=[{"role": "user", "content": texto}],
                 system_prompt=final_system_prompt,
                 temperature=self.llm_temperature if self.llm_temperature is not None else 0,
-                max_output_tokens=self.llm_max_output_tokens if self.llm_max_output_tokens is not None else 500,
+                max_output_tokens=self.llm_max_output_tokens if self.llm_max_output_tokens is not None else 1000,
                 gpt5_effort=self.llm_gpt5_effort or "none",
                 gpt5_verbosity=self.llm_gpt5_verbosity or "low",
                 tools=[{"type": "web_search"}],
