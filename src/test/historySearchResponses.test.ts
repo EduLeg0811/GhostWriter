@@ -252,6 +252,7 @@ describe("historySearchResponses", () => {
     expect(payload.markdown).toContain("Pensata relacionada");
     expect(payload.markdown).toContain("(**Indice DAC**)");
     expect(payload.markdown).toContain("Indice DAC | Tema semantico | author: Autor X");
+    expect(payload.markdown).toContain("score: 0.82");
     expect(payload.querySummary).toBe(`Base: Indice DAC | Consulta: ${"x".repeat(117)}... | Total: 1`);
   });
 });

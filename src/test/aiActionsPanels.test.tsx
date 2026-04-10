@@ -6,7 +6,6 @@ import AiActionsParameterSection from "@/features/ghost-writer/components/AiActi
 const buildSectionProps = () => ({
   section: "actions" as const,
   actionId: null,
-  isAiCommandSelectionPending: false,
   actionText: "",
   aiCommandQuery: "",
   translateLanguage: "Ingles" as const,
@@ -43,12 +42,12 @@ const buildSectionProps = () => ({
 });
 
 describe("AI actions panels", () => {
-  it("uses the command toolbar button as a selector instead of executing immediately", () => {
+  it("uses the command toolbar button inside Customized Prompts without a dedicated panel", () => {
     const onOpenAiActionParameters = vi.fn();
 
     render(
       <ParameterPanelToolbar
-        parameterPanelTarget={{ section: "ai_command", id: "ai_command" }}
+        parameterPanelTarget={{ section: "customized_prompts", id: "ai_command" }}
         appPanelScope={null}
         isLoading={false}
         isAiActionsConfigOpen={false}
@@ -137,6 +136,46 @@ describe("AI actions panels", () => {
     expect(screen.getByRole("button", { name: /conscienciografia/i })).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("shows the Conscienciografia pill in Traducao & Dicionario", () => {
+    render(
+      <ParameterPanelToolbar
+        parameterPanelTarget={{ section: "translation", id: "translate" }}
+        appPanelScope={null}
+        isLoading={false}
+        isAiActionsConfigOpen={false}
+        isTermsConceptsConscienciografiaEnabled={true}
+        hasVerbetografiaRequiredFields={false}
+        onToggleAiActionsConfig={vi.fn()}
+        onToggleTermsConceptsConscienciografia={vi.fn()}
+        onOpenAiActionParameters={vi.fn()}
+        onSelectVerbetografiaAction={vi.fn()}
+        onRunAppAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /conscienciografia/i })).toBeInTheDocument();
+  });
+
+  it("shows the Conscienciografia pill in Customized Prompts", () => {
+    render(
+      <ParameterPanelToolbar
+        parameterPanelTarget={{ section: "customized_prompts", id: "analogies" }}
+        appPanelScope={null}
+        isLoading={false}
+        isAiActionsConfigOpen={false}
+        isTermsConceptsConscienciografiaEnabled={true}
+        hasVerbetografiaRequiredFields={false}
+        onToggleAiActionsConfig={vi.fn()}
+        onToggleTermsConceptsConscienciografia={vi.fn()}
+        onOpenAiActionParameters={vi.fn()}
+        onSelectVerbetografiaAction={vi.fn()}
+        onRunAppAction={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /conscienciografia/i })).toBeInTheDocument();
+  });
+
   it("shows the AI config button when consulta dict is selected", () => {
     render(
       <ParameterPanelToolbar
@@ -164,28 +203,13 @@ describe("AI actions panels", () => {
     expect(screen.getByRole("textbox")).toBeInTheDocument();
   });
 
-  it("shows the command form only after the top selector is chosen", () => {
-    const props = {
-      ...buildSectionProps(),
-      section: "actions" as const,
-      actionId: "ai_command" as const,
-      aiCommandQuery: "Teste",
-    };
-
-    const { rerender } = render(
+  it("shows the command form when Comando IA is selected in Customized Prompts", () => {
+    render(
       <AiActionsParameterSection
-        {...props}
-        isAiCommandSelectionPending={true}
-      />,
-    );
-
-    expect(screen.queryByText("Query")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /comando ia/i })).not.toBeInTheDocument();
-
-    rerender(
-      <AiActionsParameterSection
-        {...props}
-        isAiCommandSelectionPending={false}
+        {...buildSectionProps()}
+        section="customized_prompts"
+        actionId="ai_command"
+        aiCommandQuery="Teste"
       />,
     );
 
@@ -210,6 +234,22 @@ describe("AI actions panels", () => {
     expect(screen.getByDisplayValue("casa")).toBeInTheDocument();
     expect(screen.queryByText(/idioma/i)).not.toBeInTheDocument();
     expect(screen.getByText(/system prompt da a/i)).toBeInTheDocument();
+  });
+
+  it("shows the Cons system prompt in translation config when Conscienciografia is active", () => {
+    render(
+      <AiActionsParameterSection
+        {...buildSectionProps()}
+        section="translation"
+        actionId="translate"
+        actionText="texto"
+        isConfigOpen={true}
+        isTermsConceptsConscienciografiaEnabled={true}
+        aiActionSystemPrompts={{ translate: "BASE", translateCons: "CONS PROMPT" } as never}
+      />,
+    );
+
+    expect(screen.getByDisplayValue("CONS PROMPT")).toBeInTheDocument();
   });
 
   it("renders the green action button after the text input area", () => {

@@ -9,7 +9,7 @@ const useGhostWriterLayout = ({ hasEditorPanel }: UseGhostWriterLayoutParams) =>
   const [parameterPanelTarget, setParameterPanelTarget] = useState<ParameterPanelTarget>(null);
   const [appPanelScope, setAppPanelScope] = useState<AppPanelScope | null>(null);
   const [activeLlmConfigPanel, setActiveLlmConfigPanel] = useState<LlmConfigPanelId | null>(null);
-  const [isJsonLogPanelOpen, setIsJsonLogPanelOpen] = useState(false);
+  const [activeLogPanel, setActiveLogPanel] = useState<"llm_logs" | "search_log" | null>(null);
   const [isMobileView, setIsMobileView] = useState(false);
   const [activeMobilePanel, setActiveMobilePanel] = useState<MobilePanelId>("left");
   const [sourcesPanelView, setSourcesPanelView] = useState<SourcesPanelView>(null);
@@ -19,7 +19,7 @@ const useGhostWriterLayout = ({ hasEditorPanel }: UseGhostWriterLayoutParams) =>
   const isAiActionsConfigOpen = activeLlmConfigPanel === "ai_actions";
   const isBiblioExternaConfigOpen = activeLlmConfigPanel === "biblio_externa";
   const hasCenterPanel = Boolean(parameterPanelTarget);
-  const hasJsonPanel = isJsonLogPanelOpen;
+  const hasJsonPanel = Boolean(activeLogPanel);
   const mobilePanelOptions: Array<{ id: MobilePanelId; label: string; disabled?: boolean }> = useMemo(() => [
     { id: "left", label: "Menu" },
     { id: "center", label: "Parametros", disabled: !hasCenterPanel },
@@ -86,8 +86,8 @@ const useGhostWriterLayout = ({ hasEditorPanel }: UseGhostWriterLayoutParams) =>
     setAppPanelScope,
     activeLlmConfigPanel,
     setActiveLlmConfigPanel,
-    isJsonLogPanelOpen,
-    setIsJsonLogPanelOpen,
+    activeLogPanel,
+    setActiveLogPanel,
     isMobileView,
     activeMobilePanel,
     setActiveMobilePanel,

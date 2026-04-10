@@ -116,7 +116,7 @@ export const buildSemanticHistorySearchMetadata = (
   assignHistorySearchMetadata(metadata, "index_id", item.index_id);
   assignHistorySearchMetadata(metadata, "index_label", item.index_label || fallbackIndexLabel);
   assignHistorySearchMetadata(metadata, "row", item.row);
-  assignHistorySearchMetadata(metadata, "score", item.score);
+  assignHistorySearchMetadata(metadata, "score", Number.isFinite(item.score) ? item.score.toFixed(2) : item.score);
   mergeHistorySearchMetadataEntries(metadata, rawMetadata);
 
   return metadata;

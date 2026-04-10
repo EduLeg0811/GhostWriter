@@ -345,6 +345,91 @@ export async function semanticSearchPensatasApp(payload: {
   });
 }
 
+export async function searchSemanticOverviewApp(payload: {
+  term: string;
+  limit?: number;
+}): Promise<{
+  ok: boolean;
+  result: {
+    term: string;
+    limit: number;
+    totalIndexes: number;
+    totalFound: number;
+    groups: Array<{
+      indexId: string;
+      indexLabel: string;
+      totalFound: number;
+      shownCount: number;
+      matches: Array<{
+        book: string;
+        index_id: string;
+        index_label: string;
+        row: number;
+        text: string;
+        metadata: Record<string, unknown>;
+        score: number;
+      }>;
+    }>;
+  };
+}> {
+  return fetchJsonWithRetry(apiUrl("/api/apps/semantic/overview"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+}
+
+export interface SemanticOverviewProgressEvent {
+  at: string;
+  stage: string;
+  indexId?: string;
+  indexLabel?: string;
+  position?: number;
+  totalIndexes?: number;
+  matchesFound?: number;
+  totalMatchesAccumulated?: number;
+  topScore?: number | null;
+  note?: string;
+}
+
+export interface SemanticOverviewProgressSnapshot {
+  searchType?: "semantic_overview" | "lexical_overview";
+  status: "idle" | "running" | "completed" | "error";
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  updatedAt?: string | null;
+  term?: string;
+  limit?: number;
+  totalIndexes?: number;
+  processedIndexes?: number;
+  currentIndexPosition?: number;
+  currentIndexId?: string;
+  currentIndexLabel?: string;
+  currentMatches?: number;
+  totalMatchesAccumulated?: number;
+  totalFound?: number;
+  groupsCount?: number;
+  topScore?: number | null;
+  message?: string;
+  error?: string | null;
+  events: SemanticOverviewProgressEvent[];
+}
+
+export async function fetchSemanticOverviewProgress(): Promise<{ ok: boolean; result: SemanticOverviewProgressSnapshot }> {
+  return fetchJsonWithRetry(apiUrl("/api/apps/semantic/overview/progress"), {
+    method: "GET",
+    cache: "no-store",
+  });
+}
+
+export async function fetchLexicalOverviewProgress(): Promise<{ ok: boolean; result: SemanticOverviewProgressSnapshot }> {
+  return fetchJsonWithRetry(apiUrl("/api/apps/lexical/overview/progress"), {
+    method: "GET",
+    cache: "no-store",
+  });
+}
+
 export async function searchOnlineDictionaryApp(payload: {
   term: string;
 }): Promise<{

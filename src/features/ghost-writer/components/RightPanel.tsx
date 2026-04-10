@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, BookOpen, Clock, Copy, FileText, Highlighter, Info, Languages, ListOrdered, Loader2, MessageSquare, Paperclip, PenLine, Repeat2, RotateCcw, Search, SendHorizontal, Settings, Trash2 } from "lucide-react";
 import { historyHtmlToPlainText, isHistorySearchResponseType, renderHistoryResponseAppendBodyHtml, renderHistoryResponseCopyHtml, renderHistoryResponseEditorHtml } from "@/features/ghost-writer/utils/historyResponseHtml";
 import LexicalOverviewHistoryCard from "@/features/ghost-writer/components/LexicalOverviewHistoryCard";
+import SemanticOverviewHistoryCard from "@/features/ghost-writer/components/SemanticOverviewHistoryCard";
 import { buttonsPrimarySolidBgClass, cardsBgClass, chatSectionBgClass, panelsBgClass, panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 import type { AIResponse } from "@/features/ghost-writer/types";
 
@@ -47,6 +48,7 @@ const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactN
   app_book_search: { label: "Lexical Search", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_lexical_overview: { label: "Lexical Overview", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_semantic_search: { label: "Semantic Search", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
+  app_semantic_overview: { label: "Semantic Overview", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_verbete_search: { label: "Busca em Verbetes", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_verbete_definologia: { label: "Definologia", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
   app_verbete_frase_enfatica: { label: "Frase Enfática", icon: <PenLine className="h-3.5 w-3.5 text-primary" /> },
@@ -84,8 +86,8 @@ interface RightPanelProps {
 const RightPanel = ({
   responses,
   enableHistoryNumbering = true,
-  enableHistoryReferences = true,
-  enableHistoryMetadata = true,
+  enableHistoryReferences = false,
+  enableHistoryMetadata = false,
   enableHistoryHighlight = true,
   onToggleHistoryNumbering,
   onToggleHistoryReferences,
@@ -339,11 +341,12 @@ const RightPanel = ({
           <div className="space-y-3 p-3">
             {responses.map((response) => {
               const meta = typeLabels[response.type];
+              const responseLabel = response.isConscienciografia ? `${meta.label} CONS` : meta.label;
               return (
                 <div key={response.id} className={`space-y-2 rounded-lg border border-border ${cardsBgClass} p-3`}>
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-primary" style={historyFontStyle}>
                     {meta.icon}
-                    {meta.label}
+                    {responseLabel}
                     <span className="ml-auto font-normal text-muted-foreground">
                       {response.timestamp.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                     </span>
@@ -357,6 +360,15 @@ const RightPanel = ({
 
                   {response.type === "app_lexical_overview" ? (
                     <LexicalOverviewHistoryCard
+                      response={response}
+                      historyFontStyle={historyFontStyle}
+                      enableHistoryNumbering={enableHistoryNumbering}
+                      enableHistoryReferences={enableHistoryReferences}
+                      enableHistoryMetadata={enableHistoryMetadata}
+                      enableHistoryHighlight={enableHistoryHighlight}
+                    />
+                  ) : response.type === "app_semantic_overview" ? (
+                    <SemanticOverviewHistoryCard
                       response={response}
                       historyFontStyle={historyFontStyle}
                       enableHistoryNumbering={enableHistoryNumbering}

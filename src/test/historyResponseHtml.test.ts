@@ -108,6 +108,33 @@ describe("historyResponseHtml", () => {
     expect(html).not.toContain(">PDF<");
   });
 
+  it("highlights verbete search terms only when the history highlight toggle is enabled", () => {
+    const response = buildResponse(
+      "app_verbete_search",
+      "Author: Autor Teste | Title: Titulo Base | Area: Area Teste | Text: verbete | Total: 1",
+      [
+        "**Titulo Base** (*Area Teste*) - *Autor Teste* - # 7 - 2025-01-02",
+        "**Definologia.** Texto do verbete.",
+      ].join("\n"),
+    );
+
+    const highlightedHtml = renderHistoryResponseEditorHtml(response, {
+      applyNumbering: true,
+      applyReferences: true,
+      applyMetadata: true,
+      applyHighlight: true,
+    });
+    const plainHtml = renderHistoryResponseEditorHtml(response, {
+      applyNumbering: true,
+      applyReferences: true,
+      applyMetadata: true,
+      applyHighlight: false,
+    });
+
+    expect(highlightedHtml).toContain("<mark");
+    expect(plainHtml).not.toContain("<mark");
+  });
+
   it("removes verbete pdf links from append and copy html while keeping text", () => {
     const response = buildResponse(
       "app_verbete_search",
@@ -209,7 +236,7 @@ describe("historyResponseHtml", () => {
       "dict_lookup",
       "Termo: casa | Fontes válidas: 1/2",
       [
-        "**Consulta Dicionários Online**",
+        "**Consulta Dicionários**",
         "",
         "**Fontes consultadas**",
         "",
@@ -339,6 +366,85 @@ describe("historyResponseHtml", () => {
     expect(appendHtml).toContain("Outro trecho");
     expect(appendHtml).not.toContain("Mentalsomatologia");
     expect(historyHtmlToPlainText(copyHtml)).toContain("Trecho com cosmoetica");
+  });
+
+  it("renders semantic overview export html with grouping and highlight toggle", () => {
+    const response = buildResponse(
+      "app_semantic_overview",
+      "Termo: cosmoetica | Total: 2 | Bases: 2 | Limite global: 2",
+      "fallback",
+      {
+        kind: "semantic_overview",
+        term: "cosmoetica",
+        limit: 2,
+        totalIndexes: 2,
+        totalFound: 2,
+        groups: [
+          {
+            indexId: "lo",
+            indexLabel: "LO Semantic",
+            totalFound: 1,
+            shownCount: 1,
+            matches: [
+              {
+                book: "LO",
+                index_id: "lo",
+                index_label: "LO Semantic",
+                row: 1,
+                text: "Trecho com cosmoetica expandida",
+                metadata: { title: "Cosmoetica" },
+                score: 0.9876,
+              },
+            ],
+          },
+          {
+            indexId: "quest",
+            indexLabel: "QUEST Semantic",
+            totalFound: 1,
+            shownCount: 1,
+            matches: [
+              {
+                book: "QUEST",
+                index_id: "quest",
+                index_label: "QUEST Semantic",
+                row: 2,
+                text: "Outro trecho semanticamente afim",
+                metadata: { author: "E.Q." },
+                score: 0.8765,
+              },
+            ],
+          },
+        ],
+      },
+    );
+
+    const editorHtml = renderHistoryResponseEditorHtml(response, {
+      applyNumbering: true,
+      applyReferences: true,
+      applyMetadata: true,
+      applyHighlight: true,
+    });
+    const appendHtml = renderHistoryResponseAppendBodyHtml(response, {
+      applyNumbering: true,
+      applyReferences: false,
+      applyMetadata: false,
+      applyHighlight: false,
+    });
+    const copyHtml = renderHistoryResponseCopyHtml(response, {
+      applyNumbering: true,
+      applyReferences: true,
+      applyMetadata: true,
+      applyHighlight: true,
+    });
+
+    expect(editorHtml).toContain("LO Semantic");
+    expect(editorHtml).toContain("QUEST Semantic");
+    expect(editorHtml).toContain("<mark");
+    expect(copyHtml).toContain("<strong>1.</strong>");
+    expect(copyHtml).toContain("score: 0.99");
+    expect(appendHtml).toContain("Trecho com cosmoetica expandida");
+    expect(appendHtml).not.toContain("score:");
+    expect(historyHtmlToPlainText(copyHtml)).toContain("Outro trecho semanticamente afim");
   });
 
   it("preserves QUEST special formatting in editor, append and copy flows", () => {

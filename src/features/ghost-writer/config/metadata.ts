@@ -9,7 +9,6 @@ export const ACTION_PANEL_BUTTONS_BY_SCOPE: Record<AiPanelScope, AiActionId[]> =
   rewriting: ["rewrite", "summarize", "epigraph"],
   translation: ["translate", "dict_lookup"],
   customized_prompts: [ "analogies", "comparisons", "examples", "counterpoints", "neoparadigma", "ai_command"],
-  ai_command: [],
 };
 
 export const APP_PANEL_BUTTONS_BY_SCOPE: Record<AppPanelScope, AppActionId[]> = {
@@ -69,7 +68,7 @@ export const parameterAppMeta: Record<AppActionId, { title: string; description:
   app13: { title: "Lexical Overview", description: "Busca o termo em todos os livros." },
   app5: { title: "Busca em Verbetes", description: "Busca termos nos verbetes em geral." },
   app6: { title: "Bibliografia Externa", description: "Busca referencias externas na internet." },
-  app12: { title: "Semantic Search", description: "Busca semantica por similaridade." },
+  app12: { title: "Semantic Search", description: "Busca semântica por similaridade." },
   app7: { title: "Tabela Automatizada", description: "Abre tabela Word e editor HTML." },
   app8: { title: "Definologia", description: "Gera Definologia do verbete." },
   app9: { title: "Sinonimologia", description: "Gera Sinonimologia do verbete." },
@@ -92,19 +91,17 @@ export const parameterActionMeta: Record<AiActionId, { title: string; descriptio
   rewrite: { title: "Reescrever", description: "Melhora clareza e fluidez." },
   summarize: { title: "Resumir", description: "Síntese concisa." },
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
-  dict_lookup: { title: "Dicionários", description: "Consulta dicionários online." },
+  dict_lookup: { title: "Dicionários", description: "Consulta dicionários técnicos." },
   ai_command: { title: "Comando IA", description: "Envia uma query livre para a LLM." },
-  analogies: { title: "Analogias", description: "Analogias da Conscienciologia." },
-  comparisons: { title: "Comparações", description: "Comparações na Conscienciologia." },
-  examples: { title: "Exemplos", description: "Exemplos segundo a Conscienciologia." },
-  counterpoints: { title: "Contrapontos", description: "Contrapontos pela Conscienciologia." },
+  analogies: { title: "Analogias", description: "Lista de Analogias." },
+  comparisons: { title: "Comparações", description: "Lista de Comparações." },
+  examples: { title: "Exemplos", description: "Lista de Exemplos." },
+  counterpoints: { title: "Contrapontos", description: "Lista de Contrapontos." },
   neoparadigma: { title: "Neoparadigma", description: "Análise comparativa paradigmática." },
 };
 
 export const getAiPanelScopeByAction = (id: AiActionId): AiPanelScope =>
-  id === "ai_command"
-    ? "ai_command"
-    : ACTION_PANEL_BUTTONS_BY_SCOPE.rewriting.includes(id)
+  ACTION_PANEL_BUTTONS_BY_SCOPE.rewriting.includes(id)
       ? "rewriting"
       : ACTION_PANEL_BUTTONS_BY_SCOPE.translation.includes(id)
         ? "translation"
@@ -124,8 +121,6 @@ export const getParameterPanelTargetByAiAction = (id: AiActionId): ParameterPane
       return { section, id };
     case "customized_prompts":
       return { section, id };
-    case "ai_command":
-      return { section, id };
     default:
       return null;
   }
@@ -133,7 +128,7 @@ export const getParameterPanelTargetByAiAction = (id: AiActionId): ParameterPane
 
 export const getParameterPanelTargetByAiActionInSection = (
   id: AiActionId,
-  section: Extract<AiPanelScope, "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command">,
+  section: AiPanelScope,
 ): ParameterPanelTarget => ({ section, id });
 
 export const getParameterPanelHeaderMeta = (
@@ -147,12 +142,12 @@ export const getParameterPanelHeaderMeta = (
       return { title: "Documento", description: "Novo, abrir e editar documento" };
     case "sources":
       return { title: "LLM Sources", description: "Vector stores e arquivos" };
+    case "search_log":
+      return { title: "Search Log", description: "Acompanhamento em tempo real do Semantic Overview" };
     case "actions":
       return { title: "Termos & Conceitos", description: "Definir, sinonimos, etimologia e cognatos" };
     case "rewriting":
       return { title: "Trechos & Parágrafos", description: "Reescrever, resumir e criar epígrafe" };
-    case "ai_command":
-      return { title: "Comando IA", description: "Envia uma query livre para a LLM" };
     case "translation":
       return { title: "Tradução & Dicionário", description: "Traduzir texto e consultar termos" };
     case "customized_prompts":
@@ -160,9 +155,9 @@ export const getParameterPanelHeaderMeta = (
     case "applications":
       return { title: "Aplicativos", description: "Cons-IA, Bibliomancia, Canal de Vídeos, PDFs" };
     case "apps":
-      if (target.id === "app12") return { title: "Semantic Search", description: "Busca por afinidade semantica" };
+      if (target.id === "app12") return { title: "Semantic Search", description: "Busca por afinidade semântica" };
       if (target.id === "app7") return { title: "Tabela Automatizada", description: "Abre tabela Word e editor HTML" };
-      if (appScope === "busca_termos") return { title: "Lexical Search", description: "Busca lexica nos livros e verbetes" };
+      if (appScope === "busca_termos") return { title: "Lexical Search", description: "Busca léxica nos livros e verbetes" };
       if (appScope === "verbetografia") return { title: "Seções do Verbete", description: "Escreve seções com auxilio da IA" };
       return { title: "Bibliografia", description: "Busca as referencias bibliograficas" };
     default:

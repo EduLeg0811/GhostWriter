@@ -1,6 +1,6 @@
-﻿import { useCallback } from "react";
+import { useCallback } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { biblioExternaApp, biblioGeralApp, insertRefBookMacro, insertRefVerbeteApp, listLexicalBooksApp, listSemanticIndexesApp, openVerbetografiaTableApp, openVerbetografiaTableWordApp, randomPensataApp, searchLexicalBookApp, searchLexicalOverviewApp, searchVerbeteApp, semanticSearchPensatasApp } from "@/lib/backend-api";
+import { biblioExternaApp, biblioGeralApp, insertRefBookMacro, insertRefVerbeteApp, listLexicalBooksApp, listSemanticIndexesApp, openVerbetografiaTableApp, openVerbetografiaTableWordApp, randomPensataApp, searchLexicalBookApp, searchLexicalOverviewApp, searchSemanticOverviewApp, searchVerbeteApp, semanticSearchPensatasApp } from "@/lib/backend-api";
 import { executeLLM, buildPensataAnalysisPrompt, buildVerbeteDefinologiaPrompt, buildVerbeteFatologiaPrompt, buildVerbeteFraseEnfaticaPrompt, buildVerbeteSinonimologiaPrompt } from "@/lib/openai";
 import { BOOK_LABELS, type BookCode } from "@/lib/bookCatalog";
 import { applySystemPromptOverride, getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
@@ -8,7 +8,7 @@ import { NO_VECTOR_STORE_ID } from "@/features/ghost-writer/config/constants";
 import { normalizeIdList } from "@/features/ghost-writer/config/metadata";
 import { DEFAULT_BOOK_SOURCE_ID } from "@/features/ghost-writer/config/options";
 import type { AIResponse, AppActionId, AppPanelScope, LlmLogEntry, ParameterPanelTarget, RefBookMode, SemanticIndexOption } from "@/features/ghost-writer/types";
-import { buildLexicalOverviewHistoryResponsePayload, buildLexicalSearchHistoryResponsePayload, buildSemanticSearchHistoryResponsePayload } from "@/features/ghost-writer/utils/historySearchResponses";
+import { buildLexicalOverviewHistoryResponsePayload, buildLexicalSearchHistoryResponsePayload, buildSemanticOverviewHistoryResponsePayload, buildSemanticSearchHistoryResponsePayload } from "@/features/ghost-writer/utils/historySearchResponses";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 
 interface ToastApi {
@@ -64,6 +64,8 @@ interface UseGhostWriterAppsParams {
   selectedSemanticSearchIndexId: string;
   setSelectedSemanticSearchIndexId: Dispatch<SetStateAction<string>>;
   setIsLoadingSemanticSearchIndexes: Dispatch<SetStateAction<boolean>>;
+  semanticOverviewTerm: string;
+  semanticOverviewMaxResults: number;
   verbeteSearchAuthor: string;
   verbeteSearchTitle: string;
   verbeteSearchArea: string;
@@ -96,6 +98,7 @@ interface UseGhostWriterAppsParams {
   setIsRunningLexicalSearch: Dispatch<SetStateAction<boolean>>;
   setIsRunningLexicalOverview: Dispatch<SetStateAction<boolean>>;
   setIsRunningSemanticSearch: Dispatch<SetStateAction<boolean>>;
+  setIsRunningSemanticOverview: Dispatch<SetStateAction<boolean>>;
   setIsRunningVerbeteSearch: Dispatch<SetStateAction<boolean>>;
   setIsRunningVerbetografiaOpenTable: Dispatch<SetStateAction<boolean>>;
   setIsRunningVerbetografiaOpenTableWord: Dispatch<SetStateAction<boolean>>;
@@ -149,7 +152,7 @@ const buildVerbeteSearchMarkdown = (matches: Array<{
     const datePart = rowDate || "s/data";
     const definologiaPart = `${rowText || ""}`.trim();
     const linkPart = rowLink ? `[PDF](${rowLink})` : "";
-    const headerLine = `**${titlePart}** (*${areaPart}*) â— *${authorPart}* â— ${numberPart} â— ${datePart}`;
+    const headerLine = `**${titlePart}** (*${areaPart}*) ● *${authorPart}* ● ${numberPart} ● ${datePart}`;
     return [headerLine, definologiaPart, linkPart].filter(Boolean).join("\n");
   })
   .join("\n");
@@ -189,6 +192,8 @@ const useGhostWriterApps = ({
   selectedSemanticSearchIndexId,
   setSelectedSemanticSearchIndexId,
   setIsLoadingSemanticSearchIndexes,
+  semanticOverviewTerm,
+  semanticOverviewMaxResults,
   verbeteSearchAuthor,
   verbeteSearchTitle,
   verbeteSearchArea,
@@ -221,6 +226,7 @@ const useGhostWriterApps = ({
   setIsRunningLexicalSearch,
   setIsRunningLexicalOverview,
   setIsRunningSemanticSearch,
+  setIsRunningSemanticOverview,
   setIsRunningVerbeteSearch,
   setIsRunningVerbetografiaOpenTable,
   setIsRunningVerbetografiaOpenTableWord,
@@ -617,9 +623,9 @@ const useGhostWriterApps = ({
       const result = (await executeAiActionsLLMWithLog({ messages, systemPrompt: "", vectorStoreIds, inputFileIds })).content.trim();
       addResponse("app_verbete_frase_enfatica", buildVerbetografiaActionLabel(title, specialty), result || "Sem conteudo retornado pela IA.");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Falha ao executar Frase EnfÃ¡tica.";
+      const msg = err instanceof Error ? err.message : "Falha ao executar Frase Enfática.";
       toast.error(msg);
-      addResponse("app_verbete_frase_enfatica", buildVerbetografiaActionLabel(verbetografiaTitle.trim(), verbetografiaSpecialty.trim()), `Erro na Frase EnfÃ¡tica: ${msg}`);
+      addResponse("app_verbete_frase_enfatica", buildVerbetografiaActionLabel(verbetografiaTitle.trim(), verbetografiaSpecialty.trim()), `Erro na Frase Enfática: ${msg}`);
     } finally {
       setIsRunningVerbeteFraseEnfatica(false);
     }
@@ -795,6 +801,40 @@ const useGhostWriterApps = ({
     }
   }, [addResponse, selectedSemanticSearchIndexId, semanticSearchIndexes, semanticSearchMaxResults, semanticSearchQuery, setIsRunningSemanticSearch, toast]);
 
+  const handleRunSemanticOverview = useCallback(async () => {
+    const term = semanticOverviewTerm.trim();
+    const limit = Math.max(1, Math.min(100, semanticOverviewMaxResults || 1));
+    if (!term) {
+      toast.error("Informe um termo para busca.");
+      return;
+    }
+
+    setIsRunningSemanticOverview(true);
+    try {
+      const data = await searchSemanticOverviewApp({ term, limit });
+      const totalIndexes = Number(data.result.totalIndexes || 0);
+      const totalFound = Number(data.result.totalFound || 0);
+      const groups = data.result.groups || [];
+      if (groups.length <= 0 || totalFound <= 0) {
+        toast.info("Nenhum resultado semanticamente afim encontrado.");
+        return;
+      }
+      const payload = buildSemanticOverviewHistoryResponsePayload({
+        term,
+        limit,
+        totalIndexes,
+        totalFound,
+        groups,
+      });
+      addResponse("app_semantic_overview", payload.querySummary, payload.markdown, payload.payload);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Falha ao executar Semantic Overview.";
+      toast.error(msg);
+    } finally {
+      setIsRunningSemanticOverview(false);
+    }
+  }, [addResponse, semanticOverviewMaxResults, semanticOverviewTerm, setIsRunningSemanticOverview, toast]);
+
   const handleRunVerbeteSearch = useCallback(async () => {
     const author = verbeteSearchAuthor.trim();
     const title = verbeteSearchTitle.trim();
@@ -856,7 +896,7 @@ const useGhostWriterApps = ({
         messages: analysisMessages,
         vectorStoreIds: ["vs_6912908250e4819197e23fe725e04fae"],
       })).content.trim();
-      const content = analysis ? `${pensata}\n\n**AnÃ¡lise IA:** ${analysis}` : pensata;
+      const content = analysis ? `${pensata}\n\n**Análise IA:** ${analysis}` : pensata;
       addResponse("app_random_pensata", header, content);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Falha ao executar Pensata do Dia.";
@@ -889,10 +929,10 @@ const useGhostWriterApps = ({
     handleRunLexicalSearch,
     handleRunLexicalOverview,
     handleRunSemanticSearch,
+    handleRunSemanticOverview,
     handleRunVerbeteSearch,
     handleRunRandomPensata,
   };
 };
 
 export default useGhostWriterApps;
-

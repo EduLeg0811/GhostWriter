@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import AiAssistantConfigPanel from "@/features/ghost-writer/components/AiAssistantConfigPanel";
@@ -62,6 +62,9 @@ interface AppsParameterSectionProps {
   semanticSearchQuery: string;
   semanticSearchMaxResults: number;
   isRunningSemanticSearch: boolean;
+  semanticOverviewTerm: string;
+  semanticOverviewMaxResults: number;
+  isRunningSemanticOverview: boolean;
   verbeteSearchAuthor: string;
   verbeteSearchTitle: string;
   verbeteSearchArea: string;
@@ -124,6 +127,9 @@ interface AppsParameterSectionProps {
   onSemanticSearchQueryChange: (value: string) => void;
   onSemanticSearchMaxResultsChange: (value: number) => void;
   onRunSemanticSearch: () => void | Promise<void>;
+  onSemanticOverviewTermChange: (value: string) => void;
+  onSemanticOverviewMaxResultsChange: (value: number) => void;
+  onRunSemanticOverview: () => void | Promise<void>;
   onVerbeteSearchAuthorChange: (value: string) => void;
   onVerbeteSearchTitleChange: (value: string) => void;
   onVerbeteSearchAreaChange: (value: string) => void;
@@ -193,6 +199,9 @@ const AppsParameterSection = ({
   semanticSearchQuery,
   semanticSearchMaxResults,
   isRunningSemanticSearch,
+  semanticOverviewTerm,
+  semanticOverviewMaxResults,
+  isRunningSemanticOverview,
   verbeteSearchAuthor,
   verbeteSearchTitle,
   verbeteSearchArea,
@@ -255,6 +264,9 @@ const AppsParameterSection = ({
   onSemanticSearchQueryChange,
   onSemanticSearchMaxResultsChange,
   onRunSemanticSearch,
+  onSemanticOverviewTermChange,
+  onSemanticOverviewMaxResultsChange,
+  onRunSemanticOverview,
   onVerbeteSearchAuthorChange,
   onVerbeteSearchTitleChange,
   onVerbeteSearchAreaChange,
@@ -280,12 +292,12 @@ const AppsParameterSection = ({
   onUploadFiles,
   onRemoveUploadedFile,
 }: AppsParameterSectionProps) => {
-  const [isSemanticSearchFormOpen, setIsSemanticSearchFormOpen] = useState(false);
+  const [semanticPanelMode, setSemanticPanelMode] = useState<"search" | "overview" | null>(null);
   const [selectedTableVerbeteAction, setSelectedTableVerbeteAction] = useState<"editor" | "word" | null>(null);
 
   useEffect(() => {
     if (appId === "app12") {
-      setIsSemanticSearchFormOpen(false);
+      setSemanticPanelMode(null);
     }
   }, [appId]);
 
@@ -447,16 +459,29 @@ const AppsParameterSection = ({
           <Button
             variant="ghost"
             className={sectionActionButtonClass}
-            onClick={() => setIsSemanticSearchFormOpen(true)}
+            onClick={() => setSemanticPanelMode("search")}
           >
             <SemanticSearchIcon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
             <span className="min-w-0 flex-1 text-left">
-              <span className="block break-words text-sm font-medium text-foreground">Busca SemÃ¢ntica</span>
+              <span className="block break-words text-sm font-medium text-foreground">Busca Semântica</span>
               <span className="block break-words text-xs text-muted-foreground">{parameterAppMeta.app12.description}</span>
             </span>
           </Button>
+          <Button
+            variant="ghost"
+            className={sectionActionButtonClass}
+            onClick={() => setSemanticPanelMode("overview")}
+          >
+            <SemanticSearchIcon className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block break-words text-sm font-medium text-foreground">Semantic Overview</span>
+              <span className="block break-words text-xs text-muted-foreground">
+                Busca em todas as bases semânticas.
+              </span>
+            </span>
+          </Button>
         </div>
-        {isSemanticSearchFormOpen ? (
+        {semanticPanelMode === "search" ? (
           <div className="min-h-0 flex-1">
             <SemanticSearchPanel
               title={parameterAppMeta.app12.title}
@@ -471,6 +496,21 @@ const AppsParameterSection = ({
               onMaxResultsChange={onSemanticSearchMaxResultsChange}
               onRunSearch={() => void onRunSemanticSearch()}
               isRunning={isRunningSemanticSearch}
+              showPanelChrome={false}
+            />
+          </div>
+        ) : null}
+        {semanticPanelMode === "overview" ? (
+          <div className="min-h-0 flex-1">
+            <LexicalOverviewPanel
+              title="Semantic Overview"
+              description="Busca em todas as bases semânticas."
+              term={semanticOverviewTerm}
+              maxResults={semanticOverviewMaxResults}
+              onTermChange={onSemanticOverviewTermChange}
+              onMaxResultsChange={onSemanticOverviewMaxResultsChange}
+              onRunSearch={() => void onRunSemanticOverview()}
+              isRunning={isRunningSemanticOverview}
               showPanelChrome={false}
             />
           </div>
@@ -605,7 +645,7 @@ const AppsParameterSection = ({
               </div>
             ) : (
           <VerbetografiaPanel
-            title={selectedVerbetografiaAction ? parameterAppMeta[selectedVerbetografiaAction].title : "SeÃ§Ãµes do Verbete"}
+            title={selectedVerbetografiaAction ? parameterAppMeta[selectedVerbetografiaAction].title : "Seções do Verbete"}
             description={selectedVerbetografiaAction ? parameterAppMeta[selectedVerbetografiaAction].description : "Informe Titulo para habilitar as acoes. Especialidade opcional."}
             actionLabel={selectedVerbetografiaAction ? parameterAppMeta[selectedVerbetografiaAction].title : undefined}
             verbeteTitle={verbetografiaTitle}
@@ -621,7 +661,7 @@ const AppsParameterSection = ({
             )
           ) : (
             <VerbetografiaPanel
-              title="SeÃ§Ãµes do Verbete"
+              title="Seções do Verbete"
               description="Informe Titulo para habilitar as acoes. Especialidade opcional."
               verbeteTitle={verbetografiaTitle}
               specialty={verbetografiaSpecialty}
@@ -663,7 +703,7 @@ const AppsParameterSection = ({
                 || selectedVerbetografiaAction === "app11"
               ) ? (
                 <div className="space-y-2">
-                  <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt da AÃ§Ã£o</Label>
+                  <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt da Ações</Label>
                   <textarea
                     value={selectedVerbetografiaSystemPrompt}
                     onChange={(event) => {
@@ -692,4 +732,3 @@ const AppsParameterSection = ({
 };
 
 export default AppsParameterSection;
-

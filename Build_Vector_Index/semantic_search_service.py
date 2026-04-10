@@ -506,35 +506,38 @@ def _embed_query(text: str, api_key: str, model: str) -> np.ndarray:
     return _normalize_vector_l2(matrix[0])
 
 
-def search_semantic_index(
+def _get_semantic_query_vector(
+    raw_query: str,
+    api_key: str,
+    model: str,
+    cache: dict[str, np.ndarray] | None = None,
+) -> np.ndarray:
+    normalized_model = model.strip() or DEFAULT_EMBEDDING_MODEL
+    if cache is not None and normalized_model in cache:
+        return cache[normalized_model]
+
+    query_vector = _embed_query(to_embedding_plain_text(raw_query), api_key=api_key, model=normalized_model)
+    if cache is not None:
+        cache[normalized_model] = query_vector
+    return query_vector
+
+
+def _search_loaded_semantic_index(
+    *,
+    loaded_index: dict[str, Any],
     index_id: str,
-    query: str,
-    limit: int = 10,
-    api_key: str | None = None,
-) -> tuple[int, list[dict[str, Any]]]:
-    raw_query = _sanitize_search_text(query)
-    if not raw_query:
-        raise ValueError("Parametro 'query' e obrigatorio.")
-
-    api_key = (api_key or _get_openai_api_key()).strip()
-    if not api_key:
-        raise RuntimeError("OPENAI_API_KEY nao configurada para Semantic Search.")
-
-    max_rows = max(1, min(int(limit or 10), MAX_SEMANTIC_RESULTS))
-    index = _load_semantic_index(index_id)
-    metadata: list[dict[str, Any]] = index["metadata"]
-    manifest: dict[str, Any] = index["manifest"]
-    embeddings: np.ndarray = index["embeddings"]
-    index_label = str(manifest.get("index_label") or _sanitize_index_id(index_id)).strip() or _sanitize_index_id(index_id)
-
-    model = str(manifest.get("model") or DEFAULT_EMBEDDING_MODEL).strip() or DEFAULT_EMBEDDING_MODEL
-    query_vector = _embed_query(to_embedding_plain_text(raw_query), api_key=api_key, model=model)
+    index_label: str,
+    query_vector: np.ndarray,
+    limit: int,
+) -> list[dict[str, Any]]:
+    metadata: list[dict[str, Any]] = loaded_index["metadata"]
+    embeddings: np.ndarray = loaded_index["embeddings"]
     scores = embeddings @ query_vector
 
     if scores.size == 0:
-        return 0, []
+        return []
 
-    top_indices = np.argsort(scores)[::-1][:max_rows]
+    top_indices = np.argsort(scores)[::-1][:limit]
     matches: list[dict[str, Any]] = []
     for idx in top_indices.tolist():
         item = metadata[idx] if idx < len(metadata) else {}
@@ -555,7 +558,207 @@ def search_semantic_index(
             }
         )
 
+    return matches
+
+
+def search_semantic_index(
+    index_id: str,
+    query: str,
+    limit: int = 10,
+    api_key: str | None = None,
+) -> tuple[int, list[dict[str, Any]]]:
+    raw_query = _sanitize_search_text(query)
+    if not raw_query:
+        raise ValueError("Parametro 'query' e obrigatorio.")
+
+    api_key = (api_key or _get_openai_api_key()).strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY nao configurada para Semantic Search.")
+
+    max_rows = max(1, min(int(limit or 10), MAX_SEMANTIC_RESULTS))
+    index = _load_semantic_index(index_id)
+    manifest: dict[str, Any] = index["manifest"]
+    index_label = str(manifest.get("index_label") or _sanitize_index_id(index_id)).strip() or _sanitize_index_id(index_id)
+
+    model = str(manifest.get("model") or DEFAULT_EMBEDDING_MODEL).strip() or DEFAULT_EMBEDDING_MODEL
+    query_vector = _get_semantic_query_vector(raw_query, api_key=api_key, model=model)
+    matches = _search_loaded_semantic_index(
+        loaded_index=index,
+        index_id=index_id,
+        index_label=index_label,
+        query_vector=query_vector,
+        limit=max_rows,
+    )
+
     return len(matches), matches
+
+
+def search_semantic_overview_with_total(
+    term: str,
+    limit: int = 50,
+    api_key: str | None = None,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
+) -> tuple[int, list[dict[str, Any]]]:
+    raw_term = _sanitize_search_text(term)
+    if not raw_term:
+        raise ValueError("Parametro 'term' e obrigatorio.")
+
+    api_key = (api_key or _get_openai_api_key()).strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY nao configurada para Semantic Overview.")
+
+    max_rows = max(1, min(int(limit or 50), 100))
+    indexes = list_semantic_indexes()
+    if not indexes:
+        return 0, []
+
+    query_vector_cache: dict[str, np.ndarray] = {}
+    aggregated_matches: list[dict[str, Any]] = []
+    total_indexes = len(indexes)
+
+    if progress_callback is not None:
+        progress_callback(
+            {
+                "status": "running",
+                "totalIndexes": total_indexes,
+                "processedIndexes": 0,
+                "totalMatchesAccumulated": 0,
+                "message": "Iniciando Semantic Overview.",
+                "event": {
+                    "stage": "started",
+                    "totalIndexes": total_indexes,
+                    "note": "Inicializando busca semântica global.",
+                },
+            }
+        )
+
+    for position, index_info in enumerate(indexes, start=1):
+        index_id = str(index_info.get("id") or "").strip()
+        if not index_id:
+            continue
+        index_label = str(index_info.get("label") or index_id).strip() or index_id
+        if progress_callback is not None:
+          progress_callback(
+              {
+                  "status": "running",
+                  "totalIndexes": total_indexes,
+                  "processedIndexes": max(0, position - 1),
+                  "currentIndexPosition": position,
+                  "currentIndexId": index_id,
+                  "currentIndexLabel": index_label,
+                  "message": f"Processando base {index_label}.",
+                  "event": {
+                      "stage": "index_started",
+                      "indexId": index_id,
+                      "indexLabel": index_label,
+                      "position": position,
+                      "totalIndexes": total_indexes,
+                      "note": "Carregando embeddings e ranqueando resultados.",
+                  },
+              }
+          )
+        try:
+            loaded_index = _load_semantic_index(index_id)
+            manifest: dict[str, Any] = loaded_index["manifest"]
+            index_label = str(index_info.get("label") or manifest.get("index_label") or index_id).strip() or index_id
+            model = str(manifest.get("model") or DEFAULT_EMBEDDING_MODEL).strip() or DEFAULT_EMBEDDING_MODEL
+            query_vector = _get_semantic_query_vector(raw_term, api_key=api_key, model=model, cache=query_vector_cache)
+            current_matches = _search_loaded_semantic_index(
+                loaded_index=loaded_index,
+                index_id=index_id,
+                index_label=index_label,
+                query_vector=query_vector,
+                limit=max_rows,
+            )
+            aggregated_matches.extend(current_matches)
+            current_top_score = max((float(item.get("score") or 0.0) for item in aggregated_matches), default=None)
+            if progress_callback is not None:
+                progress_callback(
+                    {
+                        "status": "running",
+                        "totalIndexes": total_indexes,
+                        "processedIndexes": position,
+                        "currentIndexPosition": position,
+                        "currentIndexId": index_id,
+                        "currentIndexLabel": index_label,
+                        "currentMatches": len(current_matches),
+                        "totalMatchesAccumulated": len(aggregated_matches),
+                        "topScore": current_top_score,
+                        "message": f"Base {index_label} concluida.",
+                        "event": {
+                            "stage": "index_completed",
+                            "indexId": index_id,
+                            "indexLabel": index_label,
+                            "position": position,
+                            "totalIndexes": total_indexes,
+                            "matchesFound": len(current_matches),
+                            "totalMatchesAccumulated": len(aggregated_matches),
+                            "topScore": current_top_score,
+                        },
+                    }
+                )
+        except (FileNotFoundError, ValueError):
+            if progress_callback is not None:
+                progress_callback(
+                    {
+                        "status": "running",
+                        "totalIndexes": total_indexes,
+                        "processedIndexes": position,
+                        "currentIndexPosition": position,
+                        "currentIndexId": index_id,
+                        "currentIndexLabel": index_label,
+                        "message": f"Base {index_label} ignorada por inconsistencia.",
+                        "event": {
+                            "stage": "index_skipped",
+                            "indexId": index_id,
+                            "indexLabel": index_label,
+                            "position": position,
+                            "totalIndexes": total_indexes,
+                            "note": "Base ignorada por inconsistencia ou artefatos ausentes.",
+                        },
+                    }
+                )
+            continue
+
+    if not aggregated_matches:
+        return 0, []
+
+    top_matches = sorted(
+        aggregated_matches,
+        key=lambda item: float(item.get("score") or 0.0),
+        reverse=True,
+    )[:max_rows]
+    groups_by_index: dict[str, dict[str, Any]] = {}
+
+    for match in top_matches:
+        index_id = str(match.get("index_id") or "").strip()
+        if not index_id:
+            continue
+        if index_id not in groups_by_index:
+            groups_by_index[index_id] = {
+                "indexId": index_id,
+                "indexLabel": str(match.get("index_label") or index_id).strip() or index_id,
+                "totalFound": 0,
+                "shownCount": 0,
+                "matches": [],
+            }
+        groups_by_index[index_id]["matches"].append(match)
+
+    groups: list[dict[str, Any]] = []
+    for group in groups_by_index.values():
+        group_matches = sorted(
+            group["matches"],
+            key=lambda item: float(item.get("score") or 0.0),
+            reverse=True,
+        )
+        group["matches"] = group_matches
+        group["totalFound"] = len(group_matches)
+        group["shownCount"] = len(group_matches)
+        groups.append(group)
+
+    return len(top_matches), groups
+
+
 def run_streamlit_app() -> None:
     import streamlit as st
 

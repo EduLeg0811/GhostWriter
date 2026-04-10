@@ -22,6 +22,7 @@ import MobilePanelHeader from "@/features/ghost-writer/components/MobilePanelHea
 import AiAssistantConfigPanel from "@/features/ghost-writer/components/AiAssistantConfigPanel";
 import ApplicationsLinksPanel from "@/features/ghost-writer/components/ApplicationsLinksPanel";
 import LlmLogsPanel from "@/features/ghost-writer/components/LlmLogsPanel";
+import SearchLogPanel from "@/features/ghost-writer/components/SearchLogPanel";
 import ParameterPanel from "@/features/ghost-writer/components/ParameterPanel";
 import ParameterPanelContent from "@/features/ghost-writer/components/ParameterPanelContent";
 import DesktopResizeHandle from "@/features/ghost-writer/components/DesktopResizeHandle";
@@ -36,6 +37,7 @@ import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 import { buttonsPrimaryBgClass, cardsBgClass, panelsBgClass, panelsTopMenuBarBgClass, uploadDocBgClass } from "@/styles/backgroundColors";
 import {
   executeLLM,
+  BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT,
   ChatMessage,
   CHAT_MODEL,
   CHAT_TEMPERATURE,
@@ -60,6 +62,7 @@ import { sectionActionButtonClass } from "@/styles/buttonStyles";
 import type { BookCode } from "@/lib/bookCatalog";
 import type { AIResponse, AiActionId, AiPanelScope, AppActionId, AppPanelScope, BackendStatus, Macro2SpacingMode, MacroActionId, MobilePanelId, ParameterPanelHeaderMeta, ParameterPanelSection, ParameterPanelTarget, SelectOption, SemanticIndexOption, SourcesPanelView } from "@/features/ghost-writer/types";
 import { ACTION_PANEL_BUTTONS_BY_SCOPE, ACTION_PANEL_ICONS, APP_PANEL_BUTTONS_BY_SCOPE, APP_PANEL_ICONS, getAiPanelScopeByAction, getParameterPanelHeaderMeta, normalizeIdList, parameterActionMeta, parameterAppMeta, parameterMacroMeta } from "@/features/ghost-writer/config/metadata";
+import { DEFAULT_ACTION_SYSTEM_PROMPTS } from "@/features/ghost-writer/config/actionSystemPrompts";
 import { AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY, BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY, CHAT_EDITOR_CONTEXT_MAX_CHARS, DEFAULT_BOOK_SEARCH_MAX_RESULTS, DEFAULT_LOG_FONT_SIZE_PX, DESKTOP_CONTENT_EDGE_GUTTER_PX, DESKTOP_PANEL_SIZES_PX, GENERAL_SETTINGS_STORAGE_KEY, LLM_LOG_FONT_MAX, LLM_LOG_FONT_MIN, LLM_LOG_FONT_STEP, LLM_SETTINGS_STORAGE_KEY, NO_VECTOR_STORE_ID } from "@/features/ghost-writer/config/constants";
 import { BOOK_SOURCE, DEFAULT_BOOK_SOURCE_ID, MACRO1_HIGHLIGHT_COLORS, TRANSLATE_LANGUAGE_OPTIONS, VECTOR_STORES_SOURCE } from "@/features/ghost-writer/config/options";
 import useGhostWriterLayout from "@/features/ghost-writer/hooks/useGhostWriterLayout";
@@ -101,6 +104,7 @@ const Index = () => {
     lexicalBooks, setLexicalBooks, selectedLexicalBook, setSelectedLexicalBook, lexicalTerm, setLexicalTerm, lexicalMaxResults, setLexicalMaxResults, isRunningLexicalSearch,
     setIsRunningLexicalSearch, isRunningLexicalOverview, setIsRunningLexicalOverview, semanticSearchQuery, setSemanticSearchQuery, semanticSearchMaxResults, setSemanticSearchMaxResults, semanticSearchIndexes, setSemanticSearchIndexes,
     selectedSemanticSearchIndexId, setSelectedSemanticSearchIndexId, isLoadingSemanticSearchIndexes, setIsLoadingSemanticSearchIndexes, isRunningSemanticSearch, setIsRunningSemanticSearch,
+    semanticOverviewTerm, setSemanticOverviewTerm, semanticOverviewMaxResults, setSemanticOverviewMaxResults, isRunningSemanticOverview, setIsRunningSemanticOverview,
     verbeteSearchAuthor, setVerbeteSearchAuthor, verbeteSearchTitle, setVerbeteSearchTitle, verbeteSearchArea, setVerbeteSearchArea, verbeteSearchText, setVerbeteSearchText,
     verbeteSearchMaxResults, setVerbeteSearchMaxResults, isRunningVerbeteSearch, setIsRunningVerbeteSearch, verbetografiaTitle, setVerbetografiaTitle,
     verbetografiaSpecialty, setVerbetografiaSpecialty, isRunningVerbetografiaOpenTable, setIsRunningVerbetografiaOpenTable, isRunningVerbetografiaOpenTableWord, setIsRunningVerbetografiaOpenTableWord, isRunningVerbeteDefinologia, setIsRunningVerbeteDefinologia,
@@ -120,7 +124,6 @@ const Index = () => {
     uploadedChatFiles, setUploadedChatFiles, isUploadingChatFiles, setIsUploadingChatFiles, includeEditorContextInLlm, setIncludeEditorContextInLlm,
   } = llmState;
   const { historyNotice, showHistoryNotice, toast } = useGhostWriterFeedback();
-  const [isAiCommandSelectionPending, setIsAiCommandSelectionPending] = useState(false);
   const hasEditorPanel = Boolean(currentFileId) || isOpeningDocument;
   const {
     parameterPanelTarget,
@@ -129,8 +132,8 @@ const Index = () => {
     setAppPanelScope,
     activeLlmConfigPanel,
     setActiveLlmConfigPanel,
-    isJsonLogPanelOpen,
-    setIsJsonLogPanelOpen,
+    activeLogPanel,
+    setActiveLogPanel,
     isMobileView,
     activeMobilePanel,
     setActiveMobilePanel,
@@ -236,6 +239,7 @@ const Index = () => {
     handleRunLexicalSearch,
     handleRunLexicalOverview,
     handleRunSemanticSearch,
+    handleRunSemanticOverview,
     handleRunVerbeteSearch,
     handleRunRandomPensata,
   } = useGhostWriterApps({
@@ -291,7 +295,6 @@ const Index = () => {
   }, [isMobileView, setActiveMobilePanel]);
 
   const handleOpenParameterSection = useCallback((section: ParameterPanelSection) => {
-    setIsAiCommandSelectionPending(false);
     setAppPanelScope(section === "apps" ? "bibliografia" : null);
     if (section === "sources") setSourcesPanelView("books");
     else setSourcesPanelView(null);
@@ -300,13 +303,11 @@ const Index = () => {
   }, [focusMobilePanel, setAppPanelScope, setParameterPanelTarget, setSourcesPanelView]);
 
   const handleOpenAiActionParameters = useCallback((type: AiActionId) => {
-    setIsAiCommandSelectionPending(false);
     baseHandleOpenAiActionParameters(type);
     focusMobilePanel("center");
   }, [baseHandleOpenAiActionParameters, focusMobilePanel]);
 
   const handleOpenAiCommandPanel = useCallback(() => {
-    setIsAiCommandSelectionPending(true);
     baseHandleOpenAiCommandPanel();
     focusMobilePanel("center");
   }, [baseHandleOpenAiCommandPanel, focusMobilePanel]);
@@ -326,10 +327,59 @@ const Index = () => {
     setIsTermsConceptsConscienciografiaEnabled((prev) => {
       const next = !prev;
       const wvBooksId = VECTOR_STORES_SOURCE.find((item) => item.label === "WVBooks")?.id ?? "";
-      setAiActionsSelectedVectorStoreIds(next ? (wvBooksId ? [wvBooksId] : []) : [NO_VECTOR_STORE_ID]);
+      const translateRagId = LLM_VECTOR_STORE_TRANSLATE_RAG.trim();
+      const nextVectorStoreIds =
+        !next ? [NO_VECTOR_STORE_ID]
+        : parameterPanelTarget?.section === "translation" && parameterPanelTarget.id === "translate"
+          ? (translateRagId ? [translateRagId] : [])
+          : (wvBooksId ? [wvBooksId] : []);
+      setAiActionsSelectedVectorStoreIds(nextVectorStoreIds);
       return next;
     });
-  }, [setAiActionsSelectedVectorStoreIds, setIsTermsConceptsConscienciografiaEnabled]);
+  }, [parameterPanelTarget, setAiActionsSelectedVectorStoreIds, setIsTermsConceptsConscienciografiaEnabled]);
+
+  const handleResetAllConfig = useCallback(() => {
+    window.localStorage.removeItem(LLM_SETTINGS_STORAGE_KEY);
+    window.localStorage.removeItem(AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY);
+    window.localStorage.removeItem(BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY);
+    window.localStorage.removeItem(GENERAL_SETTINGS_STORAGE_KEY);
+
+    setLlmModel(CHAT_MODEL);
+    setLlmTemperature(CHAT_TEMPERATURE);
+    setLlmMaxOutputTokens(CHAT_MAX_OUTPUT_TOKENS ?? 1000);
+    setLlmMaxNumResults(CHAT_MAX_NUM_RESULTS);
+    setLlmEditorContextMaxChars(CHAT_EDITOR_CONTEXT_MAX_CHARS);
+    setLlmVerbosity(CHAT_GPT5_VERBOSITY);
+    setLlmEffort(CHAT_GPT5_EFFORT);
+    setLlmSystemPrompt(CHAT_SYSTEM_PROMPT);
+
+    setAiActionsLlmModel(CHAT_MODEL);
+    setAiActionsLlmTemperature(CHAT_TEMPERATURE);
+    setAiActionsLlmMaxOutputTokens(CHAT_MAX_OUTPUT_TOKENS ?? 1000);
+    setAiActionsLlmVerbosity(CHAT_GPT5_VERBOSITY);
+    setAiActionsLlmEffort(CHAT_GPT5_EFFORT);
+    setAiActionsLlmSystemPrompt(CHAT_SYSTEM_PROMPT);
+    setAiActionSystemPrompts({ ...DEFAULT_ACTION_SYSTEM_PROMPTS });
+    setAiActionsSelectedVectorStoreIds([]);
+    setAiActionsSelectedInputFileIds([]);
+    setIsTermsConceptsConscienciografiaEnabled(false);
+
+    setBiblioExternaLlmModel(CHAT_MODEL);
+    setBiblioExternaLlmTemperature(0);
+    setBiblioExternaLlmMaxOutputTokens(1000);
+    setBiblioExternaLlmVerbosity("low");
+    setBiblioExternaLlmEffort("none");
+    setBiblioExternaLlmSystemPrompt(BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT);
+
+    setEnableHistoryNumbering(true);
+    setEnableHistoryReferences(false);
+    setEnableHistoryMetadata(false);
+    setEnableHistoryHighlight(true);
+    setSelectedBookSourceIds(DEFAULT_BOOK_SOURCE_ID ? [DEFAULT_BOOK_SOURCE_ID] : []);
+    setIncludeEditorContextInLlm(false);
+
+    toast.success("Config parameters reset to defaults.");
+  }, [setAiActionSystemPrompts, setAiActionsLlmEffort, setAiActionsLlmMaxOutputTokens, setAiActionsLlmModel, setAiActionsLlmSystemPrompt, setAiActionsLlmTemperature, setAiActionsLlmVerbosity, setAiActionsSelectedInputFileIds, setAiActionsSelectedVectorStoreIds, setBiblioExternaLlmEffort, setBiblioExternaLlmMaxOutputTokens, setBiblioExternaLlmModel, setBiblioExternaLlmSystemPrompt, setBiblioExternaLlmTemperature, setBiblioExternaLlmVerbosity, setEnableHistoryHighlight, setEnableHistoryMetadata, setEnableHistoryNumbering, setEnableHistoryReferences, setIncludeEditorContextInLlm, setIsTermsConceptsConscienciografiaEnabled, setLlmEditorContextMaxChars, setLlmEffort, setLlmMaxNumResults, setLlmMaxOutputTokens, setLlmModel, setLlmSystemPrompt, setLlmTemperature, setLlmVerbosity, setSelectedBookSourceIds, toast]);
 
   const handleActionMacros = useCallback(async (type: MacroActionId) => {
     setParameterPanelTarget((prev) => {
@@ -346,7 +396,7 @@ const Index = () => {
   }, [actionText, focusMobilePanel, macro1Term, setMacro1Term, setParameterPanelTarget]);
 
   const isHistoryProcessing =
-    isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningLexicalOverview || isRunningSemanticSearch || isRunningVerbeteSearch || isRunningVerbetografiaOpenTable || isRunningVerbetografiaOpenTableWord || isRunningVerbeteDefinologia || isRunningVerbeteFraseEnfatica || isRunningVerbeteSinonimologia || isRunningVerbeteFatologia;
+    isLoading || isRunningInsertRefBook || isRunningInsertRefVerbete || isRunningBiblioGeral || isRunningBiblioExterna || isRunningLexicalSearch || isRunningLexicalOverview || isRunningSemanticSearch || isRunningSemanticOverview || isRunningVerbeteSearch || isRunningVerbetografiaOpenTable || isRunningVerbetografiaOpenTableWord || isRunningVerbeteDefinologia || isRunningVerbeteFraseEnfatica || isRunningVerbeteSinonimologia || isRunningVerbeteFatologia;
   const parameterPanelHeaderMeta = parameterPanelTarget
     ? getParameterPanelHeaderMeta(parameterPanelTarget, appPanelScope)
     : null;
@@ -465,10 +515,15 @@ const Index = () => {
         focusMobilePanel("center");
       }}
       onToggleJsonPanel={() => {
-        setIsJsonLogPanelOpen((prev) => !prev);
+        setActiveLogPanel((prev) => (prev === "llm_logs" ? null : "llm_logs"));
         focusMobilePanel("json");
       }}
-      isJsonPanelOpen={isJsonLogPanelOpen}
+      onToggleSearchLogPanel={() => {
+        setActiveLogPanel((prev) => (prev === "search_log" ? null : "search_log"));
+        focusMobilePanel("json");
+      }}
+      isJsonPanelOpen={activeLogPanel === "llm_logs"}
+      isSearchLogPanelOpen={activeLogPanel === "search_log"}
       isLoading={isLoading}
     />
   );
@@ -482,7 +537,6 @@ const Index = () => {
       <ParameterPanelContent
         parameterPanelTarget={parameterPanelTarget}
         appPanelScope={appPanelScope}
-        isAiCommandSelectionPending={isAiCommandSelectionPending}
         isLoading={isLoading}
         isAiActionsConfigOpen={isAiActionsConfigOpen}
         isTermsConceptsConscienciografiaEnabled={isTermsConceptsConscienciografiaEnabled}
@@ -559,6 +613,9 @@ const Index = () => {
         semanticSearchQuery={semanticSearchQuery}
         semanticSearchMaxResults={semanticSearchMaxResults}
         isRunningSemanticSearch={isRunningSemanticSearch}
+        semanticOverviewTerm={semanticOverviewTerm}
+        semanticOverviewMaxResults={semanticOverviewMaxResults}
+        isRunningSemanticOverview={isRunningSemanticOverview}
         verbeteSearchAuthor={verbeteSearchAuthor}
         verbeteSearchTitle={verbeteSearchTitle}
         verbeteSearchArea={verbeteSearchArea}
@@ -599,6 +656,7 @@ const Index = () => {
         onLlmVerbosityChange={setLlmVerbosity}
         onLlmEffortChange={setLlmEffort}
         onLlmSystemPromptChange={setLlmSystemPrompt}
+        onResetAllConfig={handleResetAllConfig}
         onRunRandomPensata={handleRunRandomPensata}
         onOpenAiActionParameters={handleOpenAiActionParameters}
         onActionTextChange={setActionText}
@@ -626,6 +684,11 @@ const Index = () => {
               return;
             }
             setAiActionsSelectedVectorStoreIds([NO_VECTOR_STORE_ID]);
+            return;
+          }
+          if (parameterPanelTarget?.section === "translation" && parameterPanelTarget.id === "translate" && isTermsConceptsConscienciografiaEnabled) {
+            const translateRagId = LLM_VECTOR_STORE_TRANSLATE_RAG.trim();
+            setAiActionsSelectedVectorStoreIds(translateRagId ? [translateRagId] : []);
             return;
           }
           setAiActionsSelectedVectorStoreIds(value);
@@ -667,6 +730,9 @@ const Index = () => {
         onSemanticSearchQueryChange={setSemanticSearchQuery}
         onSemanticSearchMaxResultsChange={setSemanticSearchMaxResults}
         onRunSemanticSearch={handleRunSemanticSearch}
+        onSemanticOverviewTermChange={setSemanticOverviewTerm}
+        onSemanticOverviewMaxResultsChange={setSemanticOverviewMaxResults}
+        onRunSemanticOverview={handleRunSemanticOverview}
         onVerbeteSearchAuthorChange={setVerbeteSearchAuthor}
         onVerbeteSearchTitleChange={setVerbeteSearchTitle}
         onVerbeteSearchAreaChange={setVerbeteSearchArea}
@@ -726,43 +792,51 @@ const Index = () => {
   );
 
   const jsonPanelElement = (
-    <LlmLogsPanel
-      llmLogs={llmLogs}
-      llmSessionLogs={llmSessionLogs}
-      llmLogFontScale={llmLogFontScale}
-      llmLogFontStyle={llmLogFontStyle}
-      llmLogFontDefault={LLM_LOG_FONT_DEFAULT}
-      llmLogFontMin={LLM_LOG_FONT_MIN}
-      llmLogFontMax={LLM_LOG_FONT_MAX}
-      onDecreaseFont={() => setLlmLogFontScale((prev) => Math.max(LLM_LOG_FONT_MIN, Number((prev - LLM_LOG_FONT_STEP).toFixed(2))))}
-      onIncreaseFont={() => setLlmLogFontScale((prev) => Math.min(LLM_LOG_FONT_MAX, Number((prev + LLM_LOG_FONT_STEP).toFixed(2))))}
-      onResetFont={() => setLlmLogFontScale(LLM_LOG_FONT_DEFAULT)}
-      onClearLogs={() => {
-        setLlmLogs([]);
-        setLlmSessionLogs([]);
-      }}
-      onClose={() => setIsJsonLogPanelOpen(false)}
-      effectiveModel={effectiveModel}
-      latestLlmMeta={latestLlmMeta}
-      latestInputTokens={latestInputTokens}
-      latestCachedInputTokens={latestCachedInputTokens}
-      latestOutputTokens={latestOutputTokens}
-      latestTotalTokens={latestTotalTokens}
-      latestReasoningTokens={latestReasoningTokens}
-      latestRagReferences={latestRagReferences}
-      latestEstimatedBrl={latestEstimatedBrl}
-      latestEstimatedUsd={latestEstimatedUsd}
-      inputTokens={inputTokens}
-      cachedInputTokens={cachedInputTokens}
-      outputTokens={outputTokens}
-      totalTokens={totalTokens}
-      reasoningTokens={reasoningTokens}
-      latestRagReferencesAllCalls={latestRagReferencesAllCalls}
-      estimatedBrl={estimatedBrl}
-      estimatedUsd={estimatedUsd}
-      successfulCallsCount={successfulCallsCount}
-      errorCallsCount={errorCallsCount}
-    />
+    activeLogPanel === "search_log" ? (
+      <SearchLogPanel
+        onClose={() => setActiveLogPanel(null)}
+        shouldPoll={isRunningSemanticOverview || isRunningLexicalOverview}
+        activeSearchType={isRunningSemanticOverview ? "semantic_overview" : isRunningLexicalOverview ? "lexical_overview" : null}
+      />
+    ) : (
+      <LlmLogsPanel
+        llmLogs={llmLogs}
+        llmSessionLogs={llmSessionLogs}
+        llmLogFontScale={llmLogFontScale}
+        llmLogFontStyle={llmLogFontStyle}
+        llmLogFontDefault={LLM_LOG_FONT_DEFAULT}
+        llmLogFontMin={LLM_LOG_FONT_MIN}
+        llmLogFontMax={LLM_LOG_FONT_MAX}
+        onDecreaseFont={() => setLlmLogFontScale((prev) => Math.max(LLM_LOG_FONT_MIN, Number((prev - LLM_LOG_FONT_STEP).toFixed(2))))}
+        onIncreaseFont={() => setLlmLogFontScale((prev) => Math.min(LLM_LOG_FONT_MAX, Number((prev + LLM_LOG_FONT_STEP).toFixed(2))))}
+        onResetFont={() => setLlmLogFontScale(LLM_LOG_FONT_DEFAULT)}
+        onClearLogs={() => {
+          setLlmLogs([]);
+          setLlmSessionLogs([]);
+        }}
+        onClose={() => setActiveLogPanel(null)}
+        effectiveModel={effectiveModel}
+        latestLlmMeta={latestLlmMeta}
+        latestInputTokens={latestInputTokens}
+        latestCachedInputTokens={latestCachedInputTokens}
+        latestOutputTokens={latestOutputTokens}
+        latestTotalTokens={latestTotalTokens}
+        latestReasoningTokens={latestReasoningTokens}
+        latestRagReferences={latestRagReferences}
+        latestEstimatedBrl={latestEstimatedBrl}
+        latestEstimatedUsd={latestEstimatedUsd}
+        inputTokens={inputTokens}
+        cachedInputTokens={cachedInputTokens}
+        outputTokens={outputTokens}
+        totalTokens={totalTokens}
+        reasoningTokens={reasoningTokens}
+        latestRagReferencesAllCalls={latestRagReferencesAllCalls}
+        estimatedBrl={estimatedBrl}
+        estimatedUsd={estimatedUsd}
+        successfulCallsCount={successfulCallsCount}
+        errorCallsCount={errorCallsCount}
+      />
+    )
   );
 
   const editorPanelElement = (

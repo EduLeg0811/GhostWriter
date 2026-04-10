@@ -125,6 +125,9 @@ export const useGhostWriterAppsState = () => {
   const [selectedSemanticSearchIndexId, setSelectedSemanticSearchIndexId] = useState("");
   const [isLoadingSemanticSearchIndexes, setIsLoadingSemanticSearchIndexes] = useState(false);
   const [isRunningSemanticSearch, setIsRunningSemanticSearch] = useState(false);
+  const [semanticOverviewTerm, setSemanticOverviewTerm] = useState("");
+  const [semanticOverviewMaxResults, setSemanticOverviewMaxResults] = useState(DEFAULT_BOOK_SEARCH_MAX_RESULTS);
+  const [isRunningSemanticOverview, setIsRunningSemanticOverview] = useState(false);
   const [verbeteSearchAuthor, setVerbeteSearchAuthor] = useState("");
   const [verbeteSearchTitle, setVerbeteSearchTitle] = useState("");
   const [verbeteSearchArea, setVerbeteSearchArea] = useState("");
@@ -205,6 +208,12 @@ export const useGhostWriterAppsState = () => {
     setIsLoadingSemanticSearchIndexes,
     isRunningSemanticSearch,
     setIsRunningSemanticSearch,
+    semanticOverviewTerm,
+    setSemanticOverviewTerm,
+    semanticOverviewMaxResults,
+    setSemanticOverviewMaxResults,
+    isRunningSemanticOverview,
+    setIsRunningSemanticOverview,
     verbeteSearchAuthor,
     setVerbeteSearchAuthor,
     verbeteSearchTitle,
@@ -262,7 +271,7 @@ export const useGhostWriterLlmState = (llmLogFontDefault: number) => {
   const [aiActionsSelectedVectorStoreIds, setAiActionsSelectedVectorStoreIds] = useState<string[]>([]);
   const [aiActionsSelectedInputFileIds, setAiActionsSelectedInputFileIds] = useState<string[]>([]);
   const [isTermsConceptsConscienciografiaEnabled, setIsTermsConceptsConscienciografiaEnabled] = useState(false);
-  const [biblioExternaLlmModel, setBiblioExternaLlmModel] = useState("gpt-5.4");
+  const [biblioExternaLlmModel, setBiblioExternaLlmModel] = useState(CHAT_MODEL);
   const [biblioExternaLlmTemperature, setBiblioExternaLlmTemperature] = useState<number>(0);
   const [biblioExternaLlmMaxOutputTokens, setBiblioExternaLlmMaxOutputTokens] = useState<number>(1000);
   const [biblioExternaLlmVerbosity, setBiblioExternaLlmVerbosity] = useState("low");
@@ -273,8 +282,8 @@ export const useGhostWriterLlmState = (llmLogFontDefault: number) => {
   const [llmSessionLogs, setLlmSessionLogs] = useState<Array<{ id: string; at: string; request: unknown; response?: unknown; error?: string }>>([]);
   const [llmLogFontScale, setLlmLogFontScale] = useState(llmLogFontDefault);
   const [enableHistoryNumbering, setEnableHistoryNumbering] = useState(true);
-  const [enableHistoryReferences, setEnableHistoryReferences] = useState(true);
-  const [enableHistoryMetadata, setEnableHistoryMetadata] = useState(true);
+  const [enableHistoryReferences, setEnableHistoryReferences] = useState(false);
+  const [enableHistoryMetadata, setEnableHistoryMetadata] = useState(false);
   const [enableHistoryHighlight, setEnableHistoryHighlight] = useState(true);
   const [selectedBookSourceIds, setSelectedBookSourceIds] = useState<string[]>(() => (DEFAULT_BOOK_SOURCE_ID ? [DEFAULT_BOOK_SOURCE_ID] : []));
   const [uploadedChatFiles, setUploadedChatFiles] = useState<UploadedLlmFile[]>([]);

@@ -475,7 +475,11 @@ def search_lexical_book_with_total(book: str, term: str, limit: int = 50) -> tup
     return _search_lexical_book_internal(book=book, term=term, limit=limit)
 
 
-def search_lexical_overview_with_total(term: str, limit: int = 50) -> tuple[int, list[dict[str, Any]]]:
+def search_lexical_overview_with_total(
+    term: str,
+    limit: int = 50,
+    progress_callback: Optional[Callable[[dict[str, Any]], None]] = None,
+) -> tuple[int, list[dict[str, Any]]]:
     raw_term = _sanitize_search_text(term)
     if not raw_term:
         raise ValueError("Parametro 'term' e obrigatorio.")
@@ -483,11 +487,44 @@ def search_lexical_overview_with_total(term: str, limit: int = 50) -> tuple[int,
     max_rows = max(1, min(int(limit or 50), MAX_BOOK_SEARCH))
     groups: list[dict[str, Any]] = []
     total_found = 0
+    sources = list(_iter_lexical_excel_files())
+    total_sources = len(sources)
 
-    for source_path in _iter_lexical_excel_files():
+    if progress_callback:
+        progress_callback(
+            {
+                "totalIndexes": total_sources,
+                "message": "Preparando Lexical Overview.",
+                "event": {
+                    "stage": "started",
+                    "totalIndexes": total_sources,
+                    "note": "Iniciando varredura das bases lexicais.",
+                },
+            }
+        )
+
+    for position, source_path in enumerate(sources, start=1):
         file_stem = source_path.stem.strip()
         resolved_book_code = FILE_TO_BOOK_CODE.get(file_stem, file_stem)
         resolved_book_label = _resolve_book_label(resolved_book_code, file_stem)
+        if progress_callback:
+            progress_callback(
+                {
+                    "currentIndexPosition": position,
+                    "currentIndexId": resolved_book_code,
+                    "currentIndexLabel": resolved_book_label,
+                    "currentMatches": 0,
+                    "message": f"Processando livro {resolved_book_label}.",
+                    "event": {
+                        "stage": "index_started",
+                        "indexId": resolved_book_code,
+                        "indexLabel": resolved_book_label,
+                        "position": position,
+                        "totalIndexes": total_sources,
+                        "note": "Varrendo linhas do arquivo lexical.",
+                    },
+                }
+            )
         group_total, matches = _search_lexical_source_internal(
             source_path=source_path,
             resolved_book_code=resolved_book_code,
@@ -497,6 +534,25 @@ def search_lexical_overview_with_total(term: str, limit: int = 50) -> tuple[int,
             limit=max_rows,
         )
         if group_total <= 0:
+            if progress_callback:
+                progress_callback(
+                    {
+                        "processedIndexes": position,
+                        "currentMatches": 0,
+                        "totalMatchesAccumulated": total_found,
+                        "message": f"Livro {resolved_book_label} sem matches.",
+                        "event": {
+                            "stage": "index_completed",
+                            "indexId": resolved_book_code,
+                            "indexLabel": resolved_book_label,
+                            "position": position,
+                            "totalIndexes": total_sources,
+                            "matchesFound": 0,
+                            "totalMatchesAccumulated": total_found,
+                            "note": "0 matches",
+                        },
+                    }
+                )
             continue
 
         total_found += group_total
@@ -510,6 +566,25 @@ def search_lexical_overview_with_total(term: str, limit: int = 50) -> tuple[int,
                 "matches": matches[:max_rows],
             }
         )
+        if progress_callback:
+            progress_callback(
+                {
+                    "processedIndexes": position,
+                    "currentMatches": group_total,
+                    "totalMatchesAccumulated": total_found,
+                    "message": f"Livro {resolved_book_label} processado com {group_total} matches.",
+                    "event": {
+                        "stage": "index_completed",
+                        "indexId": resolved_book_code,
+                        "indexLabel": resolved_book_label,
+                        "position": position,
+                        "totalIndexes": total_sources,
+                        "matchesFound": group_total,
+                        "totalMatchesAccumulated": total_found,
+                        "note": f"{min(len(matches), max_rows)} matches.",
+                    },
+                }
+            )
 
     return total_found, groups
 

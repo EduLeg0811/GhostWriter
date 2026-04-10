@@ -1,6 +1,6 @@
 import { buildHistorySearchCardsMarkdown, replaceHistorySearchInlineBreaks, type HistorySearchCardInput, type HistorySearchCardMetadata } from "@/lib/historySearchCards";
 import { BOOK_OPTION_LABELS } from "@/features/ghost-writer/config/metadata";
-import type { LexicalHistoryMatch, LexicalOverviewHistoryGroup, LexicalOverviewHistoryPayload, SemanticIndexOption } from "@/features/ghost-writer/types";
+import type { LexicalHistoryMatch, LexicalOverviewHistoryGroup, LexicalOverviewHistoryPayload, SemanticIndexOption, SemanticOverviewHistoryGroup, SemanticOverviewHistoryPayload } from "@/features/ghost-writer/types";
 import { buildLexicalHistorySearchMetadata, buildSemanticHistorySearchMetadata } from "@/features/ghost-writer/utils/historySearch";
 
 type HistorySearchResponsePayload = {
@@ -10,6 +10,10 @@ type HistorySearchResponsePayload = {
 
 type LexicalOverviewResponsePayload = HistorySearchResponsePayload & {
   payload: LexicalOverviewHistoryPayload;
+};
+
+type SemanticOverviewResponsePayload = HistorySearchResponsePayload & {
+  payload: SemanticOverviewHistoryPayload;
 };
 
 type SemanticSearchMatch = {
@@ -161,6 +165,15 @@ export const buildLexicalOverviewHistoryResponsePayload = (params: {
   };
 };
 
+export const buildSemanticOverviewGroupMarkdown = (group: Pick<SemanticOverviewHistoryGroup, "matches">): string => buildHistorySearchCardsFromCards(
+  group.matches
+    .map((match) => ({
+      textParagraphs: normalizeParagraphs([(match.text || "").trim()]),
+      metadata: buildSemanticHistorySearchMetadata(match, match.index_label),
+    }))
+    .filter((item) => item.textParagraphs.length > 0),
+);
+
 export const resolveSemanticSearchIndexLabel = (params: {
   matches: SemanticSearchMatch[];
   selectedIndexId: string;
@@ -186,5 +199,37 @@ export const buildSemanticSearchHistoryResponsePayload = (params: {
   return {
     markdown,
     querySummary: `Base: ${indexLabel} | Consulta: ${truncateQuery(query, 120)} | Total: ${matches.length}`,
+  };
+};
+
+export const buildSemanticOverviewHistoryResponsePayload = (params: {
+  term: string;
+  limit: number;
+  totalIndexes: number;
+  totalFound: number;
+  groups: SemanticOverviewHistoryGroup[];
+}): SemanticOverviewResponsePayload => {
+  const payload: SemanticOverviewHistoryPayload = {
+    kind: "semantic_overview",
+    term: params.term,
+    limit: params.limit,
+    totalIndexes: params.totalIndexes,
+    totalFound: params.totalFound,
+    groups: params.groups,
+  };
+
+  const markdown = payload.groups
+    .map((group) => {
+      const header = `## ${group.indexLabel} (${group.shownCount}/${group.totalFound})`;
+      const body = buildSemanticOverviewGroupMarkdown(group);
+      return [header, body].filter(Boolean).join("\n\n");
+    })
+    .filter(Boolean)
+    .join("\n\n");
+
+  return {
+    payload,
+    markdown,
+    querySummary: `Termo: ${params.term} | Total: ${params.totalFound} | Bases: ${params.totalIndexes} | Limite global: ${params.limit}`,
   };
 };

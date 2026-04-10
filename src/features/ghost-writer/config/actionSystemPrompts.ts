@@ -1,26 +1,36 @@
 import type { AiActionId } from "@/features/ghost-writer/types";
 import {
   buildAnalogiesPrompt,
+  buildAnalogiesConsPrompt,
   buildAiCommandPrompt,
   buildAntonymsConsPrompt,
   buildAntonymsPrompt,
   buildCognatosConsPrompt,
   buildCognatosPrompt,
   buildComparisonsPrompt,
+  buildComparisonsConsPrompt,
   buildCounterpointsPrompt,
+  buildCounterpointsConsPrompt,
   buildDictLookupPrompt,
+  buildDictLookupConsPrompt,
   buildDefineConsPrompt,
   buildDefinePrompt,
   buildEtymologyConsPrompt,
   buildEtymologyPrompt,
   buildExamplesPrompt,
+  buildExamplesConsPrompt,
+  buildEpigraphConsPrompt,
   buildEpigraphPrompt,
   buildNeoparadigmaPrompt,
+  buildNeoparadigmaConsPrompt,
+  buildRewriteConsPrompt,
   buildRewritePrompt,
+  buildSummarizeConsPrompt,
   buildSummarizePrompt,
   buildSynonymsConsPrompt,
   buildSynonymsPrompt,
   buildTranslatePrompt,
+  buildTranslateConsPrompt,
   buildVerbeteDefinologiaPrompt,
   buildVerbeteFatologiaPrompt,
   buildVerbeteFraseEnfaticaPrompt,
@@ -30,9 +40,33 @@ import {
 
 export type TermsConceptsBasicActionId = "dictionary" | "synonyms" | "antonyms" | "etymology" | "cognatos";
 export type TermsConceptsConsActionSystemPromptId = "dictionaryCons" | "synonymsCons" | "antonymsCons" | "etymologyCons" | "cognatosCons";
+export type ConscienciografiaExtendedActionId =
+  | TermsConceptsBasicActionId
+  | "epigraph"
+  | "rewrite"
+  | "summarize"
+  | "translate"
+  | "dict_lookup"
+  | "analogies"
+  | "comparisons"
+  | "examples"
+  | "counterpoints"
+  | "neoparadigma";
+export type ConscienciografiaExtendedConsActionSystemPromptId =
+  | TermsConceptsConsActionSystemPromptId
+  | "epigraphCons"
+  | "rewriteCons"
+  | "summarizeCons"
+  | "translateCons"
+  | "dict_lookupCons"
+  | "analogiesCons"
+  | "comparisonsCons"
+  | "examplesCons"
+  | "counterpointsCons"
+  | "neoparadigmaCons";
 export type ActionSystemPromptId =
   | AiActionId
-  | TermsConceptsConsActionSystemPromptId
+  | ConscienciografiaExtendedConsActionSystemPromptId
   | "app8"
   | "app9"
   | "app10"
@@ -53,16 +87,26 @@ export const DEFAULT_ACTION_SYSTEM_PROMPTS: Record<ActionSystemPromptId, string>
   dictionary: getFirstSystemPrompt(buildDefinePrompt("texto")),
   dictionaryCons: getFirstSystemPrompt(buildDefineConsPrompt("texto")),
   epigraph: getFirstSystemPrompt(buildEpigraphPrompt("texto")),
+  epigraphCons: getFirstSystemPrompt(buildEpigraphConsPrompt("texto")),
   rewrite: getFirstSystemPrompt(buildRewritePrompt("texto")),
+  rewriteCons: getFirstSystemPrompt(buildRewriteConsPrompt("texto")),
   summarize: getFirstSystemPrompt(buildSummarizePrompt("texto")),
+  summarizeCons: getFirstSystemPrompt(buildSummarizeConsPrompt("texto")),
   translate: getFirstSystemPrompt(buildTranslatePrompt("texto", "Ingles")),
+  translateCons: getFirstSystemPrompt(buildTranslateConsPrompt("texto", "Ingles")),
   dict_lookup: getFirstSystemPrompt(buildDictLookupPrompt("texto")),
+  dict_lookupCons: getFirstSystemPrompt(buildDictLookupConsPrompt("texto")),
   ai_command: getFirstSystemPrompt(buildAiCommandPrompt("texto", "query")),
   analogies: getFirstSystemPrompt(buildAnalogiesPrompt("texto")),
+  analogiesCons: getFirstSystemPrompt(buildAnalogiesConsPrompt("texto")),
   comparisons: getFirstSystemPrompt(buildComparisonsPrompt("texto")),
+  comparisonsCons: getFirstSystemPrompt(buildComparisonsConsPrompt("texto")),
   examples: getFirstSystemPrompt(buildExamplesPrompt("texto")),
+  examplesCons: getFirstSystemPrompt(buildExamplesConsPrompt("texto")),
   counterpoints: getFirstSystemPrompt(buildCounterpointsPrompt("texto")),
+  counterpointsCons: getFirstSystemPrompt(buildCounterpointsConsPrompt("texto")),
   neoparadigma: getFirstSystemPrompt(buildNeoparadigmaPrompt("texto")),
+  neoparadigmaCons: getFirstSystemPrompt(buildNeoparadigmaConsPrompt("texto")),
   cognatos: getFirstSystemPrompt(buildCognatosPrompt("texto")),
   cognatosCons: getFirstSystemPrompt(buildCognatosConsPrompt("texto")),
   app8: getFirstSystemPrompt(buildVerbeteDefinologiaPrompt("titulo: exemplo | especialidade: exemplo")),
@@ -71,20 +115,37 @@ export const DEFAULT_ACTION_SYSTEM_PROMPTS: Record<ActionSystemPromptId, string>
   app11: getFirstSystemPrompt(buildVerbeteFraseEnfaticaPrompt("titulo: exemplo | especialidade: exemplo")),
 };
 
-const TERMS_CONCEPTS_CONS_PROMPT_IDS: Record<TermsConceptsBasicActionId, TermsConceptsConsActionSystemPromptId> = {
+const CONSCIENCIOGRAFIA_CONS_PROMPT_IDS: Record<ConscienciografiaExtendedActionId, ConscienciografiaExtendedConsActionSystemPromptId> = {
   dictionary: "dictionaryCons",
   synonyms: "synonymsCons",
   antonyms: "antonymsCons",
   etymology: "etymologyCons",
   cognatos: "cognatosCons",
+  epigraph: "epigraphCons",
+  rewrite: "rewriteCons",
+  summarize: "summarizeCons",
+  translate: "translateCons",
+  dict_lookup: "dict_lookupCons",
+  analogies: "analogiesCons",
+  comparisons: "comparisonsCons",
+  examples: "examplesCons",
+  counterpoints: "counterpointsCons",
+  neoparadigma: "neoparadigmaCons",
+};
+
+export const getConscienciografiaActionSystemPromptId = (
+  actionId: ConscienciografiaExtendedActionId | null,
+  isConscienciografiaEnabled: boolean,
+): ActionSystemPromptId | null => {
+  if (!actionId) return null;
+  return isConscienciografiaEnabled ? CONSCIENCIOGRAFIA_CONS_PROMPT_IDS[actionId] : actionId;
 };
 
 export const getTermsConceptsActionSystemPromptId = (
   actionId: TermsConceptsBasicActionId | null,
   isConscienciografiaEnabled: boolean,
 ): ActionSystemPromptId | null => {
-  if (!actionId) return null;
-  return isConscienciografiaEnabled ? TERMS_CONCEPTS_CONS_PROMPT_IDS[actionId] : actionId;
+  return getConscienciografiaActionSystemPromptId(actionId, isConscienciografiaEnabled);
 };
 
 export const getActionSystemPrompt = (

@@ -2,6 +2,7 @@ import { renderHistorySearchCardsHtml } from "@/lib/historySearchCards";
 import { markdownToEditorHtml, normalizeHistoryContentToMarkdown } from "@/lib/markdown";
 import type { AIResponse } from "@/features/ghost-writer/types";
 import { renderLexicalOverviewPayloadHtml } from "@/features/ghost-writer/utils/historyLexicalOverview";
+import { renderSemanticOverviewPayloadHtml } from "@/features/ghost-writer/utils/historySemanticOverview";
 
 const RESULT_LINE_INDENT_PX = 28;
 const RESULT_NUMBER_GAP_PX = 8;
@@ -115,6 +116,17 @@ const extractSearchQuery = (query: string): string => {
   if (withTotal?.[1]) return withTotal[1].trim();
   const semanticWithTotal = raw.match(/Consulta:\s*([\s\S]*?)\s*\|\s*Total:/i);
   if (semanticWithTotal?.[1]) return semanticWithTotal[1].trim();
+  if (/\b(?:Author|Title|Area|Text):/i.test(raw)) {
+    const segments = raw
+      .split("|")
+      .map((segment) => segment.trim())
+      .filter(Boolean)
+      .filter((segment) => !/^Total:/i.test(segment) && !/^Exibidos:/i.test(segment));
+    const values = segments
+      .map((segment) => segment.replace(/^[A-Za-zÀ-ÿ_ ]+:\s*/i, "").trim())
+      .filter(Boolean);
+    if (values.length > 0) return values.join(" ");
+  }
   const legacyWithMax = raw.match(/Termo:\s*([\s\S]*?)\s*\|\s*Max:/i);
   if (legacyWithMax?.[1]) return legacyWithMax[1].trim();
   const fallback = raw.match(/Termo:\s*([\s\S]*?)$/i);
@@ -559,12 +571,25 @@ export const isHistorySearchResponseType = (type: AIResponse["type"]): type is "
 const isLexicalOverviewResponse = (response: AIResponse): boolean =>
   response.type === "app_lexical_overview" && response.payload?.kind === "lexical_overview";
 
+const isSemanticOverviewResponse = (response: AIResponse): boolean =>
+  response.type === "app_semantic_overview" && response.payload?.kind === "semantic_overview";
+
 export const renderHistoryResponseEditorHtml = (
   response: AIResponse,
   options: Pick<HistoryResponseRenderOptions, "applyNumbering" | "applyReferences" | "applyMetadata" | "applyHighlight">,
 ): string => {
   if (isLexicalOverviewResponse(response)) {
     return renderLexicalOverviewPayloadHtml(response.payload, response.query, {
+      applyNumbering: options.applyNumbering,
+      applyReferences: options.applyReferences,
+      applyMetadata: options.applyMetadata,
+      applyHighlight: options.applyHighlight ?? true,
+      forExport: false,
+    });
+  }
+
+  if (isSemanticOverviewResponse(response)) {
+    return renderSemanticOverviewPayloadHtml(response.payload, response.query, {
       applyNumbering: options.applyNumbering,
       applyReferences: options.applyReferences,
       applyMetadata: options.applyMetadata,
@@ -606,6 +631,16 @@ export const renderHistoryResponseAppendBodyHtml = (
     });
   }
 
+  if (isSemanticOverviewResponse(response)) {
+    return renderSemanticOverviewPayloadHtml(response.payload, response.query, {
+      applyNumbering: options?.applyNumbering ?? false,
+      applyReferences: options?.applyReferences ?? true,
+      applyMetadata: options?.applyMetadata ?? true,
+      applyHighlight: options?.applyHighlight ?? true,
+      forExport: true,
+    });
+  }
+
   if (isHistorySearchResponseType(response.type)) {
     return renderHistorySearchResponseExportHtml(response, {
       applyNumbering: options?.applyNumbering ?? false,
@@ -631,6 +666,17 @@ export const renderHistoryResponseCopyHtml = (
 ): string => {
   if (isLexicalOverviewResponse(response)) {
     const html = renderLexicalOverviewPayloadHtml(response.payload, response.query, {
+      applyNumbering: options.applyNumbering,
+      applyReferences: options.applyReferences,
+      applyMetadata: options.applyMetadata,
+      applyHighlight: options.applyHighlight ?? true,
+      forExport: true,
+    });
+    return flattenNumberedBlocksForClipboard(html);
+  }
+
+  if (isSemanticOverviewResponse(response)) {
+    const html = renderSemanticOverviewPayloadHtml(response.payload, response.query, {
       applyNumbering: options.applyNumbering,
       applyReferences: options.applyReferences,
       applyMetadata: options.applyMetadata,

@@ -1,4 +1,4 @@
-import { PenLine, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   ACTION_PANEL_BUTTONS_BY_SCOPE,
@@ -22,7 +22,7 @@ interface ParameterPanelToolbarProps {
   hasVerbetografiaRequiredFields: boolean;
   onToggleAiActionsConfig: () => void;
   onToggleTermsConceptsConscienciografia: () => void;
-  onOpenAiActionParameters: (id: AiActionId, sectionOverride?: "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command") => void;
+  onOpenAiActionParameters: (id: AiActionId, sectionOverride?: "actions" | "rewriting" | "translation" | "customized_prompts") => void;
   onSelectVerbetografiaAction: (id: AppActionId) => void | Promise<void>;
   onRunAppAction: (id: AppActionId) => void | Promise<void>;
 }
@@ -40,6 +40,8 @@ const ParameterPanelToolbar = ({
   onSelectVerbetografiaAction,
   onRunAppAction,
 }: ParameterPanelToolbarProps) => {
+  const resolvedAiSection = parameterPanelTarget.section;
+
   const renderAiActionButton = (id: AiActionId) => {
     const Icon = ACTION_PANEL_ICONS[id];
 
@@ -61,15 +63,17 @@ const ParameterPanelToolbar = ({
   };
 
   const isAiActionSection =
-    parameterPanelTarget.section === "actions"
-    || parameterPanelTarget.section === "rewriting"
-    || parameterPanelTarget.section === "translation"
-    || parameterPanelTarget.section === "customized_prompts"
-    || parameterPanelTarget.section === "ai_command";
+    resolvedAiSection === "actions"
+    || resolvedAiSection === "rewriting"
+    || resolvedAiSection === "translation"
+    || resolvedAiSection === "customized_prompts";
   const supportsAiConfig = isAiActionSection;
-  const isAiCommandSection = parameterPanelTarget.section === "ai_command" && parameterPanelTarget.id === "ai_command";
   const isVerbetografiaTablePanel = parameterPanelTarget.section === "apps" && parameterPanelTarget.id === "app7";
-  const showTermsConceptsConscienciografiaPill = parameterPanelTarget.section === "actions" || parameterPanelTarget.section === "rewriting";
+  const showTermsConceptsConscienciografiaPill =
+    resolvedAiSection === "actions"
+    || resolvedAiSection === "rewriting"
+    || resolvedAiSection === "translation"
+    || resolvedAiSection === "customized_prompts";
   const showToolbar = parameterPanelTarget.section !== "document"
     && parameterPanelTarget.section !== "sources"
     && parameterPanelTarget.section !== "applications"
@@ -106,27 +110,18 @@ const ParameterPanelToolbar = ({
                   onClick={onToggleAiActionsConfig}
                   title={isAiActionsConfigOpen ? "Ocultar configurações IA" : "Mostrar configurações IA"}
                   aria-label={isAiActionsConfigOpen ? "Ocultar configurações IA" : "Mostrar configurações IA"}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-white text-muted-foreground shadow-sm transition hover:bg-zinc-50 hover:text-foreground"
+                  className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition ${
+                    isAiActionsConfigOpen
+                      ? "border-blue-300 bg-blue-100 text-blue-900 hover:bg-blue-200 hover:text-blue-950"
+                      : "border-border bg-white text-muted-foreground hover:bg-zinc-50 hover:text-foreground"
+                  }`}
                 >
                   <Settings className="h-4 w-4" />
                 </button>
               </div>
             ) : null}
-            {isAiCommandSection ? (
-              <Button
-                variant="ghost"
-                className={sectionActionButtonClass}
-                onClick={() => onOpenAiActionParameters("ai_command")}
-                disabled={isLoading}
-              >
-                <PenLine className="mr-2 h-4 w-4 shrink-0 text-blue-500" />
-                <span className="min-w-0 flex-1 text-left">
-                  <span className="block break-words text-sm font-medium text-foreground">{parameterActionMeta.ai_command.title}</span>
-                  <span className="block break-words text-xs text-muted-foreground">{parameterActionMeta.ai_command.description}</span>
-                </span>
-              </Button>
-            ) : ACTION_PANEL_BUTTONS_BY_SCOPE[parameterPanelTarget.section as Exclude<typeof parameterPanelTarget.section, "document" | "sources" | "applications" | "apps" | "ai_command">].map((id) => {
-              if (parameterPanelTarget.section !== "actions") {
+            {ACTION_PANEL_BUTTONS_BY_SCOPE[resolvedAiSection as Exclude<typeof resolvedAiSection, "document" | "sources" | "applications" | "apps">].map((id) => {
+              if (resolvedAiSection !== "actions") {
                 return renderAiActionButton(id);
               }
 
@@ -139,9 +134,9 @@ const ParameterPanelToolbar = ({
 
             {/* Palavras */}
             {/* _____________________________________________________________________ */}
-            {parameterPanelTarget.section === "actions" && !isAiCommandSection ? (
+            {resolvedAiSection === "actions" ? (
               <div className="space-y-1.5">
-                <p className="pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Palavras</p>
+                {/* <p className="pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Palavras</p> */}
                 {ACTION_PANEL_BUTTONS_BY_SCOPE.actions.map(renderAiActionButton)}
               </div>
             ) : null}
@@ -163,7 +158,11 @@ const ParameterPanelToolbar = ({
                       onClick={onToggleAiActionsConfig}
                       title={isAiActionsConfigOpen ? "Ocultar configurações IA" : "Mostrar configurações IA"}
                       aria-label={isAiActionsConfigOpen ? "Ocultar configurações IA" : "Mostrar configurações IA"}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-white text-muted-foreground shadow-sm transition hover:bg-zinc-50 hover:text-foreground"
+                      className={`inline-flex h-8 w-8 items-center justify-center rounded-md border shadow-sm transition ${
+                        isAiActionsConfigOpen
+                          ? "border-blue-300 bg-blue-100 text-blue-900 hover:bg-blue-200 hover:text-blue-950"
+                          : "border-border bg-white text-muted-foreground hover:bg-zinc-50 hover:text-foreground"
+                      }`}
                     >
                       <Settings className="h-4 w-4" />
                     </button>

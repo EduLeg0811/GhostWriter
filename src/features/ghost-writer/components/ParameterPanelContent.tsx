@@ -1,5 +1,6 @@
 import SourcesPanel from "@/features/ghost-writer/components/SourcesPanel";
 import ApplicationsLinksPanel from "@/features/ghost-writer/components/ApplicationsLinksPanel";
+import SearchLogPanel from "@/features/ghost-writer/components/SearchLogPanel";
 import DocumentParameterSection from "@/features/ghost-writer/components/DocumentParameterSection";
 import AiActionsParameterSection from "@/features/ghost-writer/components/AiActionsParameterSection";
 import AppsParameterSection from "@/features/ghost-writer/components/AppsParameterSection";
@@ -17,7 +18,6 @@ type NonNullParameterPanelTarget = Exclude<ParameterPanelTarget, null>;
 interface ParameterPanelContentProps {
   parameterPanelTarget: NonNullParameterPanelTarget;
   appPanelScope: AppPanelScope | null;
-  isAiCommandSelectionPending: boolean;
   isLoading: boolean;
   isAiActionsConfigOpen: boolean;
   isTermsConceptsConscienciografiaEnabled: boolean;
@@ -94,6 +94,9 @@ interface ParameterPanelContentProps {
   semanticSearchQuery: string;
   semanticSearchMaxResults: number;
   isRunningSemanticSearch: boolean;
+  semanticOverviewTerm: string;
+  semanticOverviewMaxResults: number;
+  isRunningSemanticOverview: boolean;
   verbeteSearchAuthor: string;
   verbeteSearchTitle: string;
   verbeteSearchArea: string;
@@ -134,8 +137,9 @@ interface ParameterPanelContentProps {
   onLlmVerbosityChange: (value: string) => void;
   onLlmEffortChange: (value: string) => void;
   onLlmSystemPromptChange: (value: string) => void;
+  onResetAllConfig: () => void;
   onRunRandomPensata: () => void | Promise<void>;
-  onOpenAiActionParameters: (id: AiActionId, sectionOverride?: "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command") => void;
+  onOpenAiActionParameters: (id: AiActionId, sectionOverride?: "actions" | "rewriting" | "translation" | "customized_prompts") => void;
   onActionTextChange: (value: string) => void;
   onAiCommandQueryChange: (value: string) => void;
   onTranslateLanguageChange: (value: (typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"]) => void;
@@ -186,6 +190,9 @@ interface ParameterPanelContentProps {
   onSemanticSearchQueryChange: (value: string) => void;
   onSemanticSearchMaxResultsChange: (value: number) => void;
   onRunSemanticSearch: () => void | Promise<void>;
+  onSemanticOverviewTermChange: (value: string) => void;
+  onSemanticOverviewMaxResultsChange: (value: number) => void;
+  onRunSemanticOverview: () => void | Promise<void>;
   onVerbeteSearchAuthorChange: (value: string) => void;
   onVerbeteSearchTitleChange: (value: string) => void;
   onVerbeteSearchAreaChange: (value: string) => void;
@@ -207,7 +214,6 @@ interface ParameterPanelContentProps {
 const ParameterPanelContent = ({
   parameterPanelTarget,
   appPanelScope,
-  isAiCommandSelectionPending,
   isLoading,
   isAiActionsConfigOpen,
   isTermsConceptsConscienciografiaEnabled,
@@ -284,6 +290,9 @@ const ParameterPanelContent = ({
   semanticSearchQuery,
   semanticSearchMaxResults,
   isRunningSemanticSearch,
+  semanticOverviewTerm,
+  semanticOverviewMaxResults,
+  isRunningSemanticOverview,
   verbeteSearchAuthor,
   verbeteSearchTitle,
   verbeteSearchArea,
@@ -324,6 +333,7 @@ const ParameterPanelContent = ({
   onLlmVerbosityChange,
   onLlmEffortChange,
   onLlmSystemPromptChange,
+  onResetAllConfig,
   onRunRandomPensata,
   onOpenAiActionParameters,
   onActionTextChange,
@@ -376,6 +386,9 @@ const ParameterPanelContent = ({
   onSemanticSearchQueryChange,
   onSemanticSearchMaxResultsChange,
   onRunSemanticSearch,
+  onSemanticOverviewTermChange,
+  onSemanticOverviewMaxResultsChange,
+  onRunSemanticOverview,
   onVerbeteSearchAuthorChange,
   onVerbeteSearchTitleChange,
   onVerbeteSearchAreaChange,
@@ -393,7 +406,12 @@ const ParameterPanelContent = ({
   onVerbetografiaTitleChange,
   onVerbetografiaSpecialtyChange,
 }: ParameterPanelContentProps) => {
+  if (parameterPanelTarget.section === "search_log") {
+    return <SearchLogPanel />;
+  }
+
   const aiActionsSelectedVectorStoreId = aiActionsSelectedVectorStoreIds[0] ?? "";
+  const translateRagVectorStoreId = aiActionVectorStoreOptions.find((item) => item.label === "Translate RAG")?.id ?? "";
   const isTermsConceptsAction =
     parameterPanelTarget.section === "actions"
     && (parameterPanelTarget.id === "dictionary"
@@ -401,6 +419,9 @@ const ParameterPanelContent = ({
       || parameterPanelTarget.id === "antonyms"
       || parameterPanelTarget.id === "etymology"
       || parameterPanelTarget.id === "cognatos");
+  const isTranslateAction =
+    parameterPanelTarget.section === "translation"
+    && parameterPanelTarget.id === "translate";
   const isVerbetografiaAiAction =
     parameterPanelTarget.section === "apps"
     && appPanelScope === "verbetografia"
@@ -412,6 +433,9 @@ const ParameterPanelContent = ({
   const termsConceptsForcedVectorStoreId = isTermsConceptsConscienciografiaEnabled
     ? (VECTOR_STORES_SOURCE.find((item) => item.label === "WVBooks")?.id ?? "")
     : NO_VECTOR_STORE_ID;
+  const translateForcedVectorStoreId = isTermsConceptsConscienciografiaEnabled
+    ? translateRagVectorStoreId
+    : aiActionsSelectedVectorStoreId;
   const verbetografiaDefaultVectorStoreId = DEFAULT_BOOK_SOURCE_ID;
   const effectiveVerbetografiaVectorStoreId =
     aiActionsSelectedVectorStoreId === NO_VECTOR_STORE_ID
@@ -494,6 +518,7 @@ const ParameterPanelContent = ({
             includeEditorContextInLlm={includeEditorContextInLlm}
             onToggleIncludeEditorContextInLlm={onToggleIncludeEditorContextInLlm}
             canToggleIncludeEditorContextInLlm={Boolean(currentFileId)}
+            onResetAllConfig={onResetAllConfig}
           />
         ) : null}
 
@@ -504,11 +529,10 @@ const ParameterPanelContent = ({
           />
         ) : null}
 
-        {(parameterPanelTarget.section === "actions" || parameterPanelTarget.section === "rewriting" || parameterPanelTarget.section === "translation" || parameterPanelTarget.section === "customized_prompts" || parameterPanelTarget.section === "ai_command") ? (
+        {(parameterPanelTarget.section === "actions" || parameterPanelTarget.section === "rewriting" || parameterPanelTarget.section === "translation" || parameterPanelTarget.section === "customized_prompts") ? (
           <AiActionsParameterSection
             section={parameterPanelTarget.section}
             actionId={parameterPanelTarget.id}
-            isAiCommandSelectionPending={isAiCommandSelectionPending}
             actionText={actionText}
             aiCommandQuery={aiCommandQuery}
             translateLanguage={translateLanguage}
@@ -523,7 +547,13 @@ const ParameterPanelContent = ({
             aiActionsLlmVerbosity={aiActionsLlmVerbosity}
             aiActionsLlmEffort={aiActionsLlmEffort}
             aiActionSystemPrompts={aiActionSystemPrompts}
-            aiActionsSelectedVectorStoreId={isTermsConceptsAction ? termsConceptsForcedVectorStoreId : aiActionsSelectedVectorStoreId}
+            aiActionsSelectedVectorStoreId={
+              isTermsConceptsAction
+                ? termsConceptsForcedVectorStoreId
+                : isTranslateAction
+                  ? translateForcedVectorStoreId
+                  : aiActionsSelectedVectorStoreId
+            }
             aiActionVectorStoreOptions={aiActionVectorStoreOptions}
             uploadedChatFiles={uploadedChatFiles}
             isUploadingChatFiles={isUploadingChatFiles}
@@ -589,6 +619,9 @@ const ParameterPanelContent = ({
             semanticSearchQuery={semanticSearchQuery}
             semanticSearchMaxResults={semanticSearchMaxResults}
             isRunningSemanticSearch={isRunningSemanticSearch}
+            semanticOverviewTerm={semanticOverviewTerm}
+            semanticOverviewMaxResults={semanticOverviewMaxResults}
+            isRunningSemanticOverview={isRunningSemanticOverview}
             verbeteSearchAuthor={verbeteSearchAuthor}
             verbeteSearchTitle={verbeteSearchTitle}
             verbeteSearchArea={verbeteSearchArea}
@@ -651,6 +684,9 @@ const ParameterPanelContent = ({
             onSemanticSearchQueryChange={onSemanticSearchQueryChange}
             onSemanticSearchMaxResultsChange={onSemanticSearchMaxResultsChange}
             onRunSemanticSearch={onRunSemanticSearch}
+            onSemanticOverviewTermChange={onSemanticOverviewTermChange}
+            onSemanticOverviewMaxResultsChange={onSemanticOverviewMaxResultsChange}
+            onRunSemanticOverview={onRunSemanticOverview}
             onVerbeteSearchAuthorChange={onVerbeteSearchAuthorChange}
             onVerbeteSearchTitleChange={onVerbeteSearchTitleChange}
             onVerbeteSearchAreaChange={onVerbeteSearchAreaChange}

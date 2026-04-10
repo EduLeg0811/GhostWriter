@@ -6,6 +6,7 @@ import re
 import shutil
 import subprocess
 import time
+from threading import Lock
 import uuid
 import xml.etree.ElementTree as ET
 from io import BytesIO
@@ -62,6 +63,104 @@ def validate_external_dictionary_term(raw_term: str, param_name: str = "palavra"
 
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 META_DIR.mkdir(parents=True, exist_ok=True)
+
+SEMANTIC_OVERVIEW_PROGRESS_LOCK = Lock()
+SEMANTIC_OVERVIEW_PROGRESS: dict[str, Any] = {
+    "searchType": "semantic_overview",
+    "status": "idle",
+    "startedAt": None,
+    "finishedAt": None,
+    "updatedAt": None,
+    "term": "",
+    "limit": 0,
+    "totalIndexes": 0,
+    "processedIndexes": 0,
+    "currentIndexPosition": 0,
+    "currentIndexId": "",
+    "currentIndexLabel": "",
+    "currentMatches": 0,
+    "totalMatchesAccumulated": 0,
+    "totalFound": 0,
+    "groupsCount": 0,
+    "topScore": None,
+    "message": "",
+    "error": None,
+    "events": [],
+}
+
+LEXICAL_OVERVIEW_PROGRESS_LOCK = Lock()
+LEXICAL_OVERVIEW_PROGRESS: dict[str, Any] = {
+    "searchType": "lexical_overview",
+    "status": "idle",
+    "startedAt": None,
+    "finishedAt": None,
+    "updatedAt": None,
+    "term": "",
+    "limit": 0,
+    "totalIndexes": 0,
+    "processedIndexes": 0,
+    "currentIndexPosition": 0,
+    "currentIndexId": "",
+    "currentIndexLabel": "",
+    "currentMatches": 0,
+    "totalMatchesAccumulated": 0,
+    "totalFound": 0,
+    "groupsCount": 0,
+    "topScore": None,
+    "message": "",
+    "error": None,
+    "events": [],
+}
+
+
+def _utc_iso_now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _update_semantic_overview_progress(update: dict[str, Any], *, reset_events: bool = False) -> None:
+    event = update.pop("event", None)
+    timestamp = _utc_iso_now()
+    with SEMANTIC_OVERVIEW_PROGRESS_LOCK:
+        current = dict(SEMANTIC_OVERVIEW_PROGRESS)
+        events = [] if reset_events else list(current.get("events") or [])
+        if event:
+            events.insert(0, {"at": timestamp, **event})
+            events = events[:80]
+        current.update(update)
+        current["updatedAt"] = timestamp
+        current["events"] = events
+        SEMANTIC_OVERVIEW_PROGRESS.clear()
+        SEMANTIC_OVERVIEW_PROGRESS.update(current)
+
+
+def _snapshot_semantic_overview_progress() -> dict[str, Any]:
+    with SEMANTIC_OVERVIEW_PROGRESS_LOCK:
+        snapshot = dict(SEMANTIC_OVERVIEW_PROGRESS)
+        snapshot["events"] = [dict(item) for item in SEMANTIC_OVERVIEW_PROGRESS.get("events", [])]
+        return snapshot
+
+
+def _update_lexical_overview_progress(update: dict[str, Any], *, reset_events: bool = False) -> None:
+    event = update.pop("event", None)
+    timestamp = _utc_iso_now()
+    with LEXICAL_OVERVIEW_PROGRESS_LOCK:
+        current = dict(LEXICAL_OVERVIEW_PROGRESS)
+        events = [] if reset_events else list(current.get("events") or [])
+        if event:
+            events.insert(0, {"at": timestamp, **event})
+            events = events[:80]
+        current.update(update)
+        current["updatedAt"] = timestamp
+        current["events"] = events
+        LEXICAL_OVERVIEW_PROGRESS.clear()
+        LEXICAL_OVERVIEW_PROGRESS.update(current)
+
+
+def _snapshot_lexical_overview_progress() -> dict[str, Any]:
+    with LEXICAL_OVERVIEW_PROGRESS_LOCK:
+        snapshot = dict(LEXICAL_OVERVIEW_PROGRESS)
+        snapshot["events"] = [dict(item) for item in LEXICAL_OVERVIEW_PROGRESS.get("events", [])]
+        return snapshot
 
 PORT = int(os.getenv("PORT") or os.getenv("SERVER_PORT", "8787"))
 pdf2docx_python_cmd = (os.getenv("PDF2DOCX_PYTHON_CMD") or "python").strip()
@@ -199,6 +298,11 @@ class SemanticSearchRequest(BaseModel):
     indexId: str = ""
     query: str = ""
     limit: int = 10
+
+
+class SemanticOverviewSearchRequest(BaseModel):
+    term: str = ""
+    limit: int = 50
 
 
 class OnlineDictionarySearchRequest(BaseModel):
@@ -1140,11 +1244,81 @@ def api_lexical_overview(payload: LexicalOverviewSearchRequest) -> dict[str, Any
     except Exception:
         from functions.lexical_search_service import search_lexical_overview_with_total
 
+    _update_lexical_overview_progress(
+        {
+            "status": "running",
+            "startedAt": _utc_iso_now(),
+            "finishedAt": None,
+            "term": term,
+            "limit": limit,
+            "totalIndexes": 0,
+            "processedIndexes": 0,
+            "currentIndexPosition": 0,
+            "currentIndexId": "",
+            "currentIndexLabel": "",
+            "currentMatches": 0,
+            "totalMatchesAccumulated": 0,
+            "totalFound": 0,
+            "groupsCount": 0,
+            "topScore": None,
+            "message": "Preparando Lexical Overview.",
+            "error": None,
+        },
+        reset_events=True,
+    )
+
     try:
-        total_found, groups = search_lexical_overview_with_total(term=term, limit=limit)
+        total_found, groups = search_lexical_overview_with_total(
+            term=term,
+            limit=limit,
+            progress_callback=_update_lexical_overview_progress,
+        )
+        _update_lexical_overview_progress(
+            {
+                "status": "completed",
+                "finishedAt": _utc_iso_now(),
+                "processedIndexes": len(groups) if groups else int(_snapshot_lexical_overview_progress().get("processedIndexes") or 0),
+                "currentMatches": 0,
+                "currentIndexId": "",
+                "currentIndexLabel": "",
+                "totalFound": total_found,
+                "groupsCount": len(groups),
+                "message": f"Lexical Overview concluido com {total_found} ocorrencias.",
+                "event": {
+                    "stage": "completed",
+                    "matchesFound": total_found,
+                    "totalMatchesAccumulated": total_found,
+                    "note": f"{len(groups)} livros retornaram resultados no overview.",
+                },
+            }
+        )
     except ValueError as exc:
+        _update_lexical_overview_progress(
+            {
+                "status": "error",
+                "finishedAt": _utc_iso_now(),
+                "error": str(exc),
+                "message": "Lexical Overview interrompido por erro de validacao.",
+                "event": {
+                    "stage": "error",
+                    "note": str(exc),
+                },
+            }
+        )
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
+        _update_lexical_overview_progress(
+            {
+                "status": "error",
+                "finishedAt": _utc_iso_now(),
+                "error": str(exc),
+                "message": "Lexical Overview falhou durante o processamento.",
+                "event": {
+                    "stage": "error",
+                    "note": str(exc),
+                },
+            }
+        )
         raise HTTPException(status_code=500, detail=f"Falha ao executar lexical overview: {exc}")
 
     return {
@@ -1257,6 +1431,135 @@ def api_semantic_search(payload: SemanticSearchRequest) -> dict[str, Any]:
             "total": total,
             "matches": matches,
         },
+    }
+
+
+@app.get("/api/apps/lexical/overview/progress")
+def api_lexical_overview_progress() -> dict[str, Any]:
+    return {
+        "ok": True,
+        "result": _snapshot_lexical_overview_progress(),
+    }
+
+
+@app.post("/api/apps/semantic/overview")
+def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, Any]:
+    require_openai_key()
+    term = (payload.term or "").strip()
+    if not term:
+        raise HTTPException(status_code=400, detail="Parametro 'term' e obrigatorio.")
+    limit = max(1, min(int(payload.limit or 50), 100))
+
+    try:
+        from Build_Vector_Index.functions.semantic_search_service import search_semantic_overview_with_total
+    except Exception:
+        from Build_Vector_Index.semantic_search_service import search_semantic_overview_with_total
+
+    _update_semantic_overview_progress(
+        {
+            "status": "running",
+            "startedAt": _utc_iso_now(),
+            "finishedAt": None,
+            "term": term,
+            "limit": limit,
+            "totalIndexes": 0,
+            "processedIndexes": 0,
+            "currentIndexPosition": 0,
+            "currentIndexId": "",
+            "currentIndexLabel": "",
+            "currentMatches": 0,
+            "totalMatchesAccumulated": 0,
+            "totalFound": 0,
+            "groupsCount": 0,
+            "topScore": None,
+            "message": "Preparando Semantic Overview.",
+            "error": None,
+        },
+        reset_events=True,
+    )
+
+    try:
+        total_found, groups = search_semantic_overview_with_total(
+            term=term,
+            limit=limit,
+            api_key=get_openai_api_key(),
+            progress_callback=_update_semantic_overview_progress,
+        )
+        top_score = max(
+            (
+                float(match.get("score") or 0.0)
+                for group in groups
+                for match in (group.get("matches") or [])
+            ),
+            default=None,
+        )
+        _update_semantic_overview_progress(
+            {
+                "status": "completed",
+                "finishedAt": _utc_iso_now(),
+                "processedIndexes": len(groups) if groups else int(_snapshot_semantic_overview_progress().get("processedIndexes") or 0),
+                "currentMatches": 0,
+                "currentIndexId": "",
+                "currentIndexLabel": "",
+                "totalFound": total_found,
+                "groupsCount": len(groups),
+                "topScore": top_score,
+                "message": f"Semantic Overview concluido com {total_found} resultados.",
+                "event": {
+                    "stage": "completed",
+                    "matchesFound": total_found,
+                    "totalMatchesAccumulated": total_found,
+                    "topScore": top_score,
+                    "note": f"{len(groups)} bases retornaram resultados no overview.",
+                },
+            }
+        )
+    except ValueError as exc:
+        _update_semantic_overview_progress(
+            {
+                "status": "error",
+                "finishedAt": _utc_iso_now(),
+                "error": str(exc),
+                "message": "Semantic Overview interrompido por erro de validacao.",
+                "event": {
+                    "stage": "error",
+                    "note": str(exc),
+                },
+            }
+        )
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        _update_semantic_overview_progress(
+            {
+                "status": "error",
+                "finishedAt": _utc_iso_now(),
+                "error": str(exc),
+                "message": "Semantic Overview falhou durante o processamento.",
+                "event": {
+                    "stage": "error",
+                    "note": str(exc),
+                },
+            }
+        )
+        raise HTTPException(status_code=500, detail=f"Falha ao executar Semantic Overview: {exc}")
+
+    return {
+        "ok": True,
+        "result": {
+            "term": term,
+            "limit": limit,
+            "totalIndexes": len(groups),
+            "totalFound": total_found,
+            "groups": groups,
+        },
+    }
+
+
+@app.get("/api/apps/semantic/overview/progress")
+def api_semantic_overview_progress() -> dict[str, Any]:
+    return {
+        "ok": True,
+        "result": _snapshot_semantic_overview_progress(),
     }
 
 

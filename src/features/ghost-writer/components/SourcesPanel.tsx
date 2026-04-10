@@ -1,13 +1,12 @@
 import { CheckedState } from "@radix-ui/react-checkbox";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Paperclip } from "lucide-react";
 import type { UploadedLlmFile } from "@/lib/openai";
+import AiAssistantConfigPanel from "@/features/ghost-writer/components/AiAssistantConfigPanel";
 import UploadedFilesList from "@/features/ghost-writer/components/UploadedFilesList";
-import { CONFIG_PROMPT_ROWS, LLM_MODEL_OPTIONS } from "@/features/ghost-writer/config/constants";
+import { CONFIG_PROMPT_ROWS } from "@/features/ghost-writer/config/constants";
 
 interface SourcesPanelProps {
   onUploadFiles: (files: File[]) => void;
@@ -38,6 +37,7 @@ interface SourcesPanelProps {
   includeEditorContextInLlm: boolean;
   onToggleIncludeEditorContextInLlm: () => void;
   canToggleIncludeEditorContextInLlm?: boolean;
+  onResetAllConfig: () => void;
 }
 
 const SourcesPanel = ({
@@ -69,9 +69,8 @@ const SourcesPanel = ({
   includeEditorContextInLlm,
   onToggleIncludeEditorContextInLlm,
   canToggleIncludeEditorContextInLlm = true,
+  onResetAllConfig,
 }: SourcesPanelProps) => {
-  const sourceBooks = bookSources;
-
   const renderSourceItem = (source: { id: string; label: string }) => {
     const checked = selectedBookSourceIds.includes(source.id);
     return (
@@ -91,7 +90,7 @@ const SourcesPanel = ({
           <div className="space-y-1.5">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Livros & Tratados</p>
             <div className="space-y-1">
-              {sourceBooks.map(renderSourceItem)}
+              {bookSources.map(renderSourceItem)}
             </div>
           </div>
 
@@ -110,70 +109,76 @@ const SourcesPanel = ({
 
       <div className="min-h-0 overflow-y-auto border-t border-border pt-3 pr-1">
         <div className="space-y-4">
-          <div className="space-y-3">
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações LLM Chat</Label>
-            <div className="flex items-center gap-2">
-              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Modelo</Label>
-              <select value={llmModel} onChange={(e) => onLlmModelChange(e.target.value)} className="h-8 w-full rounded-md border border-input bg-background px-3 text-[11px] text-foreground outline-none">
-                {LLM_MODEL_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Temperatura</Label>
-              <Input type="number" step="0.1" min="0" max="2" value={llmTemperature} onChange={(e) => onLlmTemperatureChange(Number(e.target.value))} className="h-8 text-[11px]" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Output Tokens</Label>
-              <Input type="number" min="1" value={llmMaxOutputTokens} onChange={(e) => onLlmMaxOutputTokensChange(e.target.value ? Number(e.target.value) : 1000)} className="h-8 text-[11px]" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Max Num Results</Label>
-              <Input type="number" min="1" max="20" value={llmMaxNumResults} onChange={(e) => onLlmMaxNumResultsChange(e.target.value ? Number(e.target.value) : 5)} className="h-8 text-[11px]" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Context Max Chars</Label>
-              <Input type="number" min="500" value={llmEditorContextMaxChars} onChange={(e) => onLlmEditorContextMaxCharsChange(e.target.value ? Number(e.target.value) : 10000)} className="h-8 text-[11px]" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Verbosity</Label>
-              <Input value={llmVerbosity} onChange={(e) => onLlmVerbosityChange(e.target.value)} placeholder="low | medium | high" className="h-8 text-[11px]" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GPT-5 Effort</Label>
-              <Input value={llmEffort} onChange={(e) => onLlmEffortChange(e.target.value)} placeholder="minimal | low | medium | high" className="h-8 text-[11px]" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="w-36 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Vector Store</Label>
-              <div className="flex min-h-8 w-full items-center rounded-md border border-input bg-muted/30 px-3 text-[11px] text-foreground">
-                {selectedChatSourceLabel}
+          <AiAssistantConfigPanel
+            llmModel={llmModel}
+            onLlmModelChange={onLlmModelChange}
+            llmTemperature={llmTemperature}
+            onLlmTemperatureChange={onLlmTemperatureChange}
+            llmMaxOutputTokens={llmMaxOutputTokens}
+            onLlmMaxOutputTokensChange={onLlmMaxOutputTokensChange}
+            llmVerbosity={llmVerbosity}
+            onLlmVerbosityChange={onLlmVerbosityChange}
+            llmEffort={llmEffort}
+            onLlmEffortChange={onLlmEffortChange}
+            selectedVectorStoreId=""
+            onSelectedVectorStoreIdChange={() => {}}
+            vectorStoreOptions={[]}
+            onUploadFiles={onUploadFiles}
+            uploadedFiles={uploadedFiles}
+            onRemoveUploadedFile={onRemoveUploadedFile}
+            isUploadingFiles={isUploadingFiles}
+            fixedVectorStoreLabel={selectedChatSourceLabel}
+            showUploadedFiles={false}
+            includeEditorContextInLlm={includeEditorContextInLlm}
+            onToggleIncludeEditorContextInLlm={onToggleIncludeEditorContextInLlm}
+            canToggleIncludeEditorContextInLlm={canToggleIncludeEditorContextInLlm}
+            extraContent={(
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-0">
+                  <Label className="w-24 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Max Results</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={llmMaxNumResults}
+                    onChange={(e) => onLlmMaxNumResultsChange(e.target.value ? Number(e.target.value) : 5)}
+                    className="h-7 px-2.5 !text-[10px] md:!text-[10px]"
+                  />
+                </div>
+                <div className="flex items-center gap-0">
+                  <Label className="w-24 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Ctx Chars</Label>
+                  <Input
+                    type="number"
+                    min="500"
+                    value={llmEditorContextMaxChars}
+                    onChange={(e) => onLlmEditorContextMaxCharsChange(e.target.value ? Number(e.target.value) : 10000)}
+                    className="h-7 px-2.5 !text-[10px] md:!text-[10px]"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">System Prompt</Label>
+                  <textarea
+                    value={llmSystemPrompt}
+                    onChange={(e) => onLlmSystemPromptChange(e.target.value)}
+                    rows={CONFIG_PROMPT_ROWS}
+                    className="w-full resize-none overflow-y-auto rounded-md border border-input bg-white px-2.5 py-1.5 text-[10px] text-foreground outline-none"
+                  />
+                </div>
+                <div className="pt-0.5">
+                  <button
+                    type="button"
+                    className="h-8 w-full rounded-lg border border-border bg-white px-2.5 text-left text-[10px] font-semibold text-muted-foreground shadow-sm hover:bg-zinc-50 hover:text-foreground"
+                    onClick={() => {
+                      if (!window.confirm("Reset all config parameters. Are you shure?")) return;
+                      onResetAllConfig();
+                    }}
+                  >
+                    Reset Config Parameters
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt</Label>
-              <textarea value={llmSystemPrompt} onChange={(e) => onLlmSystemPromptChange(e.target.value)} rows={CONFIG_PROMPT_ROWS} className="w-full resize-none overflow-y-auto rounded-md border border-input bg-white px-3 py-2 text-[11px] text-foreground outline-none" />
-            </div>
-            <div className="pt-1">
-              <Button
-                type="button"
-                variant="ghost"
-                className={`h-9 w-full justify-start rounded-lg border border-border px-3 text-left text-[11px] font-semibold shadow-sm ${
-                  includeEditorContextInLlm
-                    ? "bg-pink-200 text-pink-800 ring-1 ring-pink-300/80 hover:bg-pink-300 hover:text-pink-900"
-                    : "bg-white text-muted-foreground hover:bg-zinc-50 hover:text-foreground"
-                }`}
-                title={canToggleIncludeEditorContextInLlm ? (includeEditorContextInLlm ? "Desativar envio do texto do editor para a LLM" : "Ativar envio do texto do editor para a LLM") : "Disponível apenas com documento aberto no editor"}
-                onClick={onToggleIncludeEditorContextInLlm}
-                disabled={!canToggleIncludeEditorContextInLlm}
-              >
-                <Paperclip className="mr-2 h-3.5 w-3.5 shrink-0" />
-                <span>Enviar texto do Editor</span>
-              </Button>
-            </div>
-          </div>
+            )}
+          />
 
           <Separator />
 

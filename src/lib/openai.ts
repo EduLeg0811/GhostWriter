@@ -35,8 +35,7 @@ export const CHAT_GPT5_VERBOSITY: "low" | "medium" | "high" = LLM_DEFAULT_GPT5_V
 export const CHAT_GPT5_EFFORT: "none" | "low" | "medium" | "high" = LLM_DEFAULT_GPT5_EFFORT;
 export const CHAT_MAX_OUTPUT_TOKENS: number | undefined = 1000;
 export const CHAT_MAX_NUM_RESULTS = 5;
-export const CHAT_SYSTEM_PROMPT = `
-You are a plainspoken and direct AI assistant focused on helping the user achieve productive outcomes. 
+export const CHAT_SYSTEM_PROMPT = `You are a plainspoken and direct AI assistant focused on helping the user achieve productive outcomes. 
 You are an expert in Conscientiology (Waldo Vieira).
 Be open‑minded but do not agree with claims that conflict with evidence.
 When giving feedback, be clear and corrective without sugarcoating. 
@@ -155,12 +154,21 @@ export async function uploadLlmSourceFiles(files: File[]): Promise<UploadedLlmFi
 }
 
 
+
+
+
+
+
+// _____________________________________________________________________________________________________________________
+// DEFINICAO
+// _____________________________________________________________________________________________________________________
+
 // Secao da interface: "Lexicografia IA" > "Termos & Conceitos".
 // Botao correspondente no painel de parametros: "Definicao".
 // Este prompt pede definicoes dicionarizadas em formato estruturado.
 export function buildDefinePrompt(text: string, ragContext?: string): ChatMessage[] {
   const systemBase = 
-  `  Você é um assistente especializado em lexicologia da língua portuguesa.
+  `Você é um assistente especializado em lexicologia da língua portuguesa.
   Sua tarefa é fornecer definições de dicionários para o termo ou expressão informada.
 
   Procedimento:
@@ -197,7 +205,6 @@ export function buildDefinePrompt(text: string, ragContext?: string): ChatMessag
   ];
 }
 
-
 // Secao da interface: "Lexicografia IA" > "Termos & Conceitos" com pill "Conscienciografia" ativo.
 // Botao correspondente no painel de parametros: "Definicao".
 // Este prompt alternativo conscienciografico usa o corpus WVBooks para buscar definicoes no jargao da Conscienciologia.
@@ -230,7 +237,6 @@ export function buildDefineConsPrompt(text: string, ragContext?: string): ChatMe
   - **Campo semântico**:  
   - **Observações**: (ambiguidade, polissemia, uso técnico, etc.)
   `;
-  
 
   const system = ragContext
     ? `${systemBase}\n\nContexto de referencia:\n${ragContext}`
@@ -244,6 +250,10 @@ export function buildDefineConsPrompt(text: string, ragContext?: string): ChatMe
 
 
 
+
+// _____________________________________________________________________________________________________________________
+// SINONIMIA
+// _____________________________________________________________________________________________________________________
 
 // Secao da interface: "Lexicografia IA" > "Termos & Conceitos".
 // Botao correspondente no painel de parametros: "Sinonimia".
@@ -311,6 +321,12 @@ export function buildSynonymsConsPrompt(text: string, ragContext?: string): Chat
     { role: "user", content: `Liste 10 sinonimos para o TERMO: "${text}"` },
   ];
 }
+
+
+
+// _____________________________________________________________________________________________________________________
+// ANTONIMIA
+// _____________________________________________________________________________________________________________________
 
 // Secao da interface: "Lexicografia IA" > "Termos & Conceitos".
 // Botao correspondente no painel de parametros: "Antonimia".
@@ -380,6 +396,13 @@ export function buildAntonymsConsPrompt(text: string, ragContext?: string): Chat
   ];
 }
 
+
+
+
+
+// _____________________________________________________________________________________________________________________
+// ETIMOLOGIA
+// _____________________________________________________________________________________________________________________
 // Secao da interface: "Lexicografia IA" > "Termos & Conceitos".
 // Botao correspondente no painel de parametros: "Etimologia".
 // Este prompt solicita etimologia detalhada com campos complementares.
@@ -457,6 +480,9 @@ export function buildEtymologyConsPrompt(text: string, ragContext?: string): Cha
 
 
 
+// _____________________________________________________________________________________________________________________
+// COGNATOS
+// _____________________________________________________________________________________________________________________
 // Secao da interface: "Lexicografia IA" > "Termos & Conceitos".
 // Botao correspondente no painel de parametros: "Cognatos".
 // Este prompt limita a saida a cognatos suportados pelo material recuperado.
@@ -487,7 +513,7 @@ export function buildCognatosConsPrompt(text: string, ragContext?: string): Chat
    const systemBase =
     `Voce e um pesquisador de Lexicologia da Conscienciologia. 
     Retorne ate 10 cognatos léxicos relacionados ao TERMO de entrada, ordenados por relevancia e semelhança decrescente.
-    Utilize apenas termos presentes no material de referencia.
+    Utilize preferencialmente os termos presentes no material de referencia.
     Baseie-se no corpus de conhecimento da Conscienciologia.
     Se a busca nao recuperar pelo menos 1 cognato com suporte no material, diga exatamente: Nenhuma correspondencia encontrada.
     A saida deve ser exatamente um destes formatos: 
@@ -505,47 +531,12 @@ export function buildCognatosConsPrompt(text: string, ragContext?: string): Chat
   ];
 }
 
-// Secao da interface: "Lexicografia IA" > "Traducao & Dicionario".
-// Botao correspondente no painel de parametros: "Dicionarios".
-// Este prompt pede um levantamento de dicionarios e glossarios relevantes para o termo.
-export function buildDictLookupPrompt(text: string, ragContext?: string): ChatMessage[] {
-  const systemBase =
-    `Voce e um assistente de pesquisa lexicografica.
-    Para o termo informado, identifique dicionarios, glossarios, enciclopedias lexicais ou fontes terminologicas relevantes.
-
-    Regras:
-    - Priorize fontes reais e reconheciveis.
-    - Se houver material recuperado no vector store, use-o para contextualizar a selecao.
-    - Nao invente URLs ou referencias.
-    - Organize a resposta de forma pratica e objetiva.
-
-    Formato de saida:
-    **Termo pesquisado**: {termo}
-    **Fontes recomendadas**:
-    1. {nome da fonte} - {tipo/escopo} - {motivo}
-    2. {nome da fonte} - {tipo/escopo} - {motivo}
-    3. {nome da fonte} - {tipo/escopo} - {motivo}
-
-    **Observacoes**:
-    - {observacao 1}
-    - {observacao 2}`;
-
-  const system = ragContext
-    ? `${systemBase}\n\nContexto de referencia:\n${ragContext}`
-    : systemBase;
-
-  return [
-    { role: "system", content: system },
-    { role: "user", content: `Liste dicionarios e fontes lexicograficas para o termo: "${text}"` },
-  ];
-}
 
 
 
 // ______________________________________________________________
-// Paragrafos & Trechos
+// REESCREVER
 // ______________________________________________________________
-
 
 // Secao da interface: "Lexicografia IA" > "Paragrafos & Trechos".
 // Botao correspondente no painel de parametros: "Reescrever".
@@ -555,11 +546,29 @@ export function buildRewritePrompt(text: string): ChatMessage[] {
     {
       role: "system",
       content:
-        "Voce e um editor de textos acadêmicos da Conscienciologia. Reescreva o trecho fornecido, melhorando a clareza, fluidez e elegancia, mantendo o sentido original.",
+        "Voce e um editor de textos acadêmicos. Reescreva o trecho fornecido, melhorando a clareza, fluidez e elegancia, mantendo o sentido original.",
     },
     { role: "user", content: `Reescreva: "${text}"` },
   ];
 }
+
+export function buildRewriteConsPrompt(text: string): ChatMessage[] {
+  return [
+    {
+      role: "system",
+      content:
+        "Voce e um editor de textos acadêmicos da Conscienciologia. Reescreva o trecho fornecido, melhorando a clareza, fluidez e elegancia, mantendo o sentido original. Use termos específicos da nomenclatura e jargão da Conscienciologia.",
+    },
+    { role: "user", content: `Reescreva: "${text}"` },
+  ];
+}
+
+
+
+
+// ______________________________________________________________
+// RESUMIR
+// ______________________________________________________________
 
 // Secao da interface: "Lexicografia IA" > "Paragrafos & Trechos".
 // Botao correspondente no painel de parametros: "Resumir".
@@ -575,6 +584,23 @@ export function buildSummarizePrompt(text: string): ChatMessage[] {
   ];
 }
 
+export function buildSummarizeConsPrompt(text: string): ChatMessage[] {
+ return [
+    {
+      role: "system",
+      content:
+        "Voce e um especialista em resumos da Conscienciologia. Resuma o texto fornecido de forma concisa, capturando os pontos principais.",
+    },
+    { role: "user", content: `Resuma o seguinte texto:\n\n${text}` },
+  ];
+}
+
+
+
+
+// _____________________________________________________________________________________________________________________
+// EPIGRAPH
+// _____________________________________________________________________________________________________________________
 // Secao da interface: "Lexicografia IA" > "Paragrafos & Trechos".
 // Botao correspondente no painel de parametros: "Epigrafe".
 // Este prompt gera uma unica palavra epigrafica para sintetizar o texto.
@@ -591,129 +617,6 @@ export function buildEpigraphPrompt(text: string, ragContext?: string): ChatMess
    return [
     { role: "system", content: system },
     { role: "user", content: `Crie uma palavra epigrafica para: "${text}"` },
-  ];
-}
-
-// Secao da interface: "Lexicografia IA" > "Traducao & Dicionario".
-// Botao correspondente no painel de parametros: "Traduzir".
-// Este prompt traduz preservando terminologia conscienciologica sempre que possivel.
-export function buildTranslatePrompt(text: string, targetLanguage: string, ragContext?: string): ChatMessage[] {
-  const systemBase =
-    `Voce é um tradutor de textos da língua portuguesa.
-    Seu estilo é técnico, preciso e acadêmico.Traduza com fidelidade sem adicionar explicações. 
-    Preserve estrutura, paragrafos e pontuação. O texto traduzido final deve ser o mais fiel possível ao original, sem adicionar explicações ou comentarios.
-    `
-
-  const system = ragContext
-    ? `${systemBase}\n\nContexto terminológico de referência da Conscienciologia (use para padronização terminológica quando aplicável):\n${ragContext}`
-    : systemBase;
-
-  return [
-    {
-      role: "system",
-      content: system,
-    },
-    { role: "user", content: `Traduza para ${targetLanguage}:\n\n${text}` },
-  ];
-}
-
-// Secao da interface: "Lexicografia IA" > "Comando IA".
-// Botao correspondente no painel de parametros: "Comando IA".
-// Este prompt combina texto de referencia e consulta livre do usuario.
-export function buildAiCommandPrompt(text: string, query: string): ChatMessage[] {
-  return [
-    {
-      role: "system",
-      content: "Voce e um editor de textos acadêmicos. Responda de forma direta e objetiva.",
-    },
-    {
-      role: "user",
-      content: `Texto de referência: \n${text}\n\n`,
-    },
-
-    {
-      role: "user",
-      content: `Query: \n${query}`,
-    },
-  ];
-}
-
-
-
-
-
-
-
-
-
-// ____________________________________________________________________________
-// "Conscienciografia IA" 
-// ____________________________________________________________________________
-
-// DEFINOLOGIA CONSCIENCIOLÓGICA
-// Secao da interface: "Conscienciografia IA" > "Definicoes Conscienciologicas".
-// Botao correspondente no painel de parametros: "Definologia".
-// Este prompt pede uma definologia no padrao conscienciologico.
-export function buildDefinologiaPrompt(text: string, ragContext?: string): ChatMessage[] {
-  const systemBase =
-    ` Você é um dicionario especializado em Conscienciologia. 
-    Busque nos textos fornecidos da Conscienciologia se ha uma Definologia ou Definicao ja pronta para o TERMO de entrada. 
-    Caso haja, copie ipsis litteris. Caso nao haja, escreva a definicao clara e concisa. 
-    O formato de saida deve ser: 
-    - <strong>Definologia.</strong> {artigo definido O, Os ou A, As dependendo do genero e do numero do termo de entrada} <em>{termo de entrada}</em> é {definologia ou definicao do termo, em apenas 1 parágrafo breve, sob a ótica da Conscienciologia}.
-    - Sem comentários, finalizações, adendos ou explicações.
-    `
-
-
-  const system = ragContext
-    ? `${systemBase}\n\nContexto de referencia:\n${ragContext}`
-    : systemBase;
-
-  return [
-    { role: "system", content: system },
-    { role: "user", content: `TERMO de entrada: "${text}"` },
-  ];
-}
-
-// SINONIMOLOGIA CONSCIENCIOLÓGICA
-// Secao da interface: "Conscienciografia IA" > "Definicoes Conscienciologicas".
-// Botao correspondente no painel de parametros: "Sinonimologia".
-// Este prompt pede uma sinonimologia no padrao conscienciologico.
-export function buildSinonimologiaPrompt(text: string, ragContext?: string): ChatMessage[] {
-  const systemBase =
-    `Você é um especialista em linguagem da Conscienciologia.
-    - Forneça exatamente 5 sinônimos para o TERMO de entrada dado, usando prioritariamente os documentos fornecidos do vector store.
-    - Considere como sinônimo os termos que expressem o mesmo conceito, embora descritos com termo diferente.
-    - Busque prioritariamente termos dentro do corpus de palavras próprio da Conscienciologia, como neologismos, jargões e termos técnicos.
-    - Se não houver 5 sinônimos no domínio, complete com sinônimos gerais da língua.
-
-    Não incluir:
-    - categorias
-    - tipos
-    - exemplos
-    - termos relacionados
-
-    Formato de saída:
-    - **Sinonimologia:** **1.** {sinônimo 1}; **2.** {sinônimo 2}; ...; **5.** {sinônimo 5}.
-    Não inclua comentários, finalizações, adendos ou explicações.
-    
-    Formato de saída:
-    **1.** sinônimo 1
-    **2.** sinônimo 2
-    ...
-    **5.** sinônimo 5
-    Sem comentários, finalizações, adendos ou explicações.
-    `;
-
-
-
-  const system = ragContext
-    ? `${systemBase}\n\nContexto de referencia:\n${ragContext}`
-    : systemBase;
-
-  return [
-    { role: "system", content: system },
-    { role: "user", content: `Forneca a Sinonimologia para o TERMO: "${text}"` },
   ];
 }
 
@@ -742,17 +645,61 @@ export function buildEpigraphConsPrompt(text: string): ChatMessage[] {
 }
 
 
+// _____________________________________________________________________________________________________________________
+// TRANSLATION
+// _____________________________________________________________________________________________________________________
+// Secao da interface: "Lexicografia IA" > "Traducao & Dicionario".
+// Botao correspondente no painel de parametros: "Traduzir".
+// Este prompt traduz preservando terminologia conscienciologica sempre que possivel.
+export function buildTranslatePrompt(text: string, targetLanguage: string, ragContext?: string): ChatMessage[] {
+  const systemBase =
+    `Voce é um tradutor de textos da língua portuguesa.
+    Seu estilo é técnico, preciso e acadêmico.Traduza com fidelidade sem adicionar explicações. 
+    Preserve estrutura, paragrafos e pontuação. O texto traduzido final deve ser o mais fiel possível ao original, sem adicionar explicações ou comentarios.
+    `
+  const system = ragContext
+    ? `${systemBase}\n\nContexto terminológico de referência da Conscienciologia (use para padronização terminológica quando aplicável):\n${ragContext}`
+    : systemBase;
 
-// CUSTOMIZED PROMPTS
+  return [
+    {
+      role: "system",
+      content: system,
+    },
+    { role: "user", content: `Traduza para ${targetLanguage}:\n\n${text}` },
+  ];
+}
+
+export function buildTranslateConsPrompt(text: string, targetLanguage: string, ragContext?: string): ChatMessage[] {
+ const systemBase =
+    `Voce é um tradutor de textos da Conscienciologia.
+    Seu estilo é técnico, preciso e acadêmico.Traduza com fidelidade sem adicionar explicações. 
+    Preserve estrutura, paragrafos e pontuação. O texto traduzido final deve ser o mais fiel possível ao original, sem adicionar explicações ou comentarios.
+    `
+  const system = ragContext
+    ? `${systemBase}\n\nContexto terminológico de referência da Conscienciologia (use para padronização terminológica quando aplicável):\n${ragContext}`
+    : systemBase;
+
+  return [
+    {
+      role: "system",
+      content: system,
+    },
+    { role: "user", content: `Traduza para ${targetLanguage}:\n\n${text}` },
+  ];
+}
+
+
+
+// _________________________________________________________________
+// ANALOGIES
+// _________________________________________________________________
 // Secao da interface: "Conscienciografia IA" > "Customized Prompts".
 // Botao correspondente no painel de parametros: "Analogias".
 // Este prompt gera analogias conceituais com classificacao e score.
 export function buildAnalogiesPrompt(text: string): ChatMessage[] {
   const systemBase = `Você é um especialista em análise conceitual e construção de analogias profundas, com foco em correspondências funcionais, estruturais e processuais entre ideias.
-Sua tarefa é receber um TERMO do usuário e gerar analogias de alta qualidade com base em:
-1. Conteúdo recuperado dos vector stores e arquivos fornecidos (prioridade máxima);
-2. Corpus de conhecimento da Conscienciologia;
-3. Conhecimento geral, apenas como complemento quando necessário.
+Sua tarefa é receber um TERMO do usuário e gerar analogias de alta qualidade com base em conhecimento geral, principalmente nas seguintes áreas acadêmicas: Filosofia, Psicologia, Física, Matemática, Astronomia, Sociologia, Biologia, Neurociência, Inteligência Artificial e Ciência de modo geral
 
 
 DEFINIÇÃO OPERACIONAL DE ANALOGIA
@@ -803,8 +750,116 @@ REGRAS:
 RESTRIÇÃO CRÍTICA
 Todas as analogias devem apresentar correspondência funcional explícita com o TEXTO.
 Se não houver correspondência clara, descarte e gere outra.
-  `
-  ;
+  `;
+
+  return [
+    {
+      role: "system",
+      content: systemBase,
+    },
+    {
+      role: "user",
+      content: `TERMO de entrada: "${text}"`,
+    },
+  ];
+}
+
+
+export function buildAnalogiesConsPrompt(text: string): ChatMessage[] {
+  const systemBase = `Você é um especialista em análise conceitual e construção de analogias profundas na Conscienciologia, com foco em correspondências funcionais, estruturais e processuais entre ideias.
+Sua tarefa é receber um TERMO do usuário e gerar analogias de alta qualidade com base em:
+1. Conteúdo recuperado dos vector stores e arquivos fornecidos (prioridade máxima);
+2. Corpus de conhecimento da Conscienciologia;
+3. Conhecimento geral, apenas como complemento quando necessário.
+
+
+DEFINIÇÃO OPERACIONAL DE ANALOGIA
+Uma analogia válida deve apresentar correspondência clara entre o conceito original do TERMO de entrada e outro conceito, segundo pelo menos um dos seguintes eixos:
+- FUNCIONAL: desempenha papel equivalente
+- ESTRUTURAL: possui organização ou arquitetura semelhante
+- PROCESSUAL: segue dinâmica ou sequência semelhante
+- SISTÊMICA: ocupa papel análogo dentro de um sistema maior
+- OPERACIONAL: atua de modo equivalente na prática
+
+Analogias inválidas:
+- Similaridades superficiais ou apenas linguísticas
+- Metáforas vagas ou decorativas
+- Relações sem correspondência explícita
+
+PROCESSO
+1. Analisar o TERMO:
+   - Identificar o conceito central
+   - Extrair funções, propriedades, mecanismos e contexto
+2. Buscar nos vector stores:
+   - Conceitos com equivalência funcional ou estrutural
+   - Processos análogos
+   - Estruturas comparáveis
+3. Gerar exatamente 5 analogias, priorizando:
+   - Relevância conceitual
+   - Clareza explicativa
+   - Precisão da correspondência
+   - Corpus de ideias e nomemclatura da Conscienciologia 
+
+CLASSIFICAÇÃO DO TIPO
+Cada analogia deve ser classificada com UM tipo principal:
+* Funcional
+* Estrutural
+* Processual
+* Sistêmica
+* Operacional
+
+FORMATO DE SAÍDA (OBRIGATÓRIO)
+Resposta em Markdown, lista numerada (1 a 5)
+Cada item deve seguir EXATAMENTE este formato:
+**NOME DA ANALOGIA** — explicação clara da correspondência com o **conceito original**. *[Tipo: X]* 
+
+REGRAS:
+- Destacar o conceito original e os termos-chave da analogia
+- Explicações concisas e densas
+- Evitar redundância
+- Não incluir introdução ou conclusão
+
+RESTRIÇÃO CRÍTICA
+Todas as analogias devem apresentar correspondência funcional explícita com o TEXTO.
+Se não houver correspondência clara, descarte e gere outra.
+  `;
+
+  return [
+    {
+      role: "system",
+      content: systemBase,
+    },
+    {
+      role: "user",
+      content: `TERMO de entrada: "${text}"`,
+    },
+  ];
+}
+
+
+
+// _________________________________________________________________
+// COMPARISON
+// _________________________________________________________________
+// Secao da interface: "Conscienciografia IA" > "Customized Prompts".
+// Botao correspondente no painel de parametros: "Comparacoes".
+// Este prompt compara o conceito central com outros termos relevantes.
+export function buildComparisonsPrompt(text: string): ChatMessage[] {
+  const systemBase =
+    `Voce e um especialista em LIGUÍSTICA com foco em analise comparativa.
+Receba o TEXTO de entrada, identifique o conceito central e compare esse conceito com outros termos relevantes.
+Evite comparacoes superficiais.
+Escreva parágrafos breves, curtos e objetivos para cada comparação.
+Liste exatamente 5 comparacoes.
+
+Formato de saida:
+**Comparacoes**
+Lista numerada de 5 itens com comparacao objetiva com o TEXTO de entrada, destacando semelhancas e diferencas relevantes.
+
+Regras:
+- Use linguagem clara, tecnica e direta.
+- Nao incluir introducao nem conclusao.
+- Priorize relevancia real.`;
 
   return [
     {
@@ -821,8 +876,8 @@ Se não houver correspondência clara, descarte e gere outra.
 // Secao da interface: "Conscienciografia IA" > "Customized Prompts".
 // Botao correspondente no painel de parametros: "Comparacoes".
 // Este prompt compara o conceito central com outros termos relevantes.
-export function buildComparisonsPrompt(text: string): ChatMessage[] {
-  const systemBase =
+export function buildComparisonsConsPrompt(text: string): ChatMessage[] {
+ const systemBase =
     `Voce e um especialista em Conscienciologia com foco em analise comparativa.
 Receba o TEXTO de entrada, identifique o conceito central e compare esse conceito com outros termos mais relevantes da Conscienciologia.
 Use como base os documentos fornecidos no vector store.
@@ -852,10 +907,49 @@ Regras:
   ];
 }
 
+
+
+// _________________________________________________________________
+// EXAMPLES
+// _________________________________________________________________
 // Secao da interface: "Conscienciografia IA" > "Customized Prompts".
 // Botao correspondente no painel de parametros: "Exemplos".
 // Este prompt produz exemplos concretos coerentes com o texto de entrada.
 export function buildExamplesPrompt(text: string): ChatMessage[] {
+  const systemBase =
+    `Voce e um especialista em linguística.
+Receba o TERMO de entrada e produza exatamente 5 exemplos relacionados a ele.
+Os exemplos devem ser concretos, claros e úteis.
+
+Formato de saida:
+**Exemplos**
+1. exemplo
+2. exemplo
+3. exemplo
+4. exemplo
+5. exemplo
+
+Regras:
+- Nao incluir introducao nem conclusao.
+- Cada exemplo deve ser curto, mas suficientemente explicativo.
+- Evite redundancia entre os itens.`;
+
+  return [
+    {
+      role: "system",
+      content: systemBase,
+    },
+    {
+      role: "user",
+      content: `TERMO de entrada: "${text}"`,
+    },
+  ];
+}
+
+// Secao da interface: "Conscienciografia IA" > "Customized Prompts".
+// Botao correspondente no painel de parametros: "Exemplos".
+// Este prompt produz exemplos concretos coerentes com o texto de entrada.
+export function buildExamplesConsPrompt(text: string): ChatMessage[] {
   const systemBase =
     `Voce e um especialista em Conscienciologia.
 Receba o TERMO de entrada e produza exatamente 5 exemplos relacionados a ele, dentro do contexto da Conscienciologia.
@@ -887,10 +981,42 @@ Regras:
 }
 
 
+
+// _________________________________________________________________
+// COUNTERPOINTS
+// _________________________________________________________________
+
 // Secao da interface: "Conscienciografia IA" > "Customized Prompts".
 // Botao correspondente no painel de parametros: "Contrapontos".
 // Este prompt destaca oposicoes e contrastes conceituais relevantes.
 export function buildCounterpointsPrompt(text: string): ChatMessage[] {
+  const systemBase =
+    `Voce e um especialista em linguística com foco em contraste conceitual.
+    Receba o TERMO de entrada e liste exatamente 5 contrapontos envolvendo esse TERMO.
+    Cada contraponto deve evidenciar oposicao, tensao, diferenca funcional ou contraste de manifestacao.
+
+    Formato de saida:
+    **Contrapontos**
+    Lista numerada de 5 itens
+
+    Regras:
+    - Nao incluir introducao nem conclusao.
+    - Priorize contrapontos conceitualmente fortes.
+    - Evite repeticao de ideia entre os itens.`;
+
+  return [
+    {
+      role: "system",
+      content: systemBase,
+    },
+    {
+      role: "user",
+      content: `TERMO de entrada: "${text}"`,
+    },
+  ];
+}
+
+export function buildCounterpointsConsPrompt(text: string): ChatMessage[] {
   const systemBase =
     `Voce e um especialista em Conscienciologia com foco em contraste conceitual.
     Receba o TERMO de entrada e liste exatamente 5 contrapontos envolvendo esse TERMO no contexto da Conscienciologia.
@@ -916,6 +1042,12 @@ export function buildCounterpointsPrompt(text: string): ChatMessage[] {
     },
   ];
 }
+
+
+
+// _________________________________________________________________
+// NEOPARADIGMA
+// _________________________________________________________________
 
 // Secao da interface: "Conscienciografia IA" > "Customized Prompts".
 // Botao correspondente no painel de parametros: "Neoparadigma".
@@ -973,6 +1105,23 @@ RESTRIÇÃO CRÍTICA
     },
   ];
 }
+
+export function buildNeoparadigmaConsPrompt(text: string): ChatMessage[] {
+  return buildNeoparadigmaPrompt(text);
+}
+
+
+
+
+
+
+// *****************************************************************
+// SEÇÃO VERBETOGRAFIA - ESPECIFICO CONSCIENCIOLOGIA
+// *****************************************************************
+
+// _________________________________________________________________
+// DEFINOLOGIA
+// _________________________________________________________________
 
 // Secao da interface: "Verbetografia IA" > "Secoes do Verbete".
 // Botao correspondente no painel de parametros: "Definologia".
@@ -1085,10 +1234,10 @@ export function buildVerbeteFatologiaPrompt(
       7) A saída deve ser apenas o parágrafo final, em Markdown limpo, sem metainstruções.
 
       EXEMPLO DE FATOLOGIA PARA O TÍTULO "CONSCIENCIOLOGIA":
-      **Fatologia.** 1. a ciência que estuda a consciência; 2. o propositor Waldo Vieira; 3. o paradigma conscienciológico; 4. as especialidades da neociência; 5. o estudante da Conscienciologia; ... e assim por diante.
+      **Fatologia.** a ciência que estuda a consciência; o propositor Waldo Vieira; o paradigma conscienciológico; as especialidades da neociência; o estudante da Conscienciologia; ... e assim por diante.
 
       Formato final de saída: 
-      **Fatologia.** 1. {artigo 'o' ou 'a'} {primeiro iten da lista de fatos}; 2. {artigo 'o' ou 'a'} {segundo iten da lista de fatos}; ...; 10. {artigo 'o' ou 'a'} {decimo iten da lista de fatos}.
+      **Fatologia.** {artigo 'o' ou 'a'} {primeiro iten da lista de fatos}; {artigo 'o' ou 'a'} {segundo iten da lista de fatos}; ...; {artigo 'o' ou 'a'} {decimo iten da lista de fatos}.
       (O 'artigo' deve ser 'o' para masculinos e 'a' para femininos).
       `,
     },
@@ -1149,6 +1298,98 @@ export function buildVerbeteFraseEnfaticaPrompt(
 
   messages.push({ role: "user", content: "TITULO | ESPECIALIDADE: " + query });
   return messages;
+}
+
+
+
+
+// *******************************************************************************
+// PROMPTS UNICOS LEXICOGRAFIA LINGUA PORTUGUESA
+// ********************************************************************************
+
+
+// Secao da interface: "Lexicografia IA" > "Comando IA".
+// Botao correspondente no painel de parametros: "Comando IA".
+// Este prompt combina texto de referencia e consulta livre do usuario.
+export function buildAiCommandPrompt(text: string, query: string): ChatMessage[] {
+  return [
+    {
+      role: "system",
+      content: "Voce e um editor de textos acadêmicos. Responda de forma direta e objetiva.",
+    },
+    {
+      role: "user",
+      content: `Texto de referência: \n${text}\n\n`,
+    },
+
+    {
+      role: "user",
+      content: `Query: \n${query}`,
+    },
+  ];
+}
+
+// Secao da interface: "Lexicografia IA" > "Traducao & Dicionario".
+// Botao correspondente no painel de parametros: "Dicionarios".
+// Este prompt pede um levantamento de dicionarios e glossarios relevantes para o termo.
+export function buildDictLookupPrompt(text: string, ragContext?: string): ChatMessage[] {
+  const systemBase =
+    `Voce e um assistente de pesquisa lexicografica.
+    Para o TERMO de entrada informado, identifique dicionarios, glossarios, enciclopedias lexicais ou fontes terminologicas relevantes.
+
+    Regras:
+    - Priorize fontes reais e reconheciveis.
+    - Nao invente URLs ou referencias.
+    - Organize a resposta de forma pratica e objetiva.
+
+    Formato de saida:
+    1. {Definição 1}
+    2. {Definição 2}
+    3. {Definição 3}
+
+    **Observacoes**:
+    - {observacao 1}
+    - {observacao 2}`;
+
+  const system = ragContext
+    ? `${systemBase}\n\nContexto de referencia:\n${ragContext}`
+    : systemBase;
+
+  return [
+    { role: "system", content: system },
+    { role: "user", content: `TERMO de entrada: "${text}"` },
+  ];
+}
+
+export function buildDictLookupConsPrompt(text: string, ragContext?: string): ChatMessage[] {
+  const systemBase =
+    `Voce e um assistente de pesquisa lexicografica da Conscienciologia.
+    Para o termo informado, identifique as definições e acepções conscienciológicas, existente nos documentos fornecidos.
+    Apenas se não encontrar, use dicionarios, glossarios, enciclopedias lexicais ou fontes terminologicas relevantes.
+
+    Regras:
+    - Priorize fontes da Conscienciologia.
+    - Se houver material recuperado no vector store, use-o para contextualizar a selecao.
+    - Nao invente URLs ou referencias.
+    - Organize a resposta de forma pratica e objetiva.
+
+    Formato de saida:
+    1. {Definição 1}
+    2. {Definição 2}
+    3. {Definição 3}
+
+    **Observacoes**:
+    - {observacao 1}
+    - {observacao 2}`;
+
+  const system = ragContext
+    ? `${systemBase}\n\nContexto de referencia:\n${ragContext}`
+    : systemBase;
+
+  return [
+    { role: "system", content: system },
+    { role: "user", content: `TERMO de entrada: "${text}"` },
+  ];
 }
 
 

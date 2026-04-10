@@ -4,30 +4,41 @@ import { healthCheck } from "@/lib/backend-api";
 import {
   buildAiCommandPrompt,
   buildAnalogiesPrompt,
+  buildAnalogiesConsPrompt,
   buildAntonymsPrompt,
   buildAntonymsConsPrompt,
   buildChatPrompt,
   buildComparisonsPrompt,
+  buildComparisonsConsPrompt,
   buildCounterpointsPrompt,
+  buildCounterpointsConsPrompt,
   buildDictLookupPrompt,
+  buildDictLookupConsPrompt,
   buildDefinePrompt,
   buildDefineConsPrompt,
   buildEtymologyPrompt,
   buildEtymologyConsPrompt,
   buildExamplesPrompt,
+  buildExamplesConsPrompt,
+  buildEpigraphConsPrompt,
   buildNeoparadigmaPrompt,
+  buildNeoparadigmaConsPrompt,
   buildEpigraphPrompt,
+  buildRewriteConsPrompt,
   buildRewritePrompt,
+  buildSummarizeConsPrompt,
   buildSummarizePrompt,
   buildSynonymsPrompt,
   buildSynonymsConsPrompt,
   buildTranslatePrompt,
+  buildTranslateConsPrompt,
   CHAT_GPT5_EFFORT,
   CHAT_GPT5_VERBOSITY,
   CHAT_MAX_NUM_RESULTS,
   CHAT_MAX_OUTPUT_TOKENS,
   CHAT_MODEL,
   CHAT_SYSTEM_PROMPT,
+  LLM_VECTOR_STORE_TRANSLATE_RAG,
   CHAT_TEMPERATURE,
   executeLLM,
   uploadLlmSourceFiles,
@@ -55,7 +66,7 @@ import {
   LLM_SETTINGS_STORAGE_KEY,
   NO_VECTOR_STORE_ID,
 } from "@/features/ghost-writer/config/constants";
-import { applySystemPromptOverride, getActionSystemPrompt, getTermsConceptsActionSystemPromptId, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
+import { applySystemPromptOverride, getActionSystemPrompt, getConscienciografiaActionSystemPromptId, getTermsConceptsActionSystemPromptId, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
 import { BOOK_SOURCE, VECTOR_STORES_SOURCE } from "@/features/ghost-writer/config/options";
 import { getParameterPanelTargetByAiAction, getParameterPanelTargetByAiActionInSection, normalizeIdList } from "@/features/ghost-writer/config/metadata";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
@@ -176,7 +187,7 @@ interface AiActionsLlmConfigRefValue {
   vectorStoreIds: string[];
 }
 
-const TRANSLATE_FIXED_VECTOR_STORE_IDS = ["vs_69931da436e48191b43453e845e63bd3"];
+const TRANSLATE_FIXED_VECTOR_STORE_IDS = [LLM_VECTOR_STORE_TRANSLATE_RAG.trim()].filter(Boolean);
 const TERMS_CONCEPTS_WVBOOKS_VECTOR_STORE_IDS = ["vs_6912908250e4819197e23fe725e04fae"];
 
 const normalizeVerbosity = (value: string | undefined): "low" | "medium" | "high" | undefined => {
@@ -535,13 +546,14 @@ const useGhostWriterLlm = ({
     };
   }, [setBackendStatus]);
 
-  const addResponse = useCallback((type: AIResponse["type"], query: string, content: string, payload?: AIResponse["payload"]) => {
+  const addResponse = useCallback((type: AIResponse["type"], query: string, content: string, payload?: AIResponse["payload"], isConscienciografia?: boolean) => {
     setResponses((prev) => [{
       id: crypto.randomUUID(),
       type,
       query,
       content,
       payload,
+      isConscienciografia,
       timestamp: new Date(),
     }, ...prev]);
   }, [setResponses]);
@@ -671,21 +683,21 @@ const useGhostWriterLlm = ({
         etymology: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildEtymologyConsPrompt(value) : buildEtymologyPrompt(value),
         dictionary: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildDefineConsPrompt(value) : buildDefinePrompt(value),
         cognatos: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildCognatosConsPrompt(value) : buildCognatosPrompt(value),
-        epigraph: (value: string) => buildEpigraphPrompt(value),
-        rewrite: (value: string) => buildRewritePrompt(value),
-        summarize: (value: string) => buildSummarizePrompt(value),
-        translate: (value: string) => buildTranslatePrompt(value, translateLanguage),
-        dict_lookup: (value: string) => buildDictLookupPrompt(value),
+        epigraph: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildEpigraphConsPrompt(value) : buildEpigraphPrompt(value),
+        rewrite: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildRewriteConsPrompt(value) : buildRewritePrompt(value),
+        summarize: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildSummarizeConsPrompt(value) : buildSummarizePrompt(value),
+        translate: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildTranslateConsPrompt(value, translateLanguage) : buildTranslatePrompt(value, translateLanguage),
+        dict_lookup: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildDictLookupConsPrompt(value) : buildDictLookupPrompt(value),
         ai_command: (value: string) => buildAiCommandPrompt(value, query),
-        analogies: (value: string) => buildAnalogiesPrompt(value),
-        comparisons: (value: string) => buildComparisonsPrompt(value),
-        examples: (value: string) => buildExamplesPrompt(value),
-        counterpoints: (value: string) => buildCounterpointsPrompt(value),
-        neoparadigma: (value: string) => buildNeoparadigmaPrompt(value),
+        analogies: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildAnalogiesConsPrompt(value) : buildAnalogiesPrompt(value),
+        comparisons: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildComparisonsConsPrompt(value) : buildComparisonsPrompt(value),
+        examples: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildExamplesConsPrompt(value) : buildExamplesPrompt(value),
+        counterpoints: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildCounterpointsConsPrompt(value) : buildCounterpointsPrompt(value),
+        neoparadigma: (value: string) => isTermsConceptsConscienciografiaEnabled ? buildNeoparadigmaConsPrompt(value) : buildNeoparadigmaPrompt(value),
       };
 
-      const effectivePromptId = type === "dictionary" || type === "synonyms" || type === "antonyms" || type === "etymology" || type === "cognatos"
-        ? getTermsConceptsActionSystemPromptId(type, isTermsConceptsConscienciografiaEnabled)
+      const effectivePromptId = type === "dictionary" || type === "synonyms" || type === "antonyms" || type === "etymology" || type === "cognatos" || type === "epigraph" || type === "rewrite" || type === "summarize" || type === "translate" || type === "dict_lookup" || type === "analogies" || type === "comparisons" || type === "examples" || type === "counterpoints" || type === "neoparadigma"
+        ? getConscienciografiaActionSystemPromptId(type, isTermsConceptsConscienciografiaEnabled)
         : type;
       const specificSystemPrompt = getActionSystemPrompt(aiActionSystemPrompts, effectivePromptId);
       const messages = applySystemPromptOverride(promptMap[type](text), specificSystemPrompt);
@@ -699,7 +711,7 @@ const useGhostWriterLlm = ({
         });
       }
       const effectiveVectorStoreIds = type === "translate"
-        ? translateVectorStoreIds
+        ? (isTermsConceptsConscienciografiaEnabled ? translateVectorStoreIds : vectorStoreIds)
         : isTermsConceptsAction
           ? (isTermsConceptsConscienciografiaEnabled ? TERMS_CONCEPTS_WVBOOKS_VECTOR_STORE_IDS : [])
           : vectorStoreIds;
@@ -717,7 +729,13 @@ const useGhostWriterLlm = ({
         gpt5Effort: normalizeEffort(currentConfig.gpt5Effort),
         tools,
       })).content;
-      addResponse(type, type === "ai_command" ? query : text.slice(0, 80), result);
+      addResponse(
+        type,
+        type === "ai_command" ? query : text.slice(0, 80),
+        result,
+        undefined,
+        isTermsConceptsConscienciografiaEnabled,
+      );
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erro na chamada a IA.");
     } finally {
@@ -725,7 +743,7 @@ const useGhostWriterLlm = ({
     }
   }, [actionText, addResponse, aiActionSystemPrompts, aiCommandQuery, backendNotReadyMessage, currentFileId, documentText, executeAiActionsLLMWithLog, getEditorApi, includeEditorContextInLlm, isTermsConceptsConscienciografiaEnabled, llmEditorContextMaxChars, openAiReady, setIsLoading, toast, translateLanguage, uploadedChatFiles]);
 
-  const handleOpenAiActionParameters = useCallback((type: AiActionId, sectionOverride?: "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command") => {
+  const handleOpenAiActionParameters = useCallback((type: AiActionId, sectionOverride?: "actions" | "rewriting" | "translation" | "customized_prompts") => {
     setParameterPanelTarget(
       sectionOverride
         ? getParameterPanelTargetByAiActionInSection(type, sectionOverride)
@@ -734,7 +752,7 @@ const useGhostWriterLlm = ({
   }, [setParameterPanelTarget]);
 
   const handleOpenAiCommandPanel = useCallback(() => {
-    setParameterPanelTarget({ section: "ai_command", id: "ai_command" });
+    setParameterPanelTarget({ section: "customized_prompts", id: "ai_command" });
   }, [setParameterPanelTarget]);
 
   const handleChat = useCallback(async (message: string) => {

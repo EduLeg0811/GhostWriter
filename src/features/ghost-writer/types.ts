@@ -3,9 +3,9 @@ import type { BookCode } from "@/lib/bookCatalog";
 export type MacroActionId = "macro1" | "macro2";
 export type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7" | "app8" | "app9" | "app10" | "app11" | "app12" | "app13";
 export type AppPanelScope = "bibliografia" | "busca_termos" | "semantic_search" | "verbetografia";
-export type AiPanelScope = "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command";
+export type AiPanelScope = "actions" | "rewriting" | "translation" | "customized_prompts";
 export type AiActionId = "synonyms" | "antonyms" | "etymology" | "dictionary" | "epigraph" | "rewrite" | "summarize" | "cognatos" | "translate" | "dict_lookup" | "ai_command" | "analogies" | "comparisons" | "examples" | "counterpoints" | "neoparadigma";
-export type ParameterPanelSection = "document" | "sources" | "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command" | "apps" | "applications";
+export type ParameterPanelSection = "document" | "sources" | "search_log" | "actions" | "rewriting" | "translation" | "customized_prompts" | "apps" | "applications";
 export type ParameterPanelTargetId = MacroActionId | AiActionId | AppActionId | null;
 export type ParameterPanelTarget = { section: ParameterPanelSection; id: ParameterPanelTargetId } | null;
 export type MobilePanelId = "left" | "center" | "right" | "editor" | "json";
@@ -64,7 +64,34 @@ export interface LexicalOverviewHistoryPayload {
   groups: LexicalOverviewHistoryGroup[];
 }
 
-export type AIResponsePayload = LexicalOverviewHistoryPayload;
+export interface SemanticOverviewHistoryMatch {
+  book: string;
+  index_id: string;
+  index_label: string;
+  row: number;
+  text: string;
+  metadata: Record<string, unknown>;
+  score: number;
+}
+
+export interface SemanticOverviewHistoryGroup {
+  indexId: string;
+  indexLabel: string;
+  totalFound: number;
+  shownCount: number;
+  matches: SemanticOverviewHistoryMatch[];
+}
+
+export interface SemanticOverviewHistoryPayload {
+  kind: "semantic_overview";
+  term: string;
+  limit: number;
+  totalIndexes: number;
+  totalFound: number;
+  groups: SemanticOverviewHistoryGroup[];
+}
+
+export type AIResponsePayload = LexicalOverviewHistoryPayload | SemanticOverviewHistoryPayload;
 
 export interface AIResponse {
   id: string;
@@ -95,6 +122,7 @@ export interface AIResponse {
     | "app_book_search"
     | "app_lexical_overview"
     | "app_semantic_search"
+    | "app_semantic_overview"
     | "app_verbete_search"
     | "app_verbete_definologia"
     | "app_verbete_frase_enfatica"
@@ -103,5 +131,6 @@ export interface AIResponse {
   query: string;
   content: string;
   payload?: AIResponsePayload;
+  isConscienciografia?: boolean;
   timestamp: Date;
 }

@@ -1,7 +1,7 @@
 import AiActionParametersPanel from "@/features/ghost-writer/components/AiActionParametersPanel";
 import AiAssistantConfigPanel from "@/features/ghost-writer/components/AiAssistantConfigPanel";
 import { Label } from "@/components/ui/label";
-import { getActionSystemPrompt, getTermsConceptsActionSystemPromptId, type ActionSystemPromptId, type TermsConceptsBasicActionId } from "@/features/ghost-writer/config/actionSystemPrompts";
+import { getActionSystemPrompt, getConscienciografiaActionSystemPromptId, type ActionSystemPromptId, type ConscienciografiaExtendedActionId } from "@/features/ghost-writer/config/actionSystemPrompts";
 import { CONFIG_PROMPT_ROWS } from "@/features/ghost-writer/config/constants";
 import { parameterActionMeta } from "@/features/ghost-writer/config/metadata";
 import { TRANSLATE_LANGUAGE_OPTIONS } from "@/features/ghost-writer/config/options";
@@ -11,7 +11,6 @@ import type { UploadedLlmFile } from "@/lib/openai";
 interface AiActionsParameterSectionProps {
   section: AiPanelScope;
   actionId: AiActionId | null;
-  isAiCommandSelectionPending: boolean;
   actionText: string;
   aiCommandQuery: string;
   translateLanguage: (typeof TRANSLATE_LANGUAGE_OPTIONS)[number]["value"];
@@ -50,7 +49,6 @@ interface AiActionsParameterSectionProps {
 const AiActionsParameterSection = ({
   section,
   actionId,
-  isAiCommandSelectionPending,
   actionText,
   aiCommandQuery,
   translateLanguage,
@@ -85,12 +83,26 @@ const AiActionsParameterSection = ({
   onUploadFiles,
   onRemoveUploadedFile,
 }: AiActionsParameterSectionProps) => {
-  const shouldShowActionPanel = Boolean(actionId) && !(actionId === "ai_command" && isAiCommandSelectionPending);
+  const shouldShowActionPanel = Boolean(actionId);
   const supportsAiConfig = Boolean(actionId);
-  const isTermsConceptsAction = (value: AiActionId | null): value is TermsConceptsBasicActionId =>
-    value === "dictionary" || value === "synonyms" || value === "antonyms" || value === "etymology" || value === "cognatos";
-  const activeActionSystemPromptId = actionId && section === "actions" && isTermsConceptsAction(actionId)
-    ? getTermsConceptsActionSystemPromptId(actionId, isTermsConceptsConscienciografiaEnabled)
+  const supportsConscienciografiaPrompt = (value: AiActionId | null): value is ConscienciografiaExtendedActionId =>
+    value === "dictionary"
+      || value === "synonyms"
+      || value === "antonyms"
+      || value === "etymology"
+      || value === "cognatos"
+      || value === "epigraph"
+      || value === "rewrite"
+      || value === "summarize"
+      || value === "translate"
+      || value === "dict_lookup"
+      || value === "analogies"
+      || value === "comparisons"
+      || value === "examples"
+      || value === "counterpoints"
+      || value === "neoparadigma";
+  const activeActionSystemPromptId = actionId && supportsConscienciografiaPrompt(actionId)
+    ? getConscienciografiaActionSystemPromptId(actionId, isTermsConceptsConscienciografiaEnabled)
     : (actionId as ActionSystemPromptId | null);
   const selectedActionSystemPrompt = supportsAiConfig
     ? getActionSystemPrompt(aiActionSystemPrompts, activeActionSystemPromptId)
@@ -159,7 +171,7 @@ const AiActionsParameterSection = ({
             onSelectedVectorStoreIdChange={onAiActionsSelectedVectorStoreIdChange}
             vectorStoreOptions={aiActionVectorStoreOptions}
             showVectorStore
-            fixedVectorStoreLabel={actionId === "translate" ? "Translate RAG" : undefined}
+            fixedVectorStoreLabel={actionId === "translate" && isTermsConceptsConscienciografiaEnabled ? "Translate RAG" : undefined}
             onUploadFiles={(files) => void onUploadFiles(files)}
             uploadedFiles={uploadedChatFiles}
             onRemoveUploadedFile={onRemoveUploadedFile}

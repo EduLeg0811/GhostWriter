@@ -7,17 +7,19 @@ import { sectionActionButtonClass } from "@/styles/buttonStyles";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 
 interface LeftPanelProps {
-  onOpenParameterSection: (section: "document" | "sources" | "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command" | "apps" | "applications") => void;
+  onOpenParameterSection: (section: "document" | "sources" | "search_log" | "actions" | "rewriting" | "translation" | "customized_prompts" | "apps" | "applications") => void;
   onOpenVerbetografiaTable: () => void;
   onOpenBookSearch: () => void;
   onOpenSemanticSearch: () => void;
   onOpenVerbetografia: () => void;
   onToggleJsonPanel: () => void;
+  onToggleSearchLogPanel: () => void;
   isJsonPanelOpen: boolean;
+  isSearchLogPanelOpen: boolean;
   isLoading: boolean;
 }
 
-type LeftPanelActionId = "document" | "sources" | "actions" | "rewriting" | "translation" | "customized_prompts" | "ai_command" | "verbetografia_table" | "apps" | "applications";
+type LeftPanelActionId = "document" | "sources" | "search_log" | "json_log" | "actions" | "rewriting" | "translation" | "customized_prompts" | "verbetografia_table" | "apps" | "applications";
 
 const GHOST_VIDEO_PLAYBACK_RATE = 0.50;
 const GHOST_VIDEO_REPLAY_DELAY_MS = 30000;
@@ -30,7 +32,9 @@ const LeftPanel = ({
   onOpenSemanticSearch,
   onOpenVerbetografia,
   onToggleJsonPanel,
+  onToggleSearchLogPanel,
   isJsonPanelOpen,
+  isSearchLogPanelOpen,
   isLoading,
 }: LeftPanelProps) => {
   const [activeActionId, setActiveActionId] = useState<LeftPanelActionId | null>(null);
@@ -310,6 +314,8 @@ const LeftPanel = ({
           <div className="space-y-2.5">
             <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Configurações</Label>
             <div className="flex items-start gap-2">
+
+
               <Button
                 variant="ghost"
                 className={`${sectionActionButtonClass} border-0 shadow-none`}
@@ -327,18 +333,70 @@ const LeftPanel = ({
                   <span className="block break-words text-xs text-muted-foreground">Vector stores e arquivos</span>
                 </span>
               </Button>
+
+            </div>
+
+            <div className="flex items-start gap-2">  
+              <Button
+                variant="ghost"
+                className={`${sectionActionButtonClass} border-0 shadow-none`}
+                onClick={() => {
+
+                }}
+                disabled={actionDisabled}
+                title="Logs"
+                aria-label="Logs"
+              >
+                <Settings className="mr-2 h-4 w-4 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block break-words text-sm font-medium text-foreground">Logs</span>
+                  <span className="block break-words text-xs text-muted-foreground">Search & LLM Logs</span>
+                </span>
+              </Button>
+
               <button
                 type="button"
-                onClick={onToggleJsonPanel}
+                onClick={() => {
+                  setActiveActionId("search_log");
+                  onToggleSearchLogPanel();
+                }}
+
                 disabled={actionDisabled}
-                title={isJsonPanelOpen ? "Ocultar JSON Logs" : "Mostrar JSON Logs"}
-                aria-label={isJsonPanelOpen ? "Ocultar JSON Logs" : "Mostrar JSON Logs"}
-                className="mt-2 inline-flex h-8 w-8 shrink-0 items-center justify-center text-primary transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                title="Search Logs"
+                aria-label="Search Logs"
+                className={`mt-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md ring-1 transition ${
+                  isSearchLogPanelOpen
+                    ? "bg-emerald-100 text-emerald-800 ring-emerald-300/90"
+                    : "bg-white text-emerald-700 ring-white hover:bg-emerald-50 hover:text-emerald-800"
+                }`}
+              >
+
+              <Search className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveActionId("json_log");
+                  onToggleJsonPanel();
+                }}
+                disabled={actionDisabled}
+                title="JSON Logs"
+                aria-label="JSON Logs"
+                className={`mt-2 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md ring-1 transition ${
+                    isJsonPanelOpen
+                      ? "bg-emerald-100 text-emerald-800 ring-emerald-300/90"
+                      : "bg-white text-emerald-700 ring-white hover:bg-emerald-50 hover:text-emerald-800"
+                  }`}
               >
                 <Braces className="h-4 w-4" />
               </button>
+
             </div>
-          </div>
+            </div>
+
+
+
+
 
           <Separator className="mx-[-1rem] my-3 h-[2px] w-[calc(100%+2rem)] bg-border/80" />
 
