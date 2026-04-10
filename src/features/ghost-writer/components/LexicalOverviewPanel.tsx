@@ -13,6 +13,7 @@ interface LexicalOverviewPanelProps {
   description: string;
   term: string;
   maxResults: number;
+  queryLabel?: string;
   onTermChange: (value: string) => void;
   onMaxResultsChange: (value: number) => void;
   onRunSearch: () => void;
@@ -26,6 +27,7 @@ const LexicalOverviewPanel = ({
   description,
   term,
   maxResults,
+  queryLabel = "Termo",
   onTermChange,
   onMaxResultsChange,
   onRunSearch,
@@ -38,7 +40,7 @@ const LexicalOverviewPanel = ({
   const resizeTermTextarea = () => {
     const el = termTextareaRef.current;
     if (!el) return;
-    el.style.height = "36px";
+    el.style.height = "72px";
     el.style.height = `${el.scrollHeight}px`;
   };
 
@@ -58,12 +60,12 @@ const LexicalOverviewPanel = ({
 
         <Separator />
 
-        <div className="flex items-center gap-2">
-          <Label className="w-16 shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Termo</Label>
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{queryLabel}</Label>
           <Textarea
             ref={termTextareaRef}
-            className="h-8 min-h-8 flex-1 resize-none overflow-hidden rounded-md border border-input bg-white px-3 py-1 text-xs leading-relaxed text-foreground"
-            rows={1}
+            className="min-h-[72px] resize-none rounded-md border border-input bg-white px-3 py-2 text-xs leading-relaxed text-foreground"
+            rows={3}
             value={term}
             onChange={(event) => {
               onTermChange(event.target.value);

@@ -3,13 +3,39 @@ from unittest.mock import patch
 
 import numpy as np
 
-from Build_Vector_Index.semantic_search_service import search_semantic_overview_with_total
+from backend.functions.semantic_search_service import search_semantic_index, search_semantic_overview_with_total
 
 
 class SemanticOverviewServiceTests(unittest.TestCase):
-    @patch("Build_Vector_Index.semantic_search_service.list_semantic_indexes")
-    @patch("Build_Vector_Index.semantic_search_service._load_semantic_index")
-    @patch("Build_Vector_Index.semantic_search_service._get_semantic_query_vector")
+    @patch("backend.functions.semantic_search_service._load_semantic_index")
+    @patch("backend.functions.semantic_search_service._get_semantic_query_vector")
+    def test_semantic_search_preserves_markdown_text(
+        self,
+        mock_get_query_vector,
+        mock_load_index,
+    ) -> None:
+        mock_get_query_vector.return_value = np.array([1.0, 0.0], dtype=np.float32)
+        mock_load_index.return_value = {
+            "manifest": {"index_label": "Alpha", "model": "m1"},
+            "metadata": [
+                {
+                    "row": 1,
+                    "text": "**Alpha** em *Markdown*",
+                    "text_plain": "Alpha em Markdown",
+                    "metadata": {"title": "A1"},
+                },
+            ],
+            "embeddings": np.array([[0.92, 0.0]], dtype=np.float32),
+        }
+
+        total, matches = search_semantic_index("alpha", "cosmoetica", limit=3, api_key="key")
+
+        self.assertEqual(total, 1)
+        self.assertEqual(matches[0]["text"], "**Alpha** em *Markdown*")
+
+    @patch("backend.functions.semantic_search_service.list_semantic_indexes")
+    @patch("backend.functions.semantic_search_service._load_semantic_index")
+    @patch("backend.functions.semantic_search_service._get_semantic_query_vector")
     def test_semantic_overview_orders_globally_and_groups_by_index(
         self,
         mock_get_query_vector,
@@ -53,9 +79,9 @@ class SemanticOverviewServiceTests(unittest.TestCase):
         self.assertEqual(groups[0]["totalFound"], 1)
         self.assertEqual(groups[1]["totalFound"], 2)
 
-    @patch("Build_Vector_Index.semantic_search_service.list_semantic_indexes")
-    @patch("Build_Vector_Index.semantic_search_service._load_semantic_index")
-    @patch("Build_Vector_Index.semantic_search_service._get_semantic_query_vector")
+    @patch("backend.functions.semantic_search_service.list_semantic_indexes")
+    @patch("backend.functions.semantic_search_service._load_semantic_index")
+    @patch("backend.functions.semantic_search_service._get_semantic_query_vector")
     def test_semantic_overview_reuses_query_vector_per_model(
         self,
         mock_get_query_vector,
@@ -93,9 +119,9 @@ class SemanticOverviewServiceTests(unittest.TestCase):
         self.assertIs(first_cache, second_cache)
         self.assertIn("shared", first_cache)
 
-    @patch("Build_Vector_Index.semantic_search_service.list_semantic_indexes")
-    @patch("Build_Vector_Index.semantic_search_service._load_semantic_index")
-    @patch("Build_Vector_Index.semantic_search_service._get_semantic_query_vector")
+    @patch("backend.functions.semantic_search_service.list_semantic_indexes")
+    @patch("backend.functions.semantic_search_service._load_semantic_index")
+    @patch("backend.functions.semantic_search_service._get_semantic_query_vector")
     def test_semantic_overview_skips_invalid_indexes(
         self,
         mock_get_query_vector,
@@ -122,7 +148,7 @@ class SemanticOverviewServiceTests(unittest.TestCase):
         self.assertEqual(len(groups), 1)
         self.assertEqual(groups[0]["indexId"], "valid")
 
-    @patch("Build_Vector_Index.semantic_search_service.list_semantic_indexes")
+    @patch("backend.functions.semantic_search_service.list_semantic_indexes")
     def test_semantic_overview_returns_empty_when_no_indexes(self, mock_list_indexes) -> None:
         mock_list_indexes.return_value = []
 

@@ -70,31 +70,6 @@ const SemanticSearchPanel = ({
         <Separator />
 
         <div className="space-y-2">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Base Vetorial</Label>
-          <Select value={selectedIndexId} onValueChange={onSelectedIndexChange} disabled={isLoadingIndexes || availableIndexes.length <= 0}>
-            <SelectTrigger className="h-9 bg-white text-xs">
-              <SelectValue placeholder={isLoadingIndexes ? "Carregando bases..." : "Selecione uma base"} />
-            </SelectTrigger>
-            <SelectContent>
-              {availableIndexes.map((item) => (
-                <SelectItem key={item.id} value={item.id} className="text-xs">
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {selectedIndex ? (
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
-              {selectedIndex.sourceRows} itens | {selectedIndex.model} | {selectedIndex.dimensions} dims | {selectedIndex.embeddingDtype}
-            </p>
-          ) : (
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
-              {isLoadingIndexes ? "Carregando indices semanticos disponiveis." : "Nenhum indice semantico disponivel."}
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Query</Label>
           <Textarea
             ref={queryTextareaRef}
@@ -122,6 +97,31 @@ const SemanticSearchPanel = ({
             }}
             className="h-8 bg-white !text-xs text-right"
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Base Vetorial</Label>
+          <Select value={selectedIndexId} onValueChange={onSelectedIndexChange} disabled={isLoadingIndexes || availableIndexes.length <= 0}>
+            <SelectTrigger className="h-9 bg-white text-xs">
+              <SelectValue placeholder={isLoadingIndexes ? "Carregando bases..." : "Selecione uma base"} />
+            </SelectTrigger>
+            <SelectContent>
+              {availableIndexes.map((item) => (
+                <SelectItem key={item.id} value={item.id} className="text-xs">
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedIndex ? (
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {selectedIndex.sourceRows} itens | {selectedIndex.model} | {selectedIndex.dimensions} dims | {selectedIndex.embeddingDtype}
+            </p>
+          ) : (
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {isLoadingIndexes ? "Carregando indices semanticos disponiveis." : "Nenhum indice semantico disponivel."}
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 gap-2">

@@ -452,6 +452,16 @@ const AppsParameterSection = ({
 
   if (appId === "app12") {
     const SemanticSearchIcon = APP_PANEL_ICONS.app12;
+    const sharedSemanticQuery = semanticSearchQuery || semanticOverviewTerm;
+    const sharedSemanticLimit = semanticSearchMaxResults || semanticOverviewMaxResults;
+    const handleSharedSemanticQueryChange = (value: string) => {
+      onSemanticSearchQueryChange(value);
+      onSemanticOverviewTermChange(value);
+    };
+    const handleSharedSemanticLimitChange = (value: number) => {
+      onSemanticSearchMaxResultsChange(value);
+      onSemanticOverviewMaxResultsChange(value);
+    };
 
     return (
       <div className="flex h-full flex-col">
@@ -490,10 +500,10 @@ const AppsParameterSection = ({
               availableIndexes={semanticSearchIndexes}
               isLoadingIndexes={isLoadingSemanticSearchIndexes}
               onSelectedIndexChange={onSelectedSemanticSearchIndexIdChange}
-              query={semanticSearchQuery}
-              maxResults={semanticSearchMaxResults}
-              onQueryChange={onSemanticSearchQueryChange}
-              onMaxResultsChange={onSemanticSearchMaxResultsChange}
+              query={sharedSemanticQuery}
+              maxResults={sharedSemanticLimit}
+              onQueryChange={handleSharedSemanticQueryChange}
+              onMaxResultsChange={handleSharedSemanticLimitChange}
               onRunSearch={() => void onRunSemanticSearch()}
               isRunning={isRunningSemanticSearch}
               showPanelChrome={false}
@@ -505,10 +515,11 @@ const AppsParameterSection = ({
             <LexicalOverviewPanel
               title="Semantic Overview"
               description="Busca em todas as bases semânticas."
-              term={semanticOverviewTerm}
-              maxResults={semanticOverviewMaxResults}
-              onTermChange={onSemanticOverviewTermChange}
-              onMaxResultsChange={onSemanticOverviewMaxResultsChange}
+              term={sharedSemanticQuery}
+              maxResults={sharedSemanticLimit}
+              queryLabel="Query"
+              onTermChange={handleSharedSemanticQueryChange}
+              onMaxResultsChange={handleSharedSemanticLimitChange}
               onRunSearch={() => void onRunSemanticOverview()}
               isRunning={isRunningSemanticOverview}
               showPanelChrome={false}

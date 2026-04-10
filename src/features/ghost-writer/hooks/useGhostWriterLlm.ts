@@ -185,6 +185,7 @@ interface AiActionsLlmConfigRefValue {
   gpt5Effort?: string;
   systemPrompt?: string;
   vectorStoreIds: string[];
+  inputFileIds: string[];
 }
 
 const TRANSLATE_FIXED_VECTOR_STORE_IDS = [LLM_VECTOR_STORE_TRANSLATE_RAG.trim()].filter(Boolean);
@@ -309,6 +310,7 @@ const useGhostWriterLlm = ({
     gpt5Effort: CHAT_GPT5_EFFORT as string | undefined,
     systemPrompt: CHAT_SYSTEM_PROMPT as string | undefined,
     vectorStoreIds: [],
+    inputFileIds: [],
   });
 
   const openAiReady = backendStatus === "ready";
@@ -383,8 +385,9 @@ const useGhostWriterLlm = ({
       gpt5Effort: aiActionsLlmEffort || undefined,
       systemPrompt: aiActionsLlmSystemPrompt.trim() || CHAT_SYSTEM_PROMPT,
       vectorStoreIds: normalizeIdList(aiActionsSelectedVectorStoreIds),
+      inputFileIds: normalizeIdList(aiActionsSelectedInputFileIds),
     };
-  }, [aiActionsLlmEffort, aiActionsLlmMaxOutputTokens, aiActionsLlmModel, aiActionsLlmSystemPrompt, aiActionsLlmTemperature, aiActionsLlmVerbosity, aiActionsSelectedVectorStoreIds]);
+  }, [aiActionsLlmEffort, aiActionsLlmMaxOutputTokens, aiActionsLlmModel, aiActionsLlmSystemPrompt, aiActionsLlmTemperature, aiActionsLlmVerbosity, aiActionsSelectedInputFileIds, aiActionsSelectedVectorStoreIds]);
 
   useEffect(() => {
     setAiActionsSelectedInputFileIds(normalizeIdList(uploadedChatFiles.map((file) => file.id)));

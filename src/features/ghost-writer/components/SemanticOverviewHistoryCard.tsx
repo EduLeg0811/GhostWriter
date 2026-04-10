@@ -91,7 +91,7 @@ const SemanticOverviewHistoryCard = ({
                 isAllGroup
                   ? isOpen
                     ? "border-orange-300 bg-orange-100 text-orange-900 shadow-sm"
-                    : "border-orange-200 bg-orange-50/90 text-orange-900 hover:border-orange-300 hover:bg-orange-100"
+                    : "border-orange-300 bg-white/80 text-foreground hover:border-orange-200 hover:bg-orange-50/60"
                   : isOpen
                     ? "border-blue-300 bg-blue-50 text-blue-900 shadow-sm"
                     : "border-border bg-white/80 text-foreground hover:border-blue-200 hover:bg-blue-50/60"
@@ -103,7 +103,7 @@ const SemanticOverviewHistoryCard = ({
                 isAllGroup
                   ? isOpen
                     ? "bg-orange-200 text-orange-900"
-                    : "bg-orange-100 text-orange-800"
+                    : "bg-slate-100 text-slate-700"
                   : isOpen
                     ? "bg-blue-100 text-blue-800"
                     : "bg-slate-100 text-slate-700"
