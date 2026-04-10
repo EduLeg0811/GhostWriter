@@ -209,7 +209,7 @@ const LlmLogsPanel = ({
             <span className="text-[10px] font-semibold text-blue-600">Custo estimado:</span>{" "}
             <span className="text-[10px] font-medium text-foreground">
               {latestEstimatedBrl != null
-                ? `R$ ${latestEstimatedBrl.toFixed(4)} (â‰ˆ US$ ${latestEstimatedUsd?.toFixed(6)})`
+                ? `R$ ${latestEstimatedBrl.toFixed(4)} (US$ ${latestEstimatedUsd?.toFixed(6)})`
                 : "indisponivel (modelo sem tabela local de preco)"}
             </span>
           </div>
@@ -256,7 +256,7 @@ const LlmLogsPanel = ({
             <span className="text-[10px] font-semibold text-blue-700">Custo estimado (total):</span>{" "}
             <span className="text-[10px] font-medium text-foreground">
               {estimatedBrl != null
-                ? `R$ ${estimatedBrl.toFixed(4)} (â‰ˆ US$ ${estimatedUsd?.toFixed(6)})`
+                ? `R$ ${estimatedBrl.toFixed(4)} (US$ ${estimatedUsd?.toFixed(6)})`
                 : "indisponivel (modelo sem tabela local de preco)"}
             </span>
           </div>

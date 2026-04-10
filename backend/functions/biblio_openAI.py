@@ -261,7 +261,7 @@ class BibliografiaService:
             final_system_prompt = self.llm_system_prompt or SYSTEM_PROMPT_TEXTO_LIVRE
             result = execute_llm_request(
                 api_key=self.api_key,
-                model=self.llm_model or "gpt-5.4",
+                model=self.llm_model or "",
                 messages=[{"role": "user", "content": texto}],
                 system_prompt=final_system_prompt,
                 temperature=self.llm_temperature if self.llm_temperature is not None else 0,
