@@ -183,7 +183,7 @@ const LeftPanel = ({
                 )}
                 <span className="min-w-0 flex-1 text-left">
                   <span className="block break-words text-sm font-medium text-foreground">Trechos & Parágrafos</span>
-                  <span className="block break-words text-xs text-muted-foreground">Reescrever, Resumir, Epigrafe</span>
+                  <span className="block break-words text-xs text-muted-foreground">Reescrever, Resumir, Epígrafe</span>
                 </span>
               </Button>
 

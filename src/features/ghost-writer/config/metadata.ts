@@ -74,7 +74,7 @@ export const parameterAppMeta: Record<AppActionId, { title: string; description:
   app8: { title: "Definologia", description: "Gera Definologia do verbete." },
   app9: { title: "Sinonimologia", description: "Gera Sinonimologia do verbete." },
   app10: { title: "Fatologia", description: "Gera Fatologia do verbete." },
-  app11: { title: "Frase Enfatica", description: "Gera Frase Enfatica do verbete." },
+  app11: { title: "Frase Enfática", description: "Gera Frase Enfática do verbete." },
 };
 
 export const parameterMacroMeta: Record<MacroActionId, { title: string; description: string }> = {
@@ -83,22 +83,22 @@ export const parameterMacroMeta: Record<MacroActionId, { title: string; descript
 };
 
 export const parameterActionMeta: Record<AiActionId, { title: string; description: string }> = {
-  dictionary: { title: "Definicao", description: "Definicao dicionarizada." },
+  dictionary: { title: "Definição", description: "Definição dicionarizada." },
   synonyms: { title: "Sinonimia", description: "Lista de sinonimos." },
   antonyms: { title: "Antonimia", description: "Lista de antonimos." },
   etymology: { title: "Etimologia", description: "Etimologia do termo." },
   cognatos: { title: "Cognatos", description: "Cognatos do termo." },
-  epigraph: { title: "Epigrafe", description: "Sugere epigrafe do termo." },
+  epigraph: { title: "Epígrafe", description: "Sugere epígrafe do termo." },
   rewrite: { title: "Reescrever", description: "Melhora clareza e fluidez." },
-  summarize: { title: "Resumir", description: "Sintese concisa." },
+  summarize: { title: "Resumir", description: "Síntese concisa." },
   translate: { title: "Traduzir", description: "Traduz para o idioma selecionado." },
-  dict_lookup: { title: "Dicionarios", description: "Consulta dicionarios online." },
+  dict_lookup: { title: "Dicionários", description: "Consulta dicionários online." },
   ai_command: { title: "Comando IA", description: "Envia uma query livre para a LLM." },
   analogies: { title: "Analogias", description: "Analogias da Conscienciologia." },
-  comparisons: { title: "Comparacoes", description: "Comparacoes na Conscienciologia." },
+  comparisons: { title: "Comparações", description: "Comparações na Conscienciologia." },
   examples: { title: "Exemplos", description: "Exemplos segundo a Conscienciologia." },
   counterpoints: { title: "Contrapontos", description: "Contrapontos pela Conscienciologia." },
-  neoparadigma: { title: "Neoparadigma", description: "Analise comparativa paradigmatica." },
+  neoparadigma: { title: "Neoparadigma", description: "Análise comparativa paradigmática." },
 };
 
 export const getAiPanelScopeByAction = (id: AiActionId): AiPanelScope =>
@@ -150,7 +150,7 @@ export const getParameterPanelHeaderMeta = (
     case "actions":
       return { title: "Termos & Conceitos", description: "Definir, sinonimos, etimologia e cognatos" };
     case "rewriting":
-      return { title: "Trechos & Parágrafos", description: "Reescrever, resumir e criar epigrafe" };
+      return { title: "Trechos & Parágrafos", description: "Reescrever, resumir e criar epígrafe" };
     case "ai_command":
       return { title: "Comando IA", description: "Envia uma query livre para a LLM" };
     case "translation":

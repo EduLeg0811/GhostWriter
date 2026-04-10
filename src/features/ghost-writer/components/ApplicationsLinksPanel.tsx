@@ -41,7 +41,7 @@ const ApplicationsLinksPanel = ({ isLoading, onRunRandomPensata }: ApplicationsL
       <a href="https://externaldict.onrender.com/" target="_blank" rel="noopener noreferrer" className={linkClassName}>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-0">
-            <img src="/DictLookUp.png" alt="Dicionarios" className="h-12 w-18 rounded-md" />
+            <img src="/DictLookUp.png" alt="Dicionários" className="h-12 w-18 rounded-md" />
             <span className="min-w-0 flex-1 text-left">
               <span className="text-sm font-semibold tracking-wide text-orange-600 shadow-lg">Dicionários</span>
               <p className="text-[11px] leading-tight text-blue-600 shadow-lg">Consulta externa de dicionários online</p>
