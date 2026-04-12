@@ -275,6 +275,43 @@ describe("Index page", () => {
     expect((await screen.findAllByText(/Defini.*CONS/i))[0]).toBeInTheDocument();
   });
 
+  it("allows changing the Terms & Concepts vector store after Conscienciografia initializes it", async () => {
+    const openai = await import("@/lib/openai");
+    vi.mocked(openai.executeLLM).mockResolvedValue({ content: "definicao conscienciografica" });
+
+    render(<Index />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /termos & conceitos/i }));
+    fireEvent.click(screen.getByRole("button", { name: /conscienciografia/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /definição|definicao/i })[0]);
+    fireEvent.click(screen.getByRole("button", { name: /configs/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^ia$/i }));
+
+    const vectorStoreSelect = screen.getAllByRole("combobox").find(
+      (element) => (element as HTMLSelectElement).value === "vs_6912908250e4819197e23fe725e04fae",
+    ) as HTMLSelectElement;
+    fireEvent.change(vectorStoreSelect, { target: { value: "vs_69bb11928ff08191b24e3e35a93b4d5b" } });
+    await waitFor(() => {
+      expect(vectorStoreSelect.value).toBe("vs_69bb11928ff08191b24e3e35a93b4d5b");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /fechar configs/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /termos & conceitos/i })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /definição|definicao/i })[0]);
+    fireEvent.change(screen.getByPlaceholderText("Write a word, phrase or text"), {
+      target: { value: "holopensene" },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: /definição|definicao/i })[1]);
+
+    await waitFor(() => {
+      expect(openai.executeLLM).toHaveBeenCalled();
+    });
+
+    const payload = vi.mocked(openai.executeLLM).mock.calls.at(-1)?.[0];
+    expect(payload?.vectorStoreIds).toEqual(["vs_69bb11928ff08191b24e3e35a93b4d5b"]);
+    expect(openai.buildDefineConsPrompt).toHaveBeenCalledWith("holopensene");
+  });
+
   it("switches Traduzir to Translate RAG only when Conscienciografia is active", async () => {
     const openai = await import("@/lib/openai");
     vi.mocked(openai.executeLLM).mockResolvedValue({ content: "translated text" });
@@ -305,6 +342,40 @@ describe("Index page", () => {
 
     payload = vi.mocked(openai.executeLLM).mock.calls.at(-1)?.[0];
     expect(payload?.vectorStoreIds).toEqual(["vs_translate_rag"]);
+    expect(openai.buildTranslateConsPrompt).toHaveBeenCalledWith("texto base", "Ingles");
+  });
+
+  it("allows changing Traduzir vector store after Conscienciografia initializes Translate RAG", async () => {
+    const openai = await import("@/lib/openai");
+    vi.mocked(openai.executeLLM).mockResolvedValue({ content: "translated text" });
+
+    render(<Index />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /trad.*dicion/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^traduzir\b/i }));
+    fireEvent.click(screen.getByRole("button", { name: /conscienciografia/i }));
+    fireEvent.click(screen.getByRole("button", { name: /configs/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^ia$/i }));
+
+    const vectorStoreSelect = screen.getAllByRole("combobox").find(
+      (element) => (element as HTMLSelectElement).value === "vs_translate_rag",
+    ) as HTMLSelectElement;
+    fireEvent.change(vectorStoreSelect, { target: { value: "" } });
+    await waitFor(() => {
+      expect(vectorStoreSelect.value).toBe("");
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("Write a word, phrase or text"), {
+      target: { value: "texto base" },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: /^traduzir\b/i })[1]);
+
+    await waitFor(() => {
+      expect(openai.executeLLM).toHaveBeenCalled();
+    });
+
+    const payload = vi.mocked(openai.executeLLM).mock.calls.at(-1)?.[0];
+    expect(payload?.vectorStoreIds).toEqual([]);
     expect(openai.buildTranslateConsPrompt).toHaveBeenCalledWith("texto base", "Ingles");
   });
 
@@ -537,16 +608,17 @@ describe("Index page", () => {
 
     render(<Index />);
 
-    fireEvent.click(await screen.findByRole("button", { name: /search log/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /^logs$/i }));
 
     await waitFor(() => {
+      expect(screen.getByRole("heading", { name: /^logs$/i })).toBeInTheDocument();
       expect(screen.getByText(/semantic overview monitor/i)).toBeInTheDocument();
     });
 
     expect(screen.getByText(/processando base lo semantic/i)).toBeInTheDocument();
-    expect(screen.getByText(/bases processadas/i)).toBeInTheDocument();
+    expect(screen.getByText(/^bases$/i)).toBeInTheDocument();
     expect(screen.getAllByText(/lo semantic/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/resultado \| 5 achados/i)).toBeInTheDocument();
+    expect(screen.getByText(/5 achados/i)).toBeInTheDocument();
   });
 
   it("resets persisted config from LLM Sources after confirmation", async () => {
@@ -559,7 +631,7 @@ describe("Index page", () => {
 
     render(<Index />);
 
-    fireEvent.click(await screen.findByRole("button", { name: /llm sources/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /^configs$/i }));
     fireEvent.click(screen.getByRole("button", { name: /reset config parameters/i }));
 
     expect(confirmSpy).toHaveBeenCalledWith("Reset all config parameters. Are you shure?");

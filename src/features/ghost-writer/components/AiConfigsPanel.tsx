@@ -1,0 +1,162 @@
+import { Label } from "@/components/ui/label";
+import AiAssistantConfigPanel from "@/features/ghost-writer/components/AiAssistantConfigPanel";
+import { CONFIG_PROMPT_ROWS } from "@/features/ghost-writer/config/constants";
+import { getActionSystemPrompt, getConscienciografiaActionSystemPromptId, type ActionSystemPromptId, type ConscienciografiaExtendedActionId } from "@/features/ghost-writer/config/actionSystemPrompts";
+import type { AiActionId, AppPanelScope, ParameterPanelTarget, SelectOption } from "@/features/ghost-writer/types";
+import type { UploadedLlmFile } from "@/lib/openai";
+
+interface AiConfigsPanelProps {
+  parameterPanelTarget: ParameterPanelTarget;
+  appPanelScope: AppPanelScope | null;
+  hasDocumentOpen: boolean;
+  isTermsConceptsConscienciografiaEnabled: boolean;
+  includeEditorContextInLlm: boolean;
+  aiActionsLlmModel: string;
+  aiActionsLlmTemperature: number;
+  aiActionsLlmMaxOutputTokens: number;
+  aiActionsLlmVerbosity: string;
+  aiActionsLlmEffort: string;
+  aiActionSystemPrompts: Partial<Record<ActionSystemPromptId, string>>;
+  aiActionsSelectedVectorStoreId: string;
+  aiActionVectorStoreOptions: SelectOption[];
+  uploadedChatFiles: UploadedLlmFile[];
+  isUploadingChatFiles: boolean;
+  onAiActionsLlmModelChange: (value: string) => void;
+  onAiActionsLlmTemperatureChange: (value: number) => void;
+  onAiActionsLlmMaxOutputTokensChange: (value: number) => void;
+  onAiActionsLlmVerbosityChange: (value: string) => void;
+  onAiActionsLlmEffortChange: (value: string) => void;
+  onAiActionSystemPromptChange: (actionId: ActionSystemPromptId, value: string) => void;
+  onToggleIncludeEditorContextInLlm: () => void;
+  onAiActionsSelectedVectorStoreIdChange: (value: string) => void;
+  onUploadFiles: (files: File[]) => void | Promise<void>;
+  onRemoveUploadedFile: (fileId: string) => void;
+  onResetAllConfig: () => void;
+}
+
+const supportsConscienciografiaPrompt = (value: AiActionId | null): value is ConscienciografiaExtendedActionId =>
+  value === "dictionary"
+  || value === "synonyms"
+  || value === "antonyms"
+  || value === "etymology"
+  || value === "cognatos"
+  || value === "epigraph"
+  || value === "rewrite"
+  || value === "summarize"
+  || value === "translate"
+  || value === "dict_lookup"
+  || value === "analogies"
+  || value === "comparisons"
+  || value === "examples"
+  || value === "counterpoints"
+  || value === "neoparadigma";
+
+const AiConfigsPanel = ({
+  parameterPanelTarget,
+  appPanelScope,
+  hasDocumentOpen,
+  isTermsConceptsConscienciografiaEnabled,
+  includeEditorContextInLlm,
+  aiActionsLlmModel,
+  aiActionsLlmTemperature,
+  aiActionsLlmMaxOutputTokens,
+  aiActionsLlmVerbosity,
+  aiActionsLlmEffort,
+  aiActionSystemPrompts,
+  aiActionsSelectedVectorStoreId,
+  aiActionVectorStoreOptions,
+  uploadedChatFiles,
+  isUploadingChatFiles,
+  onAiActionsLlmModelChange,
+  onAiActionsLlmTemperatureChange,
+  onAiActionsLlmMaxOutputTokensChange,
+  onAiActionsLlmVerbosityChange,
+  onAiActionsLlmEffortChange,
+  onAiActionSystemPromptChange,
+  onToggleIncludeEditorContextInLlm,
+  onAiActionsSelectedVectorStoreIdChange,
+  onUploadFiles,
+  onRemoveUploadedFile,
+  onResetAllConfig,
+}: AiConfigsPanelProps) => {
+  const aiActionSection = parameterPanelTarget?.section === "actions"
+    || parameterPanelTarget?.section === "rewriting"
+    || parameterPanelTarget?.section === "translation"
+    || parameterPanelTarget?.section === "customized_prompts";
+  const actionId = aiActionSection ? parameterPanelTarget?.id as AiActionId | null : null;
+  const verbetografiaActionId =
+    parameterPanelTarget?.section === "apps"
+    && appPanelScope === "verbetografia"
+    && (parameterPanelTarget.id === "app8" || parameterPanelTarget.id === "app9" || parameterPanelTarget.id === "app10" || parameterPanelTarget.id === "app11")
+      ? parameterPanelTarget.id
+      : null;
+
+  const promptId = actionId && supportsConscienciografiaPrompt(actionId)
+    ? getConscienciografiaActionSystemPromptId(actionId, isTermsConceptsConscienciografiaEnabled)
+    : (actionId as ActionSystemPromptId | null);
+  const effectivePromptId = (verbetografiaActionId ?? promptId) as ActionSystemPromptId | null;
+  const selectedActionSystemPrompt = effectivePromptId ? getActionSystemPrompt(aiActionSystemPrompts, effectivePromptId) : "";
+  const canRender = Boolean(actionId || verbetografiaActionId || (parameterPanelTarget?.section === "apps" && parameterPanelTarget.id === "app7"));
+
+  if (!canRender) {
+    return (
+      <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
+        Selecione uma ação com suporte a IA para editar as configurações.
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full p-3">
+      <AiAssistantConfigPanel
+        llmModel={aiActionsLlmModel}
+        onLlmModelChange={onAiActionsLlmModelChange}
+        llmTemperature={aiActionsLlmTemperature}
+        onLlmTemperatureChange={onAiActionsLlmTemperatureChange}
+        llmMaxOutputTokens={aiActionsLlmMaxOutputTokens}
+        onLlmMaxOutputTokensChange={onAiActionsLlmMaxOutputTokensChange}
+        llmVerbosity={aiActionsLlmVerbosity}
+        onLlmVerbosityChange={onAiActionsLlmVerbosityChange}
+        llmEffort={aiActionsLlmEffort}
+        onLlmEffortChange={onAiActionsLlmEffortChange}
+        selectedVectorStoreId={aiActionsSelectedVectorStoreId}
+        onSelectedVectorStoreIdChange={onAiActionsSelectedVectorStoreIdChange}
+        vectorStoreOptions={aiActionVectorStoreOptions}
+        onUploadFiles={(files) => void onUploadFiles(files)}
+        uploadedFiles={uploadedChatFiles}
+        onRemoveUploadedFile={onRemoveUploadedFile}
+        isUploadingFiles={isUploadingChatFiles}
+        includeEditorContextInLlm={includeEditorContextInLlm}
+        onToggleIncludeEditorContextInLlm={onToggleIncludeEditorContextInLlm}
+        canToggleIncludeEditorContextInLlm={hasDocumentOpen}
+        extraContent={effectivePromptId ? (
+          <div className="space-y-1.5">
+            <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt</Label>
+            <textarea
+              value={selectedActionSystemPrompt}
+              onChange={(event) => onAiActionSystemPromptChange(effectivePromptId, event.target.value)}
+              rows={CONFIG_PROMPT_ROWS}
+              className="w-full rounded-md border border-input bg-white px-2.5 py-1.5 text-[10px] text-foreground outline-none resize-none overflow-y-auto"
+            />
+          </div>
+        ) : null}
+        footerContent={(
+          <div className="flex justify-center">
+            <button
+              type="button"
+              className="inline-flex h-8 items-center justify-center rounded-full border border-orange-200 bg-orange-50 px-4 text-center text-[10px] font-semibold text-orange-900 shadow-sm hover:bg-orange-100 hover:text-orange-950"
+              onClick={() => {
+                if (!window.confirm("Reset all config parameters. Are you shure?")) return;
+                onResetAllConfig();
+              }}
+            >
+              Reset Config Parameters
+            </button>
+          </div>
+        )}
+      />
+    </div>
+  );
+};
+
+export default AiConfigsPanel;

@@ -1,10 +1,7 @@
 import AiActionParametersPanel from "@/features/ghost-writer/components/AiActionParametersPanel";
-import AiAssistantConfigPanel from "@/features/ghost-writer/components/AiAssistantConfigPanel";
-import { Label } from "@/components/ui/label";
-import { getActionSystemPrompt, getConscienciografiaActionSystemPromptId, type ActionSystemPromptId, type ConscienciografiaExtendedActionId } from "@/features/ghost-writer/config/actionSystemPrompts";
-import { CONFIG_PROMPT_ROWS } from "@/features/ghost-writer/config/constants";
 import { parameterActionMeta } from "@/features/ghost-writer/config/metadata";
 import { TRANSLATE_LANGUAGE_OPTIONS } from "@/features/ghost-writer/config/options";
+import type { ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
 import type { AiActionId, AiPanelScope, SelectOption } from "@/features/ghost-writer/types";
 import type { UploadedLlmFile } from "@/lib/openai";
 
@@ -47,66 +44,19 @@ interface AiActionsParameterSectionProps {
 }
 
 const AiActionsParameterSection = ({
-  section,
   actionId,
   actionText,
   aiCommandQuery,
   translateLanguage,
   isLoading,
   hasDocumentOpen,
-  isConfigOpen,
-  isTermsConceptsConscienciografiaEnabled,
-  includeEditorContextInLlm,
-  aiActionsLlmModel,
-  aiActionsLlmTemperature,
-  aiActionsLlmMaxOutputTokens,
-  aiActionsLlmVerbosity,
-  aiActionsLlmEffort,
-  aiActionSystemPrompts,
-  aiActionsSelectedVectorStoreId,
-  aiActionVectorStoreOptions,
-  uploadedChatFiles,
-  isUploadingChatFiles,
   onActionTextChange,
   onAiCommandQueryChange,
   onTranslateLanguageChange,
   onRetrieveSelectedText,
   onApplyAction,
-  onAiActionsLlmModelChange,
-  onAiActionsLlmTemperatureChange,
-  onAiActionsLlmMaxOutputTokensChange,
-  onAiActionsLlmVerbosityChange,
-  onAiActionsLlmEffortChange,
-  onAiActionSystemPromptChange,
-  onToggleIncludeEditorContextInLlm,
-  onAiActionsSelectedVectorStoreIdChange,
-  onUploadFiles,
-  onRemoveUploadedFile,
 }: AiActionsParameterSectionProps) => {
   const shouldShowActionPanel = Boolean(actionId);
-  const supportsAiConfig = Boolean(actionId);
-  const supportsConscienciografiaPrompt = (value: AiActionId | null): value is ConscienciografiaExtendedActionId =>
-    value === "dictionary"
-      || value === "synonyms"
-      || value === "antonyms"
-      || value === "etymology"
-      || value === "cognatos"
-      || value === "epigraph"
-      || value === "rewrite"
-      || value === "summarize"
-      || value === "translate"
-      || value === "dict_lookup"
-      || value === "analogies"
-      || value === "comparisons"
-      || value === "examples"
-      || value === "counterpoints"
-      || value === "neoparadigma";
-  const activeActionSystemPromptId = actionId && supportsConscienciografiaPrompt(actionId)
-    ? getConscienciografiaActionSystemPromptId(actionId, isTermsConceptsConscienciografiaEnabled)
-    : (actionId as ActionSystemPromptId | null);
-  const selectedActionSystemPrompt = supportsAiConfig
-    ? getActionSystemPrompt(aiActionSystemPrompts, activeActionSystemPromptId)
-    : "";
 
   return (
     <div className="flex h-full flex-col">
@@ -154,49 +104,6 @@ const AiActionsParameterSection = ({
           />
         )}
       </div>
-      {isConfigOpen && supportsAiConfig ? (
-        <div className="min-h-0 overflow-y-auto border-t border-border p-3 pr-2">
-          <AiAssistantConfigPanel
-            llmModel={aiActionsLlmModel}
-            onLlmModelChange={onAiActionsLlmModelChange}
-            llmTemperature={aiActionsLlmTemperature}
-            onLlmTemperatureChange={onAiActionsLlmTemperatureChange}
-            llmMaxOutputTokens={aiActionsLlmMaxOutputTokens}
-            onLlmMaxOutputTokensChange={onAiActionsLlmMaxOutputTokensChange}
-            llmVerbosity={aiActionsLlmVerbosity}
-            onLlmVerbosityChange={onAiActionsLlmVerbosityChange}
-            llmEffort={aiActionsLlmEffort}
-            onLlmEffortChange={onAiActionsLlmEffortChange}
-            selectedVectorStoreId={aiActionsSelectedVectorStoreId}
-            onSelectedVectorStoreIdChange={onAiActionsSelectedVectorStoreIdChange}
-            vectorStoreOptions={aiActionVectorStoreOptions}
-            showVectorStore
-            fixedVectorStoreLabel={actionId === "translate" && isTermsConceptsConscienciografiaEnabled ? "Translate RAG" : undefined}
-            onUploadFiles={(files) => void onUploadFiles(files)}
-            uploadedFiles={uploadedChatFiles}
-            onRemoveUploadedFile={onRemoveUploadedFile}
-            isUploadingFiles={isUploadingChatFiles}
-            includeEditorContextInLlm={includeEditorContextInLlm}
-            onToggleIncludeEditorContextInLlm={onToggleIncludeEditorContextInLlm}
-            canToggleIncludeEditorContextInLlm={hasDocumentOpen}
-            extraContent={supportsAiConfig ? (
-              <div className="space-y-1.5">
-                <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt da Ação</Label>
-                <textarea
-                  value={selectedActionSystemPrompt}
-                  onChange={(event) => {
-                    if (supportsAiConfig && activeActionSystemPromptId) {
-                      onAiActionSystemPromptChange(activeActionSystemPromptId, event.target.value);
-                    }
-                  }}
-                  rows={CONFIG_PROMPT_ROWS}
-                  className="w-full rounded-md border border-input bg-white px-2.5 py-1.5 text-[10px] text-foreground outline-none resize-none overflow-y-auto"
-                />
-              </div>
-            ) : null}
-          />
-        </div>
-      ) : null}
     </div>
   );
 };

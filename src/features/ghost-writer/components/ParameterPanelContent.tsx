@@ -1,6 +1,5 @@
 import SourcesPanel from "@/features/ghost-writer/components/SourcesPanel";
 import ApplicationsLinksPanel from "@/features/ghost-writer/components/ApplicationsLinksPanel";
-import SearchLogPanel from "@/features/ghost-writer/components/SearchLogPanel";
 import DocumentParameterSection from "@/features/ghost-writer/components/DocumentParameterSection";
 import AiActionsParameterSection from "@/features/ghost-writer/components/AiActionsParameterSection";
 import AppsParameterSection from "@/features/ghost-writer/components/AppsParameterSection";
@@ -406,22 +405,7 @@ const ParameterPanelContent = ({
   onVerbetografiaTitleChange,
   onVerbetografiaSpecialtyChange,
 }: ParameterPanelContentProps) => {
-  if (parameterPanelTarget.section === "search_log") {
-    return <SearchLogPanel />;
-  }
-
   const aiActionsSelectedVectorStoreId = aiActionsSelectedVectorStoreIds[0] ?? "";
-  const translateRagVectorStoreId = aiActionVectorStoreOptions.find((item) => item.label === "Translate RAG")?.id ?? "";
-  const isTermsConceptsAction =
-    parameterPanelTarget.section === "actions"
-    && (parameterPanelTarget.id === "dictionary"
-      || parameterPanelTarget.id === "synonyms"
-      || parameterPanelTarget.id === "antonyms"
-      || parameterPanelTarget.id === "etymology"
-      || parameterPanelTarget.id === "cognatos");
-  const isTranslateAction =
-    parameterPanelTarget.section === "translation"
-    && parameterPanelTarget.id === "translate";
   const isVerbetografiaAiAction =
     parameterPanelTarget.section === "apps"
     && appPanelScope === "verbetografia"
@@ -429,13 +413,6 @@ const ParameterPanelContent = ({
       || parameterPanelTarget.id === "app9"
       || parameterPanelTarget.id === "app10"
       || parameterPanelTarget.id === "app11");
-
-  const termsConceptsForcedVectorStoreId = isTermsConceptsConscienciografiaEnabled
-    ? (VECTOR_STORES_SOURCE.find((item) => item.label === "WVBooks")?.id ?? "")
-    : NO_VECTOR_STORE_ID;
-  const translateForcedVectorStoreId = isTermsConceptsConscienciografiaEnabled
-    ? translateRagVectorStoreId
-    : aiActionsSelectedVectorStoreId;
   const verbetografiaDefaultVectorStoreId = DEFAULT_BOOK_SOURCE_ID;
   const effectiveVerbetografiaVectorStoreId =
     aiActionsSelectedVectorStoreId === NO_VECTOR_STORE_ID
@@ -547,13 +524,7 @@ const ParameterPanelContent = ({
             aiActionsLlmVerbosity={aiActionsLlmVerbosity}
             aiActionsLlmEffort={aiActionsLlmEffort}
             aiActionSystemPrompts={aiActionSystemPrompts}
-            aiActionsSelectedVectorStoreId={
-              isTermsConceptsAction
-                ? termsConceptsForcedVectorStoreId
-                : isTranslateAction
-                  ? translateForcedVectorStoreId
-                  : aiActionsSelectedVectorStoreId
-            }
+            aiActionsSelectedVectorStoreId={aiActionsSelectedVectorStoreId}
             aiActionVectorStoreOptions={aiActionVectorStoreOptions}
             uploadedChatFiles={uploadedChatFiles}
             isUploadingChatFiles={isUploadingChatFiles}

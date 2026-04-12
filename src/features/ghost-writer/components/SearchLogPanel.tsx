@@ -74,6 +74,7 @@ interface SearchLogPanelProps {
   onClose?: () => void;
   shouldPoll?: boolean;
   activeSearchType?: "semantic_overview" | "lexical_overview" | null;
+  embedded?: boolean;
 }
 
 const getSnapshotRank = (snapshot: SemanticOverviewProgressSnapshot | null | undefined): number => {
@@ -105,7 +106,7 @@ const chooseProgressSnapshot = (
   return ranked[0] || semantic;
 };
 
-const SearchLogPanel = ({ onClose, shouldPoll = false, activeSearchType = null }: SearchLogPanelProps) => {
+const SearchLogPanel = ({ onClose, shouldPoll = false, activeSearchType = null, embedded = false }: SearchLogPanelProps) => {
   const [progress, setProgress] = useState<SemanticOverviewProgressSnapshot>(initialProgress);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -163,28 +164,36 @@ const SearchLogPanel = ({ onClose, shouldPoll = false, activeSearchType = null }
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-muted/40">
-      <div className={`flex items-center justify-between border-b border-border ${panelsTopMenuBarBgClass} px-3 py-2`}>
-        <div className="min-w-0">
-          <h2 className="text-[13px] font-semibold leading-none text-foreground">Search Log</h2>
-          <p className="mt-1 text-[11px] leading-tight text-muted-foreground">Monitor em tempo real</p>
+      {!embedded ? (
+        <div className={`flex items-center justify-between border-b border-border ${panelsTopMenuBarBgClass} px-3 py-2`}>
+          <div className="min-w-0">
+            <h2 className="text-[13px] font-semibold leading-none text-foreground">Search Log</h2>
+            <p className="mt-1 text-[11px] leading-tight text-muted-foreground">Monitor em tempo real</p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${statusMeta.chip}`}>
+              {statusMeta.label}
+            </span>
+            {onClose ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={onClose}
+                title="Fechar Search Log"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            ) : null}
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
+      ) : (
+        <div className="border-b border-border bg-white/60 px-3 py-2">
           <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${statusMeta.chip}`}>
             {statusMeta.label}
           </span>
-          {onClose ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={onClose}
-              title="Fechar Search Log"
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          ) : null}
         </div>
-      </div>
+      )}
 
       <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto bg-slate-50/50 p-3">
         <div className="space-y-3">

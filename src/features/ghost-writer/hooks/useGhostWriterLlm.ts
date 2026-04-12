@@ -65,6 +65,7 @@ import {
   GENERAL_SETTINGS_STORAGE_KEY,
   LLM_SETTINGS_STORAGE_KEY,
   NO_VECTOR_STORE_ID,
+  READ_PERSISTED_CONFIG_FROM_LOCAL_STORAGE,
 } from "@/features/ghost-writer/config/constants";
 import { applySystemPromptOverride, getActionSystemPrompt, getConscienciografiaActionSystemPromptId, getTermsConceptsActionSystemPromptId, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
 import { BOOK_SOURCE, VECTOR_STORES_SOURCE } from "@/features/ghost-writer/config/options";
@@ -394,6 +395,7 @@ const useGhostWriterLlm = ({
   }, [setAiActionsSelectedInputFileIds, uploadedChatFiles]);
 
   useEffect(() => {
+    if (!READ_PERSISTED_CONFIG_FROM_LOCAL_STORAGE) return;
     try {
       const raw = window.localStorage.getItem(LLM_SETTINGS_STORAGE_KEY);
       if (!raw) return;
@@ -420,6 +422,7 @@ const useGhostWriterLlm = ({
   }, [setLlmEditorContextMaxChars, setLlmEffort, setLlmMaxNumResults, setLlmMaxOutputTokens, setLlmModel, setLlmTemperature, setLlmVerbosity]);
 
   useEffect(() => {
+    if (!READ_PERSISTED_CONFIG_FROM_LOCAL_STORAGE) return;
     try {
       const raw = window.localStorage.getItem(AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY);
       if (!raw) return;
@@ -447,6 +450,7 @@ const useGhostWriterLlm = ({
   }, [setAiActionsLlmEffort, setAiActionsLlmMaxOutputTokens, setAiActionsLlmModel, setAiActionsLlmTemperature, setAiActionsLlmVerbosity, setAiActionsSelectedInputFileIds, setAiActionsSelectedVectorStoreIds]);
 
   useEffect(() => {
+    if (!READ_PERSISTED_CONFIG_FROM_LOCAL_STORAGE) return;
     try {
       const raw = window.localStorage.getItem(GENERAL_SETTINGS_STORAGE_KEY);
       if (!raw) return;
@@ -503,6 +507,7 @@ const useGhostWriterLlm = ({
   }, [enableHistoryHighlight, enableHistoryMetadata, enableHistoryNumbering, enableHistoryReferences]);
 
   useEffect(() => {
+    if (!READ_PERSISTED_CONFIG_FROM_LOCAL_STORAGE) return;
     try {
       const raw = window.localStorage.getItem(BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY);
       if (!raw) return;
@@ -653,7 +658,6 @@ const useGhostWriterLlm = ({
     const currentConfig = aiActionsLlmConfigRef.current;
     const inputFileIds = normalizeIdList(uploadedChatFiles.map((file) => file.id));
     const vectorStoreIds = normalizeIdList(currentConfig.vectorStoreIds).filter((id) => id !== NO_VECTOR_STORE_ID);
-    const translateVectorStoreIds = TRANSLATE_FIXED_VECTOR_STORE_IDS;
     const isTermsConceptsAction = type === "dictionary" || type === "synonyms" || type === "antonyms" || type === "etymology" || type === "cognatos";
 
     if (type !== "ai_command" && !text) {
@@ -713,11 +717,7 @@ const useGhostWriterLlm = ({
             `<<<EDITOR_HTML_TEXT>>>\n${editorPlainTextContext}\n<<<END_EDITOR_HTML_TEXT>>>`,
         });
       }
-      const effectiveVectorStoreIds = type === "translate"
-        ? (isTermsConceptsConscienciografiaEnabled ? translateVectorStoreIds : vectorStoreIds)
-        : isTermsConceptsAction
-          ? (isTermsConceptsConscienciografiaEnabled ? TERMS_CONCEPTS_WVBOOKS_VECTOR_STORE_IDS : [])
-          : vectorStoreIds;
+      const effectiveVectorStoreIds = vectorStoreIds;
       const effectiveInputFileIds = inputFileIds;
       const tools = type === "etymology" ? [{ type: "web_search" }] : undefined;
       const result = (await executeAiActionsLLMWithLog({

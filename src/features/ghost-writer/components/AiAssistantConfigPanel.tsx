@@ -32,6 +32,7 @@ interface AiAssistantConfigPanelProps {
   onToggleIncludeEditorContextInLlm?: () => void;
   canToggleIncludeEditorContextInLlm?: boolean;
   extraContent?: React.ReactNode;
+  footerContent?: React.ReactNode;
 }
 
 const AiAssistantConfigPanel = ({
@@ -59,16 +60,17 @@ const AiAssistantConfigPanel = ({
   onToggleIncludeEditorContextInLlm,
   canToggleIncludeEditorContextInLlm = true,
   extraContent,
+  footerContent,
 }: AiAssistantConfigPanelProps) => (
   <div className="min-h-0 space-y-3 overflow-y-auto pr-1">
     <div className="space-y-1.5">
-      <Label className="block pb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Configuracoes LLM</Label>
+      <Label className="block pb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Configurações LLM</Label>
       <div className="flex items-center gap-0">
         <Label className="w-24 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Modelo</Label>
         <select
           value={llmModel}
           onChange={(e) => onLlmModelChange(e.target.value)}
-          className="h-7 w-full rounded-md border border-input bg-background px-2.5 text-[10px] text-foreground outline-none"
+          className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-[10px] text-foreground outline-none"
         >
           {LLM_MODEL_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -86,7 +88,7 @@ const AiAssistantConfigPanel = ({
           max="2"
           value={llmTemperature}
           onChange={(e) => onLlmTemperatureChange(Number(e.target.value))}
-          className="h-7 px-2.5 !text-[10px] md:!text-[10px]"
+          className="h-7 bg-white px-2.5 !text-[10px] md:!text-[10px]"
         />
       </div>
       <div className="flex items-center gap-0">
@@ -96,7 +98,7 @@ const AiAssistantConfigPanel = ({
           min="1"
           value={llmMaxOutputTokens}
           onChange={(e) => onLlmMaxOutputTokensChange(e.target.value ? Number(e.target.value) : 1000)}
-          className="h-7 px-2.5 !text-[10px] md:!text-[10px]"
+          className="h-7 bg-white px-2.5 !text-[10px] md:!text-[10px]"
         />
       </div>
       <div className="flex items-center gap-0">
@@ -105,7 +107,7 @@ const AiAssistantConfigPanel = ({
           value={llmVerbosity}
           onChange={(e) => onLlmVerbosityChange(e.target.value)}
           placeholder="low | medium | high"
-          className="h-7 px-2.5 !text-[10px] md:!text-[10px]"
+          className="h-7 bg-white px-2.5 !text-[10px] md:!text-[10px]"
         />
       </div>
       <div className="flex items-center gap-0">
@@ -114,7 +116,7 @@ const AiAssistantConfigPanel = ({
           value={llmEffort}
           onChange={(e) => onLlmEffortChange(e.target.value)}
           placeholder="none | low | medium | high"
-          className="h-7 px-2.5 !text-[10px] md:!text-[10px]"
+          className="h-7 bg-white px-2.5 !text-[10px] md:!text-[10px]"
         />
       </div>
       {showVectorStore ? (
@@ -128,7 +130,7 @@ const AiAssistantConfigPanel = ({
             <select
               value={selectedVectorStoreId}
               onChange={(e) => onSelectedVectorStoreIdChange(e.target.value)}
-              className="h-7 w-full rounded-md border border-input bg-background px-2.5 text-[10px] text-foreground outline-none"
+              className="h-7 w-full rounded-md border border-input bg-white px-2.5 text-[10px] text-foreground outline-none"
             >
               <option value="">none</option>
               {vectorStoreOptions.map((option) => (
@@ -170,6 +172,12 @@ const AiAssistantConfigPanel = ({
           onRemoveUploadedFile={onRemoveUploadedFile}
           isUploadingFiles={isUploadingFiles}
         />
+      </>
+    ) : null}
+    {footerContent ? (
+      <>
+        <Separator />
+        {footerContent}
       </>
     ) : null}
   </div>

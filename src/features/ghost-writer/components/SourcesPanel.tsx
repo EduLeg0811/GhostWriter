@@ -77,7 +77,7 @@ const SourcesPanel = ({
       <label key={source.id} className="flex cursor-pointer items-start gap-2 px-1 py-1">
         <Checkbox checked={checked} onCheckedChange={(value: CheckedState) => onToggleBookSource(source.id, value === true)} />
         <span className="min-w-0 flex-1 text-left">
-          <span className="block break-words text-xs font-medium text-foreground">{source.label}</span>
+          <span className="block break-words text-[11px] font-medium text-foreground">{source.label}</span>
         </span>
       </label>
     );
@@ -86,29 +86,27 @@ const SourcesPanel = ({
   return (
     <div className="flex h-full min-h-0 flex-col p-3">
       <div className="min-h-0 flex-1 overflow-y-auto pr-1" aria-label="Dados-Fontes">
-        <div className="space-y-2">
+        <div className="space-y-4">
           <div className="space-y-1.5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Livros & Tratados</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Livros & Tratados</p>
             <div className="space-y-1">
               {bookSources.map(renderSourceItem)}
             </div>
           </div>
 
-          <div className="py-3">
+          <div className="py-1.5">
             <Separator />
           </div>
 
           <div className="space-y-1.5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vector Stores</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Vector Stores</p>
             <div className="space-y-1">
               {vectorStoreSources.map(renderSourceItem)}
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="min-h-0 overflow-y-auto border-t border-border pt-3 pr-1">
-        <div className="space-y-4">
+          <Separator />
+
           <AiAssistantConfigPanel
             llmModel={llmModel}
             onLlmModelChange={onLlmModelChange}
@@ -142,7 +140,7 @@ const SourcesPanel = ({
                     max="20"
                     value={llmMaxNumResults}
                     onChange={(e) => onLlmMaxNumResultsChange(e.target.value ? Number(e.target.value) : 5)}
-                    className="h-7 px-2.5 !text-[10px] md:!text-[10px]"
+                    className="h-7 bg-white px-2.5 !text-[10px] md:!text-[10px]"
                   />
                 </div>
                 <div className="flex items-center gap-0">
@@ -152,7 +150,7 @@ const SourcesPanel = ({
                     min="500"
                     value={llmEditorContextMaxChars}
                     onChange={(e) => onLlmEditorContextMaxCharsChange(e.target.value ? Number(e.target.value) : 10000)}
-                    className="h-7 px-2.5 !text-[10px] md:!text-[10px]"
+                    className="h-7 bg-white px-2.5 !text-[10px] md:!text-[10px]"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -163,18 +161,6 @@ const SourcesPanel = ({
                     rows={CONFIG_PROMPT_ROWS}
                     className="w-full resize-none overflow-y-auto rounded-md border border-input bg-white px-2.5 py-1.5 text-[10px] text-foreground outline-none"
                   />
-                </div>
-                <div className="pt-0.5">
-                  <button
-                    type="button"
-                    className="h-8 w-full rounded-lg border border-border bg-white px-2.5 text-left text-[10px] font-semibold text-muted-foreground shadow-sm hover:bg-zinc-50 hover:text-foreground"
-                    onClick={() => {
-                      if (!window.confirm("Reset all config parameters. Are you shure?")) return;
-                      onResetAllConfig();
-                    }}
-                  >
-                    Reset Config Parameters
-                  </button>
                 </div>
               </div>
             )}
@@ -188,6 +174,21 @@ const SourcesPanel = ({
             onRemoveUploadedFile={onRemoveUploadedFile}
             isUploadingFiles={isUploadingFiles}
           />
+
+          <Separator />
+
+          <div className="flex justify-center">
+            <button
+              type="button"
+              className="inline-flex h-8 items-center justify-center rounded-full border border-orange-200 bg-orange-50 px-4 text-center text-[10px] font-semibold text-orange-900 shadow-sm hover:bg-orange-100 hover:text-orange-950"
+              onClick={() => {
+                if (!window.confirm("Reset all config parameters. Are you shure?")) return;
+                onResetAllConfig();
+              }}
+            >
+              Reset Config Parameters
+            </button>
+          </div>
         </div>
       </div>
     </div>

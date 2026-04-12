@@ -8,6 +8,7 @@ export const LLM_SETTINGS_STORAGE_KEY = "llm_settings_v1";
 export const AI_ACTIONS_LLM_SETTINGS_STORAGE_KEY = "ai_actions_llm_settings_v1";
 export const BIBLIO_EXTERNA_LLM_SETTINGS_STORAGE_KEY = "biblio_externa_llm_settings_v1";
 export const GENERAL_SETTINGS_STORAGE_KEY = "general_settings_v1";
+export const READ_PERSISTED_CONFIG_FROM_LOCAL_STORAGE = false;
 export const DEFAULT_LOG_FONT_SIZE_PX = 9;
 export const DEFAULT_LOG_LINE_HEIGHT_RATIO = 1.1;
 export const DEFAULT_DOLLAR_TOKEN = 5.5;

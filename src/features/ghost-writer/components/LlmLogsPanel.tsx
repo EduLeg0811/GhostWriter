@@ -4,6 +4,7 @@ import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
 import type { LlmLogEntry } from "@/features/ghost-writer/types";
 
 interface LlmLogsPanelProps {
+  embedded?: boolean;
   llmLogs: LlmLogEntry[];
   llmSessionLogs: LlmLogEntry[];
   llmLogFontScale: number;
@@ -39,6 +40,7 @@ interface LlmLogsPanelProps {
 }
 
 const LlmLogsPanel = ({
+  embedded = false,
   llmLogs,
   llmSessionLogs,
   llmLogFontScale,
@@ -73,8 +75,8 @@ const LlmLogsPanel = ({
   errorCallsCount,
 }: LlmLogsPanelProps) => (
   <div className="flex h-full min-h-0 flex-col overflow-hidden bg-muted/40">
-    <div className={`flex items-center justify-between border-b border-border ${panelsTopMenuBarBgClass} px-4 py-3`}>
-      <h2 className="text-sm font-semibold text-foreground">LLM Logs</h2>
+    <div className={`flex items-center justify-between border-b border-border ${embedded ? "bg-white/60" : panelsTopMenuBarBgClass} px-4 py-3`}>
+      {!embedded ? <h2 className="text-sm font-semibold text-foreground">LLM Logs</h2> : <div />}
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
@@ -115,15 +117,17 @@ const LlmLogsPanel = ({
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={onClose}
-          title="Fechar logs"
-        >
-          <X className="h-3.5 w-3.5" />
-        </Button>
+        {!embedded ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={onClose}
+            title="Fechar logs"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        ) : null}
       </div>
     </div>
     <div className="scrollbar-thin flex-1 overflow-y-auto p-3">

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { AppPanelScope, LlmConfigPanelId, MobilePanelId, ParameterPanelTarget, SourcesPanelView } from "@/features/ghost-writer/types";
+import type { AppPanelScope, ConfigPanelTabId, LlmConfigPanelId, LogPanelTabId, MobilePanelId, ParameterPanelTarget, SourcesPanelView } from "@/features/ghost-writer/types";
 
 interface UseGhostWriterLayoutParams {
   hasEditorPanel: boolean;
@@ -9,24 +9,27 @@ const useGhostWriterLayout = ({ hasEditorPanel }: UseGhostWriterLayoutParams) =>
   const [parameterPanelTarget, setParameterPanelTarget] = useState<ParameterPanelTarget>(null);
   const [appPanelScope, setAppPanelScope] = useState<AppPanelScope | null>(null);
   const [activeLlmConfigPanel, setActiveLlmConfigPanel] = useState<LlmConfigPanelId | null>(null);
-  const [activeLogPanel, setActiveLogPanel] = useState<"llm_logs" | "search_log" | null>(null);
+  const [activeLogPanel, setActiveLogPanel] = useState<LogPanelTabId | null>(null);
+  const [activeConfigPanel, setActiveConfigPanel] = useState<ConfigPanelTabId | null>(null);
+  const [lastActiveLogPanel, setLastActiveLogPanel] = useState<LogPanelTabId>("search");
+  const [lastActiveConfigPanel, setLastActiveConfigPanel] = useState<ConfigPanelTabId>("sources");
   const [isMobileView, setIsMobileView] = useState(false);
   const [activeMobilePanel, setActiveMobilePanel] = useState<MobilePanelId>("left");
   const [sourcesPanelView, setSourcesPanelView] = useState<SourcesPanelView>(null);
   const previousHasEditorPanelRef = useRef(false);
 
-  const isChatConfigOpen = parameterPanelTarget?.section === "sources";
+  const isChatConfigOpen = activeConfigPanel === "sources";
   const isAiActionsConfigOpen = activeLlmConfigPanel === "ai_actions";
   const isBiblioExternaConfigOpen = activeLlmConfigPanel === "biblio_externa";
   const hasCenterPanel = Boolean(parameterPanelTarget);
-  const hasJsonPanel = Boolean(activeLogPanel);
+  const hasJsonPanel = Boolean(activeLogPanel || activeConfigPanel);
   const mobilePanelOptions: Array<{ id: MobilePanelId; label: string; disabled?: boolean }> = useMemo(() => [
     { id: "left", label: "Menu" },
     { id: "center", label: "Parametros", disabled: !hasCenterPanel },
     { id: "right", label: "Historico" },
     { id: "editor", label: "Editor", disabled: !hasEditorPanel },
-    { id: "json", label: "Logs", disabled: !hasJsonPanel },
-  ], [hasCenterPanel, hasEditorPanel, hasJsonPanel]);
+    { id: "json", label: activeConfigPanel ? "Configs" : "Logs", disabled: !hasJsonPanel },
+  ], [activeConfigPanel, hasCenterPanel, hasEditorPanel, hasJsonPanel]);
 
   const showJsonPanel = hasJsonPanel && (!isMobileView || activeMobilePanel === "json");
   const showLeftPanel = !isMobileView || activeMobilePanel === "left";
@@ -41,6 +44,14 @@ const useGhostWriterLayout = ({ hasEditorPanel }: UseGhostWriterLayoutParams) =>
   const toggleLlmConfigPanel = (panel: LlmConfigPanelId) => {
     setActiveLlmConfigPanel((prev) => (prev === panel ? null : panel));
   };
+
+  useEffect(() => {
+    if (activeLogPanel) setLastActiveLogPanel(activeLogPanel);
+  }, [activeLogPanel]);
+
+  useEffect(() => {
+    if (activeConfigPanel) setLastActiveConfigPanel(activeConfigPanel);
+  }, [activeConfigPanel]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 768px)");
@@ -88,6 +99,10 @@ const useGhostWriterLayout = ({ hasEditorPanel }: UseGhostWriterLayoutParams) =>
     setActiveLlmConfigPanel,
     activeLogPanel,
     setActiveLogPanel,
+    lastActiveLogPanel,
+    activeConfigPanel,
+    setActiveConfigPanel,
+    lastActiveConfigPanel,
     isMobileView,
     activeMobilePanel,
     setActiveMobilePanel,

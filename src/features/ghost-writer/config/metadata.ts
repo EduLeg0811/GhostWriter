@@ -142,8 +142,6 @@ export const getParameterPanelHeaderMeta = (
       return { title: "Documento", description: "Novo, abrir e editar documento" };
     case "sources":
       return { title: "LLM Sources", description: "Vector stores e arquivos" };
-    case "search_log":
-      return { title: "Search Log", description: "Acompanhamento em tempo real do Semantic Overview" };
     case "actions":
       return { title: "Termos & Conceitos", description: "Definir, sinonimos, etimologia e cognatos" };
     case "rewriting":

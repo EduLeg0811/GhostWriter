@@ -19,10 +19,9 @@ import Macro2ManualNumberingPanel from "@/features/ghost-writer/components/Macro
 import AiActionParametersPanel from "@/features/ghost-writer/components/AiActionParametersPanel";
 import SourcesPanel from "@/features/ghost-writer/components/SourcesPanel";
 import MobilePanelHeader from "@/features/ghost-writer/components/MobilePanelHeader";
-import AiAssistantConfigPanel from "@/features/ghost-writer/components/AiAssistantConfigPanel";
 import ApplicationsLinksPanel from "@/features/ghost-writer/components/ApplicationsLinksPanel";
-import LlmLogsPanel from "@/features/ghost-writer/components/LlmLogsPanel";
-import SearchLogPanel from "@/features/ghost-writer/components/SearchLogPanel";
+import LogsPanel from "@/features/ghost-writer/components/LogsPanel";
+import ConfigsPanel from "@/features/ghost-writer/components/ConfigsPanel";
 import ParameterPanel from "@/features/ghost-writer/components/ParameterPanel";
 import ParameterPanelContent from "@/features/ghost-writer/components/ParameterPanelContent";
 import DesktopResizeHandle from "@/features/ghost-writer/components/DesktopResizeHandle";
@@ -134,6 +133,10 @@ const Index = () => {
     setActiveLlmConfigPanel,
     activeLogPanel,
     setActiveLogPanel,
+    lastActiveLogPanel,
+    activeConfigPanel,
+    setActiveConfigPanel,
+    lastActiveConfigPanel,
     isMobileView,
     activeMobilePanel,
     setActiveMobilePanel,
@@ -514,16 +517,20 @@ const Index = () => {
         handleOpenVerbetografiaFromLeft();
         focusMobilePanel("center");
       }}
-      onToggleJsonPanel={() => {
-        setActiveLogPanel((prev) => (prev === "llm_logs" ? null : "llm_logs"));
+      onOpenLogsPanel={(tab) => {
+        setActiveConfigPanel(null);
+        setActiveLogPanel((prev) => (prev === tab ? null : tab));
         focusMobilePanel("json");
       }}
-      onToggleSearchLogPanel={() => {
-        setActiveLogPanel((prev) => (prev === "search_log" ? null : "search_log"));
+      isLogsPanelOpen={Boolean(activeLogPanel)}
+      activeLogsTab={activeLogPanel ?? lastActiveLogPanel}
+      onOpenConfigsPanel={(tab) => {
+        setActiveLogPanel(null);
+        setActiveConfigPanel((prev) => (prev === tab ? null : tab));
         focusMobilePanel("json");
       }}
-      isJsonPanelOpen={activeLogPanel === "llm_logs"}
-      isSearchLogPanelOpen={activeLogPanel === "search_log"}
+      isConfigsPanelOpen={Boolean(activeConfigPanel)}
+      activeConfigsTab={activeConfigPanel ?? lastActiveConfigPanel}
       isLoading={isLoading}
     />
   );
@@ -538,7 +545,7 @@ const Index = () => {
         parameterPanelTarget={parameterPanelTarget}
         appPanelScope={appPanelScope}
         isLoading={isLoading}
-        isAiActionsConfigOpen={isAiActionsConfigOpen}
+        isAiActionsConfigOpen={false}
         isTermsConceptsConscienciografiaEnabled={isTermsConceptsConscienciografiaEnabled}
         isUploadingChatFiles={isUploadingChatFiles}
         currentFileId={currentFileId}
@@ -594,7 +601,7 @@ const Index = () => {
         biblioExternaExtra={biblioExternaExtra}
         biblioExternaFreeText={biblioExternaFreeText}
         isRunningBiblioExterna={isRunningBiblioExterna}
-        isBiblioExternaConfigOpen={isBiblioExternaConfigOpen}
+        isBiblioExternaConfigOpen={false}
         biblioExternaLlmModel={biblioExternaLlmModel}
         biblioExternaLlmTemperature={biblioExternaLlmTemperature}
         biblioExternaLlmMaxOutputTokens={biblioExternaLlmMaxOutputTokens}
@@ -632,7 +639,12 @@ const Index = () => {
         isRunningVerbeteSinonimologia={isRunningVerbeteSinonimologia}
         isRunningVerbeteFatologia={isRunningVerbeteFatologia}
         hasVerbetografiaRequiredFields={hasVerbetografiaRequiredFields}
-        onToggleAiActionsConfig={() => toggleLlmConfigPanel("ai_actions")}
+        onToggleAiActionsConfig={() => {
+          setActiveLlmConfigPanel("ai_actions");
+          setActiveLogPanel(null);
+          setActiveConfigPanel("ia");
+          focusMobilePanel("json");
+        }}
         onToggleTermsConceptsConscienciografia={handleToggleTermsConceptsConscienciografia}
         onCreateBlankDocument={handleCreateBlankDocument}
         onDocumentPanelFile={handleDocumentPanelFile}
@@ -677,20 +689,6 @@ const Index = () => {
           setIncludeEditorContextInLlm((prev) => !prev);
         }}
         onAiActionsSelectedVectorStoreIdsChange={(value) => {
-          if (parameterPanelTarget?.section === "actions") {
-            const wvBooksId = VECTOR_STORES_SOURCE.find((item) => item.label === "WVBooks")?.id ?? "";
-            if (isTermsConceptsConscienciografiaEnabled) {
-              setAiActionsSelectedVectorStoreIds(wvBooksId ? [wvBooksId] : []);
-              return;
-            }
-            setAiActionsSelectedVectorStoreIds([NO_VECTOR_STORE_ID]);
-            return;
-          }
-          if (parameterPanelTarget?.section === "translation" && parameterPanelTarget.id === "translate" && isTermsConceptsConscienciografiaEnabled) {
-            const translateRagId = LLM_VECTOR_STORE_TRANSLATE_RAG.trim();
-            setAiActionsSelectedVectorStoreIds(translateRagId ? [translateRagId] : []);
-            return;
-          }
           setAiActionsSelectedVectorStoreIds(value);
         }}
         onUploadSourceFiles={handleUploadSourceFiles}
@@ -714,7 +712,12 @@ const Index = () => {
         onBiblioExternaExtraChange={setBiblioExternaExtra}
         onBiblioExternaFreeTextChange={setBiblioExternaFreeText}
         onRunBiblioExterna={handleRunBiblioExterna}
-        onToggleBiblioExternaConfig={() => toggleLlmConfigPanel("biblio_externa")}
+        onToggleBiblioExternaConfig={() => {
+          setActiveLlmConfigPanel("biblio_externa");
+          setActiveLogPanel(null);
+          setActiveConfigPanel("ia");
+          focusMobilePanel("json");
+        }}
         onBiblioExternaLlmModelChange={setBiblioExternaLlmModel}
         onBiblioExternaLlmTemperatureChange={setBiblioExternaLlmTemperature}
         onBiblioExternaLlmMaxOutputTokensChange={setBiblioExternaLlmMaxOutputTokens}
@@ -767,7 +770,11 @@ const Index = () => {
       onClear={() => setResponses([])}
       onSendMessage={(message) => void handleChat(message)}
       onCleanConversation={handleCleanLlmConversation}
-      onToggleChatConfig={handleToggleChatSourcesPanel}
+      onToggleChatConfig={() => {
+        setActiveLogPanel(null);
+        setActiveConfigPanel((prev) => (prev === "sources" ? null : "sources"));
+        focusMobilePanel("json");
+      }}
       isChatConfigOpen={isChatConfigOpen}
       onAppendToEditor={(html) => void handleAppendHistoryToEditor(html)}
       onNotify={showHistoryNotice}
@@ -792,14 +799,13 @@ const Index = () => {
   );
 
   const jsonPanelElement = (
-    activeLogPanel === "search_log" ? (
-      <SearchLogPanel
+    activeLogPanel ? (
+      <LogsPanel
+        activeTab={activeLogPanel ?? lastActiveLogPanel}
+        onTabChange={setActiveLogPanel}
         onClose={() => setActiveLogPanel(null)}
-        shouldPoll={isRunningSemanticOverview || isRunningLexicalOverview}
+        shouldPollSearch={isRunningSemanticOverview || isRunningLexicalOverview}
         activeSearchType={isRunningSemanticOverview ? "semantic_overview" : isRunningLexicalOverview ? "lexical_overview" : null}
-      />
-    ) : (
-      <LlmLogsPanel
         llmLogs={llmLogs}
         llmSessionLogs={llmSessionLogs}
         llmLogFontScale={llmLogFontScale}
@@ -814,7 +820,6 @@ const Index = () => {
           setLlmLogs([]);
           setLlmSessionLogs([]);
         }}
-        onClose={() => setActiveLogPanel(null)}
         effectiveModel={effectiveModel}
         latestLlmMeta={latestLlmMeta}
         latestInputTokens={latestInputTokens}
@@ -836,7 +841,65 @@ const Index = () => {
         successfulCallsCount={successfulCallsCount}
         errorCallsCount={errorCallsCount}
       />
-    )
+    ) : activeConfigPanel ? (
+      <ConfigsPanel
+        activeTab={activeConfigPanel ?? lastActiveConfigPanel}
+        onTabChange={setActiveConfigPanel}
+        onClose={() => setActiveConfigPanel(null)}
+        parameterPanelTarget={parameterPanelTarget}
+        appPanelScope={appPanelScope}
+        selectedBookSourceIds={selectedBookSourceIds}
+        selectedChatSourceLabel={selectedChatSourceLabel}
+        uploadedChatFiles={uploadedChatFiles}
+        isUploadingChatFiles={isUploadingChatFiles}
+        llmModel={llmModel}
+        llmTemperature={llmTemperature}
+        llmMaxOutputTokens={llmMaxOutputTokens}
+        llmMaxNumResults={llmMaxNumResults}
+        llmEditorContextMaxChars={llmEditorContextMaxChars}
+        llmVerbosity={llmVerbosity}
+        llmEffort={llmEffort}
+        llmSystemPrompt={llmSystemPrompt}
+        includeEditorContextInLlm={includeEditorContextInLlm}
+        currentFileId={currentFileId}
+        aiActionsLlmModel={aiActionsLlmModel}
+        aiActionsLlmTemperature={aiActionsLlmTemperature}
+        aiActionsLlmMaxOutputTokens={aiActionsLlmMaxOutputTokens}
+        aiActionsLlmVerbosity={aiActionsLlmVerbosity}
+        aiActionsLlmEffort={aiActionsLlmEffort}
+        aiActionSystemPrompts={aiActionSystemPrompts}
+        aiActionsSelectedVectorStoreId={aiActionsSelectedVectorStoreIds[0] ?? ""}
+        aiActionVectorStoreOptions={aiActionVectorStoreOptions}
+        isTermsConceptsConscienciografiaEnabled={isTermsConceptsConscienciografiaEnabled}
+        onToggleBookSource={handleToggleBookSource}
+        onRemoveUploadedChatFile={handleRemoveUploadedChatFile}
+        onLlmModelChange={setLlmModel}
+        onLlmTemperatureChange={setLlmTemperature}
+        onLlmMaxOutputTokensChange={setLlmMaxOutputTokens}
+        onLlmMaxNumResultsChange={setLlmMaxNumResults}
+        onLlmEditorContextMaxCharsChange={setLlmEditorContextMaxChars}
+        onLlmVerbosityChange={setLlmVerbosity}
+        onLlmEffortChange={setLlmEffort}
+        onLlmSystemPromptChange={setLlmSystemPrompt}
+        onResetAllConfig={handleResetAllConfig}
+        onToggleIncludeEditorContextInLlm={() => {
+          if (!currentFileId) return;
+          setIncludeEditorContextInLlm((prev) => !prev);
+        }}
+        onUploadSourceFiles={handleUploadSourceFiles}
+        onAiActionsLlmModelChange={setAiActionsLlmModel}
+        onAiActionsLlmTemperatureChange={setAiActionsLlmTemperature}
+        onAiActionsLlmMaxOutputTokensChange={setAiActionsLlmMaxOutputTokens}
+        onAiActionsLlmVerbosityChange={setAiActionsLlmVerbosity}
+        onAiActionsLlmEffortChange={setAiActionsLlmEffort}
+        onAiActionSystemPromptChange={(actionId, value) => {
+          setAiActionSystemPrompts((prev) => ({ ...prev, [actionId]: value }));
+        }}
+        onAiActionsSelectedVectorStoreIdChange={(value) => {
+          setAiActionsSelectedVectorStoreIds(value ? [value] : []);
+        }}
+      />
+    ) : null
   );
 
   const editorPanelElement = (
