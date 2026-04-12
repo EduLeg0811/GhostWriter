@@ -110,6 +110,23 @@ const appendExternalLinkIconToHeader = (block: Element, urlText: string, doc: Do
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const normalizeForAccentInsensitiveMatch = (value: string): string => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+const buildNormalizedIndexMap = (value: string): { normalized: string; indexMap: number[] } => {
+  let normalized = "";
+  const indexMap: number[] = [];
+
+  for (let index = 0; index < value.length; index += 1) {
+    const normalizedChar = normalizeForAccentInsensitiveMatch(value[index]);
+    for (let normalizedIndex = 0; normalizedIndex < normalizedChar.length; normalizedIndex += 1) {
+      normalized += normalizedChar[normalizedIndex];
+      indexMap.push(index);
+    }
+  }
+
+  return { normalized, indexMap };
+};
+
 const extractSearchQuery = (query: string): string => {
   const raw = query || "";
   const withTotal = raw.match(/Termo:\s*([\s\S]*?)\s*\|\s*Total:/i);
@@ -166,21 +183,26 @@ const highlightBookSearchHtml = (html: string, query: string): string => {
     textNodes.push(node);
   }
 
-  const pattern = new RegExp(terms.map((term) => escapeRegExp(term)).join("|"), "gi");
+  const normalizedTerms = terms.map((term) => normalizeForAccentInsensitiveMatch(term));
+  const pattern = new RegExp(normalizedTerms.map((term) => escapeRegExp(term)).join("|"), "gi");
   for (const node of textNodes) {
     const value = node.nodeValue || "";
+    const { normalized, indexMap } = buildNormalizedIndexMap(value);
     pattern.lastIndex = 0;
-    if (!pattern.test(value)) continue;
+    if (!pattern.test(normalized)) continue;
 
     const fragment = doc.createDocumentFragment();
     let lastIndex = 0;
-    value.replace(pattern, (match, offset) => {
-      if (offset > lastIndex) fragment.appendChild(doc.createTextNode(value.slice(lastIndex, offset)));
+    normalized.replace(pattern, (match, offset) => {
+      const start = indexMap[offset];
+      const end = indexMap[offset + match.length - 1] + 1;
+
+      if (start > lastIndex) fragment.appendChild(doc.createTextNode(value.slice(lastIndex, start)));
       const mark = doc.createElement("mark");
       mark.setAttribute("style", "background-color:#fef08a;padding:0 .08em;");
-      mark.textContent = match;
+      mark.textContent = value.slice(start, end);
       fragment.appendChild(mark);
-      lastIndex = offset + match.length;
+      lastIndex = end;
       return match;
     });
     if (lastIndex < value.length) fragment.appendChild(doc.createTextNode(value.slice(lastIndex)));

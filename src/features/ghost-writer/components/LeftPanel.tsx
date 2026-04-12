@@ -341,7 +341,7 @@ const LeftPanel = ({
               <Settings className="mr-2 h-4 w-4 shrink-0 text-primary" />
               <span className="min-w-0 flex-1 text-left">
                 <span className="block break-words text-sm font-medium text-foreground">Configs</span>
-                <span className="block break-words text-xs text-muted-foreground">LLM Sources & Configurações IA</span>
+                <span className="block break-words text-xs text-muted-foreground">LLM Sources & Configs</span>
               </span>
             </Button>
 

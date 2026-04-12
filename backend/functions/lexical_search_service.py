@@ -32,6 +32,10 @@ BOOK_CODE_TO_FILE: dict[str, str] = {
     "DAC": "DAC",
     "LO": "LO",
     "EC": "EC",
+    "QUEST": "QUEST",
+    "BLOG": "BLOG",
+    "MINI_ARLINDO": "MINI_ARLINDO",
+    "MINI_EDUNOTES": "MINI_EDUNOTES",
 }
 FILE_TO_BOOK_CODE: dict[str, str] = {filename: code for code, filename in BOOK_CODE_TO_FILE.items()}
 BOOK_CODE_LABELS: dict[str, str] = {
@@ -53,6 +57,10 @@ BOOK_CODE_LABELS: dict[str, str] = {
     "DAC": "Dicionario de Argumentos da Conscienciologia",
     "LO": "Lexico de Ortopensatas",
     "EC": "Enciclopedia da Conscienciologia",
+    "QUEST": "Questoes da Minitertulia",
+    "BLOG": "Blog Tertulias",
+    "MINI_ARLINDO": "Anotacoes Arlindo",
+    "MINI_EDUNOTES": "Edunotes",
 }
 
 # Limite proprio do backend para buscas lexicais em livro.

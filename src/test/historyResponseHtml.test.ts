@@ -30,6 +30,24 @@ describe("historyResponseHtml", () => {
     expect(html).toContain("recin");
   });
 
+  it("highlights history search terms ignoring accents in the comparison", () => {
+    const response = buildResponse(
+      "app_book_search",
+      "Livro: Lexico de Ortopensatas | Termo: acao | Total: 1",
+      "Texto com ação destacada\n(**LO**; Autopensenidade)\nLO | Autopensenidade | #1",
+    );
+
+    const html = renderHistoryResponseEditorHtml(response, {
+      applyNumbering: true,
+      applyReferences: true,
+      applyMetadata: true,
+      applyHighlight: true,
+    });
+
+    expect(html).toContain("<mark");
+    expect(html).toContain("<mark style=\"background-color:#fef08a;padding:0 .08em;\">ação</mark>");
+  });
+
   it("hides highlight when the history highlight toggle is disabled", () => {
     const response = buildResponse(
       "app_book_search",
