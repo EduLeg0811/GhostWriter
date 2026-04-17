@@ -3,7 +3,7 @@ import { BIBLIO_EXTERNA_DEFAULT_SYSTEM_PROMPT, CHAT_MAX_OUTPUT_TOKENS, CHAT_MAX_
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 import type { BackendStatus, Macro2SpacingMode } from "@/features/ghost-writer/types";
 import { DEFAULT_ACTION_SYSTEM_PROMPTS, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
-import { CHAT_EDITOR_CONTEXT_MAX_CHARS, DEFAULT_BOOK_SEARCH_MAX_RESULTS, DEFAULT_LOG_FONT_SIZE_PX } from "@/features/ghost-writer/config/constants";
+import { CHAT_EDITOR_CONTEXT_MAX_CHARS, DEFAULT_BOOK_SEARCH_MAX_RESULTS, DEFAULT_LOG_FONT_SIZE_PX, DEFAULT_SEMANTIC_MIN_SCORE } from "@/features/ghost-writer/config/constants";
 import { DEFAULT_BOOK_SOURCE_ID, MACRO1_HIGHLIGHT_COLORS, TRANSLATE_LANGUAGE_OPTIONS } from "@/features/ghost-writer/config/options";
 import type { BookCode } from "@/lib/bookCatalog";
 import type { AIResponse, SemanticIndexOption } from "@/features/ghost-writer/types";
@@ -121,6 +121,7 @@ export const useGhostWriterAppsState = () => {
   const [isRunningLexicalOverview, setIsRunningLexicalOverview] = useState(false);
   const [semanticSearchQuery, setSemanticSearchQuery] = useState("");
   const [semanticSearchMaxResults, setSemanticSearchMaxResults] = useState(DEFAULT_BOOK_SEARCH_MAX_RESULTS);
+  const [semanticMinScore, setSemanticMinScore] = useState(DEFAULT_SEMANTIC_MIN_SCORE);
   const [semanticSearchIndexes, setSemanticSearchIndexes] = useState<SemanticIndexOption[]>([]);
   const [selectedSemanticSearchIndexId, setSelectedSemanticSearchIndexId] = useState("");
   const [isLoadingSemanticSearchIndexes, setIsLoadingSemanticSearchIndexes] = useState(false);
@@ -200,6 +201,8 @@ export const useGhostWriterAppsState = () => {
     setSemanticSearchQuery,
     semanticSearchMaxResults,
     setSemanticSearchMaxResults,
+    semanticMinScore,
+    setSemanticMinScore,
     semanticSearchIndexes,
     setSemanticSearchIndexes,
     selectedSemanticSearchIndexId,

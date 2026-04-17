@@ -213,7 +213,7 @@ describe("historySearchResponses", () => {
   it("resolves semantic index label from match before selected index fallback", () => {
     const label = resolveSemanticSearchIndexLabel({
       selectedIndexId: "LO",
-      indexes: [{ id: "LO", label: "Indice LO", sourceFile: "", sourceRows: 0, model: "", dimensions: 0, embeddingDtype: "" }],
+      indexes: [{ id: "LO", label: "Indice LO", sourceFile: "", sourceRows: 0, model: "", dimensions: 0, embeddingDtype: "", suggestedMinScore: 0.53 }],
       matches: [
         {
           book: "LO",
@@ -234,8 +234,13 @@ describe("historySearchResponses", () => {
     const query = "x".repeat(130);
     const payload = buildSemanticSearchHistoryResponsePayload({
       selectedIndexId: "DAC",
-      indexes: [{ id: "DAC", label: "Indice DAC", sourceFile: "", sourceRows: 0, model: "", dimensions: 0, embeddingDtype: "" }],
+      indexes: [{ id: "DAC", label: "Indice DAC", sourceFile: "", sourceRows: 0, model: "", dimensions: 0, embeddingDtype: "", suggestedMinScore: 0.65 }],
       query,
+      totalFound: 7,
+      requestedMinScore: 0.25,
+      recommendedMinScore: 0.65,
+      minScore: 0.65,
+      lexicalFilteredCount: 2,
       matches: [
         {
           book: "DAC",
@@ -253,6 +258,6 @@ describe("historySearchResponses", () => {
     expect(payload.markdown).toContain("(**Indice DAC**)");
     expect(payload.markdown).toContain("Indice DAC | Tema semantico | author: Autor X");
     expect(payload.markdown).toContain("score: 0.82");
-    expect(payload.querySummary).toBe(`Base: Indice DAC | Consulta: ${"x".repeat(117)}... | Total: 1`);
+    expect(payload.querySummary).toBe(`Base: Indice DAC | Consulta: ${"x".repeat(117)}... | Total semantic: 7 | Score minimo efetivo: 0.65 | Calibrado da base: 0.65 | Duplicados lexicos filtrados: 2`);
   });
 });

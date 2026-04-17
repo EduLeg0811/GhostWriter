@@ -67,6 +67,7 @@ export const getDefaultDesktopPanelLayout = ({
   };
 };
 export const DEFAULT_BOOK_SEARCH_MAX_RESULTS = 10;
+export const DEFAULT_SEMANTIC_MIN_SCORE = 0.25;
 export const PDF_HEADER_SIGNATURE_RE = /enciclop(?:é|e)dia\s+da\s+conscienciologia/i;
 export const CHAT_EDITOR_CONTEXT_MAX_CHARS = 10000;
 export const MODEL_PRICING_BRL_PER_1M: Record<string, { input: number; cached_input: number; output: number }> = {

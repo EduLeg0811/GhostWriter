@@ -320,12 +320,17 @@ export async function semanticSearchPensatasApp(payload: {
   indexId: string;
   query: string;
   limit?: number;
+  minScore?: number;
 }): Promise<{
   ok: boolean;
   result: {
     indexId: string;
     query: string;
     total: number;
+    requestedMinScore: number;
+    recommendedMinScore: number;
+    minScore: number;
+    lexicalFilteredCount: number;
     matches: Array<{
       book: string;
       index_id: string;
@@ -348,13 +353,19 @@ export async function semanticSearchPensatasApp(payload: {
 export async function searchSemanticOverviewApp(payload: {
   term: string;
   limit?: number;
+  minScore?: number;
 }): Promise<{
   ok: boolean;
   result: {
     term: string;
     limit: number;
+    minScore: number;
+    recommendedMinScoreMin: number;
+    recommendedMinScoreMax: number;
+    usesCalibratedMinScores: boolean;
     totalIndexes: number;
     totalFound: number;
+    lexicalFilteredCount: number;
     groups: Array<{
       indexId: string;
       indexLabel: string;
@@ -401,6 +412,7 @@ export interface SemanticOverviewProgressSnapshot {
   updatedAt?: string | null;
   term?: string;
   limit?: number;
+  minScore?: number | null;
   totalIndexes?: number;
   processedIndexes?: number;
   currentIndexPosition?: number;
@@ -409,6 +421,7 @@ export interface SemanticOverviewProgressSnapshot {
   currentMatches?: number;
   totalMatchesAccumulated?: number;
   totalFound?: number;
+  lexicalFilteredCount?: number;
   groupsCount?: number;
   topScore?: number | null;
   message?: string;
@@ -482,6 +495,7 @@ export async function listSemanticIndexesApp(): Promise<{
       model: string;
       dimensions: number;
       embeddingDtype: string;
+      suggestedMinScore: number;
     }>;
   };
 }> {

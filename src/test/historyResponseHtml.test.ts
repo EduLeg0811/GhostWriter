@@ -389,14 +389,19 @@ describe("historyResponseHtml", () => {
   it("renders semantic overview export html with grouping and highlight toggle", () => {
     const response = buildResponse(
       "app_semantic_overview",
-      "Termo: cosmoetica | Total: 2 | Bases: 2 | Limite global: 2",
+      "Termo: cosmoetica | Total semantic: 2 | Bases analisadas: 2 | Piso global: 0.25 | Faixa calibrada: 0.53-0.60 | Limite global: 2",
       "fallback",
       {
         kind: "semantic_overview",
         term: "cosmoetica",
         limit: 2,
+        minScore: 0.25,
+        recommendedMinScoreMin: 0.53,
+        recommendedMinScoreMax: 0.60,
+        usesCalibratedMinScores: true,
         totalIndexes: 2,
         totalFound: 2,
+        lexicalFilteredCount: 0,
         groups: [
           {
             indexId: "lo",
@@ -459,7 +464,7 @@ describe("historyResponseHtml", () => {
     expect(editorHtml).toContain("QUEST Semantic");
     expect(editorHtml).toContain("<mark");
     expect(copyHtml).toContain("<strong>1.</strong>");
-    expect(copyHtml).toContain("score: 0.99");
+    expect(copyHtml).toContain("0.99");
     expect(appendHtml).toContain("Trecho com cosmoetica expandida");
     expect(appendHtml).not.toContain("score:");
     expect(historyHtmlToPlainText(copyHtml)).toContain("Outro trecho semanticamente afim");

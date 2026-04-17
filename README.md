@@ -63,6 +63,38 @@ npm run dev:server
 npm run dev
 ```
 
+### Recalibrar scores dos indices semanticos
+Sempre que novas bases semanticas forem geradas, atualize os manifests com o score recomendado por base:
+
+```bash
+python backend/python/recalibrate_semantic_manifests.py
+```
+
+Para recalibrar apenas uma base:
+
+```bash
+python backend/python/recalibrate_semantic_manifests.py lo
+```
+
+### Reconstruir indices semanticos com rechunking
+Quando quiser reduzir trechos longos ou mistos, reconstrua o indice semantico com rechunking e novos embeddings:
+
+```bash
+python backend/python/rebuild_semantic_index.py lo
+```
+
+Para reconstruir todas as bases:
+
+```bash
+python backend/python/rebuild_semantic_index.py
+```
+
+Tambem e possivel ajustar o tamanho dos chunks:
+
+```bash
+python backend/python/rebuild_semantic_index.py lo --target-chars 260 --max-chars 380 --min-chars 90
+```
+
 ### Endpoints locais
 - **Frontend**: `http://localhost:5173`
 - **Backend**: `http://localhost:8787`
@@ -173,3 +205,45 @@ npm run preview          # Preview do build
 ## 📄 Licença
 
 Este projeto está sob licença MIT. Consulte o arquivo LICENSE para mais detalhes.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Implementei os dois próximos passos no backend.
+
+A expansão semântica da query entrou em semantic_search_service.py (line 1) com apoio de semantic_query_expansion.py (line 1). Agora a busca gera variantes da consulta para siglas e termos do domínio, como recin, invexis, tenepes, gescon, proexis, compléxis, e combina os embeddings dessas variantes em um vetor final ponderado. Isso melhora recall sem virar busca híbrida.
+
+Para chunking/indexação, criei semantic_chunking.py (line 1), semantic_index_builder.py (line 1) e o script rebuild_semantic_index.py (line 1). O rebuild agora rechunka trechos longos e mistos por fronteiras estruturais e sentenças, adiciona metadados de chunk (chunk_index, chunk_total, source_row), regenera embeddings, recalibra recommended_min_score e grava tudo no índice. Documentei os comandos no README.md (line 1).
+
+Também adicionei testes novos em test_semantic_query_expansion.py (line 1) e test_semantic_chunking.py (line 1), além de manter os testes do serviço semântico atualizados.
+
+Validação executada:
+
+python -m unittest backend.tests.test_semantic_overview_service backend.tests.test_semantic_index_calibration backend.tests.test_semantic_query_expansion backend.tests.test_semantic_chunking
+python -m py_compile backend\functions\semantic_search_service.py backend\functions\semantic_query_expansion.py backend\functions\semantic_chunking.py backend\functions\semantic_index_builder.py backend\python\rebuild_semantic_index.py
+Não rodei o rebuild real das bases neste passo, porque isso regenera embeddings via OpenAI e altera todos os índices. Para aplicar nas bases, o comando é:
+
+python backend/python/rebuild_semantic_index.py lo
+ou, para todas:
+
+python backend/python/rebuild_semantic_index.py

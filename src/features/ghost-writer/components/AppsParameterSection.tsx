@@ -61,6 +61,7 @@ interface AppsParameterSectionProps {
   isLoadingSemanticSearchIndexes: boolean;
   semanticSearchQuery: string;
   semanticSearchMaxResults: number;
+  semanticMinScore: number;
   isRunningSemanticSearch: boolean;
   semanticOverviewTerm: string;
   semanticOverviewMaxResults: number;
@@ -126,6 +127,7 @@ interface AppsParameterSectionProps {
   onSelectedSemanticSearchIndexIdChange: (value: string) => void;
   onSemanticSearchQueryChange: (value: string) => void;
   onSemanticSearchMaxResultsChange: (value: number) => void;
+  onSemanticMinScoreChange: (value: number) => void;
   onRunSemanticSearch: () => void | Promise<void>;
   onSemanticOverviewTermChange: (value: string) => void;
   onSemanticOverviewMaxResultsChange: (value: number) => void;
@@ -198,6 +200,7 @@ const AppsParameterSection = ({
   isLoadingSemanticSearchIndexes,
   semanticSearchQuery,
   semanticSearchMaxResults,
+  semanticMinScore,
   isRunningSemanticSearch,
   semanticOverviewTerm,
   semanticOverviewMaxResults,
@@ -263,6 +266,7 @@ const AppsParameterSection = ({
   onSelectedSemanticSearchIndexIdChange,
   onSemanticSearchQueryChange,
   onSemanticSearchMaxResultsChange,
+  onSemanticMinScoreChange,
   onRunSemanticSearch,
   onSemanticOverviewTermChange,
   onSemanticOverviewMaxResultsChange,
@@ -502,8 +506,10 @@ const AppsParameterSection = ({
               onSelectedIndexChange={onSelectedSemanticSearchIndexIdChange}
               query={sharedSemanticQuery}
               maxResults={sharedSemanticLimit}
+              minScore={semanticMinScore}
               onQueryChange={handleSharedSemanticQueryChange}
               onMaxResultsChange={handleSharedSemanticLimitChange}
+              onMinScoreChange={onSemanticMinScoreChange}
               onRunSearch={() => void onRunSemanticSearch()}
               isRunning={isRunningSemanticSearch}
               showPanelChrome={false}
@@ -517,9 +523,11 @@ const AppsParameterSection = ({
               description="Busca em todas as bases semânticas."
               term={sharedSemanticQuery}
               maxResults={sharedSemanticLimit}
+              minScore={semanticMinScore}
               queryLabel="Query"
               onTermChange={handleSharedSemanticQueryChange}
               onMaxResultsChange={handleSharedSemanticLimitChange}
+              onMinScoreChange={onSemanticMinScoreChange}
               onRunSearch={() => void onRunSemanticOverview()}
               isRunning={isRunningSemanticOverview}
               showPanelChrome={false}

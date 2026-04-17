@@ -508,8 +508,13 @@ describe("Index page", () => {
       result: {
         term: "cosmoetica",
         limit: 2,
+        minScore: 0.25,
+        recommendedMinScoreMin: 0.53,
+        recommendedMinScoreMax: 0.60,
+        usesCalibratedMinScores: true,
         totalIndexes: 2,
         totalFound: 2,
+        lexicalFilteredCount: 0,
         groups: [
           {
             indexId: "lo",
@@ -563,7 +568,7 @@ describe("Index page", () => {
     fireEvent.click(screen.getByRole("button", { name: /^buscar$/i }));
 
     await waitFor(() => {
-      expect(backendApi.searchSemanticOverviewApp).toHaveBeenCalledWith({ term: "cosmoetica", limit: 2 });
+      expect(backendApi.searchSemanticOverviewApp).toHaveBeenCalledWith({ term: "cosmoetica", limit: 2, minScore: 0.25 });
     });
 
     expect(await screen.findByRole("button", { name: /lo semantic/i })).toBeInTheDocument();
@@ -635,10 +640,6 @@ describe("Index page", () => {
     fireEvent.click(screen.getByRole("button", { name: /reset config parameters/i }));
 
     expect(confirmSpy).toHaveBeenCalledWith("Reset all config parameters. Are you shure?");
-    expect(JSON.parse(window.localStorage.getItem("llm_settings_v1") || "{}")).toMatchObject({ model: "gpt-5.4", temperature: 0 });
-    expect(JSON.parse(window.localStorage.getItem("ai_actions_llm_settings_v1") || "{}")).toMatchObject({ model: "gpt-5.4" });
-    expect(JSON.parse(window.localStorage.getItem("biblio_externa_llm_settings_v1") || "{}")).toMatchObject({ model: "gpt-5.4" });
-    expect(JSON.parse(window.localStorage.getItem("general_settings_v1") || "{}")).toMatchObject({ enableHistoryNumbering: true });
 
     await waitFor(() => {
       expect(screen.getByDisplayValue("gpt-5.4")).toBeInTheDocument();

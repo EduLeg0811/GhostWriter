@@ -73,6 +73,7 @@ SEMANTIC_OVERVIEW_PROGRESS: dict[str, Any] = {
     "updatedAt": None,
     "term": "",
     "limit": 0,
+    "minScore": None,
     "totalIndexes": 0,
     "processedIndexes": 0,
     "currentIndexPosition": 0,
@@ -81,6 +82,7 @@ SEMANTIC_OVERVIEW_PROGRESS: dict[str, Any] = {
     "currentMatches": 0,
     "totalMatchesAccumulated": 0,
     "totalFound": 0,
+    "lexicalFilteredCount": 0,
     "groupsCount": 0,
     "topScore": None,
     "message": "",
@@ -298,11 +300,13 @@ class SemanticSearchRequest(BaseModel):
     indexId: str = ""
     query: str = ""
     limit: int = 10
+    minScore: float | None = None
 
 
 class SemanticOverviewSearchRequest(BaseModel):
     term: str = ""
     limit: int = 50
+    minScore: float | None = None
 
 
 class OnlineDictionarySearchRequest(BaseModel):
@@ -1408,6 +1412,7 @@ def api_semantic_search(payload: SemanticSearchRequest) -> dict[str, Any]:
     if not query:
         raise HTTPException(status_code=400, detail="Parametro 'query' e obrigatorio.")
     limit = max(1, min(int(payload.limit or 10), 50))
+    min_score = max(0.0, float(payload.minScore if payload.minScore is not None else 0.25))
 
     try:
         from backend.functions.semantic_search_service import search_semantic_index
@@ -1415,7 +1420,14 @@ def api_semantic_search(payload: SemanticSearchRequest) -> dict[str, Any]:
         from functions.semantic_search_service import search_semantic_index
 
     try:
-        total, matches = search_semantic_index(index_id=index_id, query=query, limit=limit, api_key=get_openai_api_key())
+        total, lexical_filtered_count, recommended_min_score, effective_min_score, matches = search_semantic_index(
+            index_id=index_id,
+            query=query,
+            limit=limit,
+            api_key=get_openai_api_key(),
+            min_score=min_score,
+            exclude_lexical_duplicates=True,
+        )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=500, detail=str(exc))
     except ValueError as exc:
@@ -1429,6 +1441,10 @@ def api_semantic_search(payload: SemanticSearchRequest) -> dict[str, Any]:
             "indexId": index_id,
             "query": query,
             "total": total,
+            "requestedMinScore": min_score,
+            "recommendedMinScore": recommended_min_score,
+            "minScore": effective_min_score,
+            "lexicalFilteredCount": lexical_filtered_count,
             "matches": matches,
         },
     }
@@ -1449,6 +1465,7 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
     if not term:
         raise HTTPException(status_code=400, detail="Parametro 'term' e obrigatorio.")
     limit = max(1, min(int(payload.limit or 50), 100))
+    min_score = max(0.0, float(payload.minScore if payload.minScore is not None else 0.25))
 
     try:
         from backend.functions.semantic_search_service import search_semantic_overview_with_total
@@ -1462,6 +1479,7 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
             "finishedAt": None,
             "term": term,
             "limit": limit,
+            "minScore": min_score,
             "totalIndexes": 0,
             "processedIndexes": 0,
             "currentIndexPosition": 0,
@@ -1470,6 +1488,7 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
             "currentMatches": 0,
             "totalMatchesAccumulated": 0,
             "totalFound": 0,
+            "lexicalFilteredCount": 0,
             "groupsCount": 0,
             "topScore": None,
             "message": "Preparando Semantic Overview.",
@@ -1479,11 +1498,13 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
     )
 
     try:
-        total_found, groups = search_semantic_overview_with_total(
+        total_indexes, total_found, lexical_filtered_count, min_recommended_score, max_recommended_score, groups = search_semantic_overview_with_total(
             term=term,
             limit=limit,
             api_key=get_openai_api_key(),
             progress_callback=_update_semantic_overview_progress,
+            min_score=min_score,
+            exclude_lexical_duplicates=True,
         )
         top_score = max(
             (
@@ -1497,11 +1518,12 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
             {
                 "status": "completed",
                 "finishedAt": _utc_iso_now(),
-                "processedIndexes": len(groups) if groups else int(_snapshot_semantic_overview_progress().get("processedIndexes") or 0),
+                "processedIndexes": total_indexes,
                 "currentMatches": 0,
                 "currentIndexId": "",
                 "currentIndexLabel": "",
                 "totalFound": total_found,
+                "lexicalFilteredCount": lexical_filtered_count,
                 "groupsCount": len(groups),
                 "topScore": top_score,
                 "message": f"Semantic Overview concluido com {total_found} resultados.",
@@ -1510,7 +1532,7 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
                     "matchesFound": total_found,
                     "totalMatchesAccumulated": total_found,
                     "topScore": top_score,
-                    "note": f"{len(groups)} bases retornaram resultados no overview.",
+                    "note": f"{len(groups)} bases entraram no top final; calibracao entre {min_recommended_score:.2f} e {max_recommended_score:.2f}; {lexical_filtered_count} duplicados lexicos filtrados.",
                 },
             }
         )
@@ -1548,8 +1570,13 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
         "result": {
             "term": term,
             "limit": limit,
-            "totalIndexes": len(groups),
+            "minScore": min_score,
+            "recommendedMinScoreMin": min_recommended_score,
+            "recommendedMinScoreMax": max_recommended_score,
+            "usesCalibratedMinScores": True,
+            "totalIndexes": total_indexes,
             "totalFound": total_found,
+            "lexicalFilteredCount": lexical_filtered_count,
             "groups": groups,
         },
     }

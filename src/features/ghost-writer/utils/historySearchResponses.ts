@@ -187,34 +187,51 @@ export const buildSemanticSearchHistoryResponsePayload = (params: {
   selectedIndexId: string;
   indexes: SemanticIndexOption[];
   query: string;
+  totalFound: number;
+  requestedMinScore: number;
+  recommendedMinScore: number;
+  minScore: number;
+  lexicalFilteredCount: number;
   matches: SemanticSearchMatch[];
 }): HistorySearchResponsePayload => {
-  const { selectedIndexId, indexes, query, matches } = params;
+  const { selectedIndexId, indexes, query, matches, totalFound, requestedMinScore, recommendedMinScore, minScore, lexicalFilteredCount } = params;
   const indexLabel = resolveSemanticSearchIndexLabel({ matches, selectedIndexId, indexes });
   const markdown = buildHistorySearchCards(matches, {
     getTextParagraphs: (item) => [(item.text || "").trim()],
     getMetadata: (item) => buildSemanticHistorySearchMetadata(item, indexLabel),
   });
+  const lexicalInfo = lexicalFilteredCount > 0 ? ` | Duplicados lexicos filtrados: ${lexicalFilteredCount}` : "";
+  const calibrationInfo = minScore > requestedMinScore ? ` | Calibrado da base: ${recommendedMinScore.toFixed(2)}` : "";
 
   return {
     markdown,
-    querySummary: `Base: ${indexLabel} | Consulta: ${truncateQuery(query, 120)} | Total: ${matches.length}`,
+    querySummary: `Base: ${indexLabel} | Consulta: ${truncateQuery(query, 120)} | Total semantic: ${totalFound} | Score minimo efetivo: ${minScore.toFixed(2)}${calibrationInfo}${lexicalInfo}`,
   };
 };
 
 export const buildSemanticOverviewHistoryResponsePayload = (params: {
   term: string;
   limit: number;
+  minScore: number;
+  recommendedMinScoreMin: number;
+  recommendedMinScoreMax: number;
+  usesCalibratedMinScores: boolean;
   totalIndexes: number;
   totalFound: number;
+  lexicalFilteredCount: number;
   groups: SemanticOverviewHistoryGroup[];
 }): SemanticOverviewResponsePayload => {
   const payload: SemanticOverviewHistoryPayload = {
     kind: "semantic_overview",
     term: params.term,
     limit: params.limit,
+    minScore: params.minScore,
+    recommendedMinScoreMin: params.recommendedMinScoreMin,
+    recommendedMinScoreMax: params.recommendedMinScoreMax,
+    usesCalibratedMinScores: params.usesCalibratedMinScores,
     totalIndexes: params.totalIndexes,
     totalFound: params.totalFound,
+    lexicalFilteredCount: params.lexicalFilteredCount,
     groups: params.groups,
   };
 
@@ -230,6 +247,6 @@ export const buildSemanticOverviewHistoryResponsePayload = (params: {
   return {
     payload,
     markdown,
-    querySummary: `Termo: ${params.term} | Total: ${params.totalFound} | Bases: ${params.totalIndexes} | Limite global: ${params.limit}`,
+    querySummary: `Termo: ${params.term} | Total semantic: ${params.totalFound} | Bases analisadas: ${params.totalIndexes} | Piso global: ${params.minScore.toFixed(2)} | Faixa calibrada: ${params.recommendedMinScoreMin.toFixed(2)}-${params.recommendedMinScoreMax.toFixed(2)} | Limite global: ${params.limit}${params.lexicalFilteredCount > 0 ? ` | Duplicados lexicos filtrados: ${params.lexicalFilteredCount}` : ""}`,
   };
 };

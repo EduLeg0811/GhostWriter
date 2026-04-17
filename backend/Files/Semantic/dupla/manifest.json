@@ -16,5 +16,20 @@
   "generated_at": "2026-04-06T23:12:19.000Z",
   "normalization": "l2",
   "source_mtime": "2026-04-06T23:11:53.000Z",
-  "source_size": 125995
+  "source_size": 125995,
+  "recommended_min_score": 0.66,
+  "score_calibration": {
+    "version": 1,
+    "method": "random_pair_p99_plus_margin",
+    "margin": 0.02,
+    "seed": 0,
+    "samplePairs": 1562,
+    "rows": 783,
+    "meanSimilarity": 0.37902143597602844,
+    "p95Similarity": 0.5618078708648682,
+    "p99Similarity": 0.630709707736969,
+    "p999Similarity": 0.7448766231536865,
+    "maxSimilarity": 0.7850009799003601,
+    "calibratedAt": "2026-04-16T23:58:19Z"
+  }
 }

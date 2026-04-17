@@ -13,9 +13,11 @@ interface LexicalOverviewPanelProps {
   description: string;
   term: string;
   maxResults: number;
+  minScore?: number;
   queryLabel?: string;
   onTermChange: (value: string) => void;
   onMaxResultsChange: (value: number) => void;
+  onMinScoreChange?: (value: number) => void;
   onRunSearch: () => void;
   isRunning: boolean;
   onClose?: () => void;
@@ -27,9 +29,11 @@ const LexicalOverviewPanel = ({
   description,
   term,
   maxResults,
+  minScore,
   queryLabel = "Termo",
   onTermChange,
   onMaxResultsChange,
+  onMinScoreChange,
   onRunSearch,
   isRunning,
   onClose,
@@ -89,6 +93,29 @@ const LexicalOverviewPanel = ({
             className="h-8 bg-white !text-xs text-right"
           />
         </div>
+
+        {typeof minScore === "number" && onMinScoreChange ? (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Label className="w-16 shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Score Min</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={Number.isFinite(minScore) ? minScore.toFixed(2) : "0.25"}
+                onChange={(event) => {
+                  const normalized = event.target.value.replace(",", ".").trim();
+                  const raw = Number.parseFloat(normalized || "0");
+                  const next = Number.isFinite(raw) ? Math.max(0, Math.min(1, raw)) : 0;
+                  onMinScoreChange(next);
+                }}
+                className="h-8 bg-white !text-xs text-right"
+              />
+            </div>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              Piso global. No Semantic Overview, cada base ainda aplica o score calibrado proprio quando ele for maior.
+            </p>
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-1 gap-2">
           <Button

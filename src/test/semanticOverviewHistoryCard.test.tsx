@@ -6,14 +6,19 @@ import type { AIResponse } from "@/features/ghost-writer/types";
 const buildResponse = (): AIResponse => ({
   id: "semantic-overview-1",
   type: "app_semantic_overview",
-  query: "Termo: cosmoetica | Total: 2 | Bases: 2 | Limite global: 2",
+  query: "Termo: cosmoetica | Total semantic: 2 | Bases analisadas: 2 | Piso global: 0.25 | Faixa calibrada: 0.53-0.60 | Limite global: 2",
   content: "fallback",
   payload: {
     kind: "semantic_overview",
     term: "cosmoetica",
     limit: 2,
+    minScore: 0.25,
+    recommendedMinScoreMin: 0.53,
+    recommendedMinScoreMax: 0.60,
+    usesCalibratedMinScores: true,
     totalIndexes: 2,
     totalFound: 2,
+    lexicalFilteredCount: 0,
     groups: [
       {
         indexId: "lo",

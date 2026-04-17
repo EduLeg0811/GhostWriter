@@ -59,6 +59,7 @@ interface UseGhostWriterAppsParams {
   lexicalMaxResults: number;
   semanticSearchQuery: string;
   semanticSearchMaxResults: number;
+  semanticMinScore: number;
   semanticSearchIndexes: SemanticIndexOption[];
   setSemanticSearchIndexes: Dispatch<SetStateAction<SemanticIndexOption[]>>;
   selectedSemanticSearchIndexId: string;
@@ -187,6 +188,7 @@ const useGhostWriterApps = ({
   lexicalMaxResults,
   semanticSearchQuery,
   semanticSearchMaxResults,
+  semanticMinScore,
   semanticSearchIndexes,
   setSemanticSearchIndexes,
   selectedSemanticSearchIndexId,
@@ -615,7 +617,7 @@ const useGhostWriterApps = ({
     setIsRunningVerbeteFraseEnfatica(true);
     try {
       const { vectorStoreIds, inputFileIds, editorContextTruncated, editorPlainTextContext } = await buildVerbetografiaQueryContext();
-      const query = buildVerbetografiaActionQuery("Frase EnfÃ¡tica", title, specialty);
+      const query = buildVerbetografiaActionQuery("Frase Enfática", title, specialty);
       const messages = applySystemPromptOverride(
         buildVerbeteFraseEnfaticaPrompt(query, editorPlainTextContext, editorContextTruncated, includeEditorContextInLlm),
         getActionSystemPrompt(aiActionSystemPrompts, "app11"),
@@ -780,7 +782,12 @@ const useGhostWriterApps = ({
 
     setIsRunningSemanticSearch(true);
     try {
-      const data = await semanticSearchPensatasApp({ indexId, query, limit: maxResults });
+      const data = await semanticSearchPensatasApp({ indexId, query, limit: maxResults, minScore: semanticMinScore });
+      const totalFound = Number(data.result.total || 0);
+      const requestedMinScore = Number(data.result.requestedMinScore ?? semanticMinScore ?? 0);
+      const recommendedMinScore = Number(data.result.recommendedMinScore ?? semanticMinScore ?? 0);
+      const minScore = Number(data.result.minScore || semanticMinScore || 0);
+      const lexicalFilteredCount = Number(data.result.lexicalFilteredCount || 0);
       const matches = (data.result.matches || []).slice(0, maxResults);
       if (matches.length <= 0) {
         toast.info("Nenhuma pensata semanticamente afim encontrada.");
@@ -790,6 +797,11 @@ const useGhostWriterApps = ({
         selectedIndexId: indexId,
         indexes: semanticSearchIndexes,
         query,
+        totalFound,
+        requestedMinScore,
+        recommendedMinScore,
+        minScore,
+        lexicalFilteredCount,
         matches,
       });
       addResponse("app_semantic_search", payload.querySummary, payload.markdown);
@@ -799,7 +811,7 @@ const useGhostWriterApps = ({
     } finally {
       setIsRunningSemanticSearch(false);
     }
-  }, [addResponse, selectedSemanticSearchIndexId, semanticSearchIndexes, semanticSearchMaxResults, semanticSearchQuery, setIsRunningSemanticSearch, toast]);
+  }, [addResponse, selectedSemanticSearchIndexId, semanticMinScore, semanticSearchIndexes, semanticSearchMaxResults, semanticSearchQuery, setIsRunningSemanticSearch, toast]);
 
   const handleRunSemanticOverview = useCallback(async () => {
     const term = semanticOverviewTerm.trim();
@@ -811,9 +823,14 @@ const useGhostWriterApps = ({
 
     setIsRunningSemanticOverview(true);
     try {
-      const data = await searchSemanticOverviewApp({ term, limit });
+      const data = await searchSemanticOverviewApp({ term, limit, minScore: semanticMinScore });
       const totalIndexes = Number(data.result.totalIndexes || 0);
       const totalFound = Number(data.result.totalFound || 0);
+      const minScore = Number(data.result.minScore || semanticMinScore || 0);
+      const recommendedMinScoreMin = Number(data.result.recommendedMinScoreMin || minScore || 0);
+      const recommendedMinScoreMax = Number(data.result.recommendedMinScoreMax || minScore || 0);
+      const usesCalibratedMinScores = Boolean(data.result.usesCalibratedMinScores);
+      const lexicalFilteredCount = Number(data.result.lexicalFilteredCount || 0);
       const groups = data.result.groups || [];
       if (groups.length <= 0 || totalFound <= 0) {
         toast.info("Nenhum resultado semanticamente afim encontrado.");
@@ -822,8 +839,13 @@ const useGhostWriterApps = ({
       const payload = buildSemanticOverviewHistoryResponsePayload({
         term,
         limit,
+        minScore,
+        recommendedMinScoreMin,
+        recommendedMinScoreMax,
+        usesCalibratedMinScores,
         totalIndexes,
         totalFound,
+        lexicalFilteredCount,
         groups,
       });
       addResponse("app_semantic_overview", payload.querySummary, payload.markdown, payload.payload);
@@ -833,7 +855,7 @@ const useGhostWriterApps = ({
     } finally {
       setIsRunningSemanticOverview(false);
     }
-  }, [addResponse, semanticOverviewMaxResults, semanticOverviewTerm, setIsRunningSemanticOverview, toast]);
+  }, [addResponse, semanticMinScore, semanticOverviewMaxResults, semanticOverviewTerm, setIsRunningSemanticOverview, toast]);
 
   const handleRunVerbeteSearch = useCallback(async () => {
     const author = verbeteSearchAuthor.trim();

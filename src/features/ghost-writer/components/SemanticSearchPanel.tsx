@@ -19,8 +19,10 @@ interface SemanticSearchPanelProps {
   onSelectedIndexChange: (value: string) => void;
   query: string;
   maxResults: number;
+  minScore: number;
   onQueryChange: (value: string) => void;
   onMaxResultsChange: (value: number) => void;
+  onMinScoreChange: (value: number) => void;
   onRunSearch: () => void;
   isRunning: boolean;
   onClose?: () => void;
@@ -36,8 +38,10 @@ const SemanticSearchPanel = ({
   onSelectedIndexChange,
   query,
   maxResults,
+  minScore,
   onQueryChange,
   onMaxResultsChange,
+  onMinScoreChange,
   onRunSearch,
   isRunning,
   onClose,
@@ -99,6 +103,22 @@ const SemanticSearchPanel = ({
           />
         </div>
 
+        <div className="flex items-center gap-2">
+          <Label className="w-16 shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Score Min</Label>
+          <Input
+            type="text"
+            inputMode="decimal"
+            value={Number.isFinite(minScore) ? minScore.toFixed(2) : "0.25"}
+            onChange={(e) => {
+              const normalized = e.target.value.replace(",", ".").trim();
+              const raw = Number.parseFloat(normalized || "0");
+              const next = Number.isFinite(raw) ? Math.max(0, Math.min(1, raw)) : 0;
+              onMinScoreChange(next);
+            }}
+            className="h-8 bg-white !text-xs text-right"
+          />
+        </div>
+
         <div className="space-y-2">
           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Base Vetorial</Label>
           <Select value={selectedIndexId} onValueChange={onSelectedIndexChange} disabled={isLoadingIndexes || availableIndexes.length <= 0}>
@@ -114,9 +134,14 @@ const SemanticSearchPanel = ({
             </SelectContent>
           </Select>
           {selectedIndex ? (
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
-              {selectedIndex.sourceRows} itens | {selectedIndex.model} | {selectedIndex.dimensions} dims | {selectedIndex.embeddingDtype}
-            </p>
+            <div className="space-y-1">
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                {selectedIndex.sourceRows} itens | {selectedIndex.model} | {selectedIndex.dimensions} dims | {selectedIndex.embeddingDtype}
+              </p>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Score recomendado para esta base: {selectedIndex.suggestedMinScore.toFixed(2)}
+              </p>
+            </div>
           ) : (
             <p className="text-[11px] leading-relaxed text-muted-foreground">
               {isLoadingIndexes ? "Carregando indices semanticos disponiveis." : "Nenhum indice semantico disponivel."}

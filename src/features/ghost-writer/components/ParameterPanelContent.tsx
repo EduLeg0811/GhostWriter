@@ -92,6 +92,7 @@ interface ParameterPanelContentProps {
   isLoadingSemanticSearchIndexes: boolean;
   semanticSearchQuery: string;
   semanticSearchMaxResults: number;
+  semanticMinScore: number;
   isRunningSemanticSearch: boolean;
   semanticOverviewTerm: string;
   semanticOverviewMaxResults: number;
@@ -188,6 +189,7 @@ interface ParameterPanelContentProps {
   onSelectedSemanticSearchIndexIdChange: (value: string) => void;
   onSemanticSearchQueryChange: (value: string) => void;
   onSemanticSearchMaxResultsChange: (value: number) => void;
+  onSemanticMinScoreChange: (value: number) => void;
   onRunSemanticSearch: () => void | Promise<void>;
   onSemanticOverviewTermChange: (value: string) => void;
   onSemanticOverviewMaxResultsChange: (value: number) => void;
@@ -288,6 +290,7 @@ const ParameterPanelContent = ({
   isLoadingSemanticSearchIndexes,
   semanticSearchQuery,
   semanticSearchMaxResults,
+  semanticMinScore,
   isRunningSemanticSearch,
   semanticOverviewTerm,
   semanticOverviewMaxResults,
@@ -384,6 +387,7 @@ const ParameterPanelContent = ({
   onSelectedSemanticSearchIndexIdChange,
   onSemanticSearchQueryChange,
   onSemanticSearchMaxResultsChange,
+  onSemanticMinScoreChange,
   onRunSemanticSearch,
   onSemanticOverviewTermChange,
   onSemanticOverviewMaxResultsChange,
@@ -589,6 +593,7 @@ const ParameterPanelContent = ({
             isLoadingSemanticSearchIndexes={isLoadingSemanticSearchIndexes}
             semanticSearchQuery={semanticSearchQuery}
             semanticSearchMaxResults={semanticSearchMaxResults}
+            semanticMinScore={semanticMinScore}
             isRunningSemanticSearch={isRunningSemanticSearch}
             semanticOverviewTerm={semanticOverviewTerm}
             semanticOverviewMaxResults={semanticOverviewMaxResults}
@@ -654,6 +659,7 @@ const ParameterPanelContent = ({
             onSelectedSemanticSearchIndexIdChange={onSelectedSemanticSearchIndexIdChange}
             onSemanticSearchQueryChange={onSemanticSearchQueryChange}
             onSemanticSearchMaxResultsChange={onSemanticSearchMaxResultsChange}
+            onSemanticMinScoreChange={onSemanticMinScoreChange}
             onRunSemanticSearch={onRunSemanticSearch}
             onSemanticOverviewTermChange={onSemanticOverviewTermChange}
             onSemanticOverviewMaxResultsChange={onSemanticOverviewMaxResultsChange}

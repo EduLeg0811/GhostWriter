@@ -26,6 +26,7 @@ export type SemanticIndexOption = {
   model: string;
   dimensions: number;
   embeddingDtype: string;
+  suggestedMinScore: number;
 };
 export type LlmLogEntry = {
   id: string;
@@ -88,8 +89,13 @@ export interface SemanticOverviewHistoryPayload {
   kind: "semantic_overview";
   term: string;
   limit: number;
+  minScore: number;
+  recommendedMinScoreMin: number;
+  recommendedMinScoreMax: number;
+  usesCalibratedMinScores: boolean;
   totalIndexes: number;
   totalFound: number;
+  lexicalFilteredCount: number;
   groups: SemanticOverviewHistoryGroup[];
 }
 

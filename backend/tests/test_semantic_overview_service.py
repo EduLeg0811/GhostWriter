@@ -25,13 +25,123 @@ class SemanticOverviewServiceTests(unittest.TestCase):
                     "metadata": {"title": "A1"},
                 },
             ],
+            "search_texts": ("alpha em markdown",),
             "embeddings": np.array([[0.92, 0.0]], dtype=np.float32),
         }
 
-        total, matches = search_semantic_index("alpha", "cosmoetica", limit=3, api_key="key")
+        total, lexical_filtered_count, recommended_min_score, effective_min_score, matches = search_semantic_index(
+            "alpha",
+            "cosmoetica",
+            limit=3,
+            api_key="key",
+            min_score=0.0,
+        )
 
         self.assertEqual(total, 1)
+        self.assertEqual(lexical_filtered_count, 0)
+        self.assertEqual(recommended_min_score, 0.25)
+        self.assertEqual(effective_min_score, 0.25)
         self.assertEqual(matches[0]["text"], "**Alpha** em *Markdown*")
+
+    @patch("backend.functions.semantic_search_service._load_semantic_index")
+    @patch("backend.functions.semantic_search_service._get_semantic_query_vector")
+    def test_semantic_search_filters_lexical_duplicates_and_min_score(
+        self,
+        mock_get_query_vector,
+        mock_load_index,
+    ) -> None:
+        mock_get_query_vector.return_value = np.array([1.0, 0.0], dtype=np.float32)
+        mock_load_index.return_value = {
+            "manifest": {"index_label": "Alpha", "model": "m1"},
+            "metadata": [
+                {
+                    "row": 1,
+                    "text": "Cosmoetica aplicada no dia a dia",
+                    "text_plain": "Cosmoetica aplicada no dia a dia",
+                    "metadata": {"title": "A1"},
+                },
+                {
+                    "row": 2,
+                    "text": "Maturidade assistencial ampliada",
+                    "text_plain": "Maturidade assistencial ampliada",
+                    "metadata": {"title": "A2"},
+                },
+                {
+                    "row": 3,
+                    "text": "Trecho de score baixo",
+                    "text_plain": "Trecho de score baixo",
+                    "metadata": {"title": "A3"},
+                },
+            ],
+            "search_texts": (
+                "cosmoetica aplicada no dia a dia",
+                "maturidade assistencial ampliada",
+                "trecho de score baixo",
+            ),
+            "embeddings": np.array([[0.93, 0.0], [0.74, 0.0], [0.18, 0.0]], dtype=np.float32),
+        }
+
+        total, lexical_filtered_count, recommended_min_score, effective_min_score, matches = search_semantic_index(
+            "alpha",
+            "cosmoetica",
+            limit=3,
+            api_key="key",
+            min_score=0.3,
+        )
+
+        self.assertEqual(total, 1)
+        self.assertEqual(lexical_filtered_count, 1)
+        self.assertEqual(recommended_min_score, 0.25)
+        self.assertEqual(effective_min_score, 0.3)
+        self.assertEqual([match["row"] for match in matches], [2])
+
+    @patch("backend.functions.semantic_search_service._load_semantic_index")
+    @patch("backend.functions.semantic_search_service._get_semantic_query_vector")
+    def test_semantic_search_reranks_candidate_pool_by_query_alignment(
+        self,
+        mock_get_query_vector,
+        mock_load_index,
+    ) -> None:
+        mock_get_query_vector.return_value = np.array([1.0, 0.0], dtype=np.float32)
+        mock_load_index.return_value = {
+            "manifest": {"index_label": "Alpha", "model": "m1"},
+            "metadata": [
+                {
+                    "row": 1,
+                    "text": "Trecho generico sobre assistencia e convivencia.",
+                    "text_plain": "Trecho generico sobre assistencia e convivencia.",
+                    "metadata": {"title": "Panorama geral"},
+                },
+                {
+                    "row": 2,
+                    "text": "Maturidade assistencial aplicada no cotidiano.",
+                    "text_plain": "Maturidade assistencial aplicada no cotidiano.",
+                    "metadata": {"title": "Maturidade assistencial"},
+                },
+            ],
+            "search_texts": (
+                "trecho generico sobre assistencia e convivencia",
+                "maturidade assistencial aplicada no cotidiano",
+            ),
+            "embeddings": np.array([[0.91, 0.0], [0.89, 0.0]], dtype=np.float32),
+        }
+
+        total, lexical_filtered_count, recommended_min_score, effective_min_score, matches = search_semantic_index(
+            "alpha",
+            "maturidade assistencial",
+            limit=1,
+            api_key="key",
+            min_score=0.0,
+            exclude_lexical_duplicates=False,
+        )
+
+        self.assertEqual(total, 2)
+        self.assertEqual(lexical_filtered_count, 0)
+        self.assertEqual(recommended_min_score, 0.25)
+        self.assertEqual(effective_min_score, 0.25)
+        self.assertEqual([match["row"] for match in matches], [2])
+        self.assertGreater(matches[0]["score"], matches[0]["semantic_score"])
+        self.assertGreater(matches[0]["alignment_score"], 0.0)
 
     @patch("backend.functions.semantic_search_service.list_semantic_indexes")
     @patch("backend.functions.semantic_search_service._load_semantic_index")
@@ -57,6 +167,7 @@ class SemanticOverviewServiceTests(unittest.TestCase):
                     {"row": 1, "text": "alpha-1", "metadata": {"title": "A1"}},
                     {"row": 2, "text": "alpha-2", "metadata": {"title": "A2"}},
                 ],
+                "search_texts": ("trecho alpha um", "trecho alpha dois"),
                 "embeddings": np.array([[0.92, 0.0], [0.51, 0.0]], dtype=np.float32),
             },
             {
@@ -65,18 +176,28 @@ class SemanticOverviewServiceTests(unittest.TestCase):
                     {"row": 10, "text": "beta-1", "metadata": {"title": "B1"}},
                     {"row": 11, "text": "beta-2", "metadata": {"title": "B2"}},
                 ],
+                "search_texts": ("trecho beta um", "trecho beta dois"),
                 "embeddings": np.array([[0.88, 0.0], [0.77, 0.0]], dtype=np.float32),
             },
         ]
 
-        total, groups = search_semantic_overview_with_total("cosmoetica", limit=3, api_key="key")
+        total_indexes, total, lexical_filtered_count, min_recommended_score, max_recommended_score, groups = search_semantic_overview_with_total(
+            "cosmoetica",
+            limit=3,
+            api_key="key",
+            min_score=0.0,
+        )
 
-        self.assertEqual(total, 3)
+        self.assertEqual(total_indexes, 2)
+        self.assertEqual(total, 4)
+        self.assertEqual(lexical_filtered_count, 0)
+        self.assertEqual(min_recommended_score, 0.25)
+        self.assertEqual(max_recommended_score, 0.25)
         self.assertEqual([group["indexId"] for group in groups], ["alpha", "beta"])
         self.assertEqual(groups[0]["matches"][0]["text"], "alpha-1")
         self.assertEqual(groups[1]["matches"][0]["text"], "beta-1")
         self.assertEqual(groups[1]["matches"][1]["text"], "beta-2")
-        self.assertEqual(groups[0]["totalFound"], 1)
+        self.assertEqual(groups[0]["totalFound"], 2)
         self.assertEqual(groups[1]["totalFound"], 2)
 
     @patch("backend.functions.semantic_search_service.list_semantic_indexes")
@@ -100,18 +221,29 @@ class SemanticOverviewServiceTests(unittest.TestCase):
             {
                 "manifest": {"index_label": "Alpha", "model": "shared"},
                 "metadata": [{"row": 1, "text": "alpha", "metadata": {"title": "A"}}],
+                "search_texts": ("alpha",),
                 "embeddings": np.array([[0.9, 0.0]], dtype=np.float32),
             },
             {
                 "manifest": {"index_label": "Beta", "model": "shared"},
                 "metadata": [{"row": 2, "text": "beta", "metadata": {"title": "B"}}],
+                "search_texts": ("beta",),
                 "embeddings": np.array([[0.8, 0.0]], dtype=np.float32),
             },
         ]
 
-        total, groups = search_semantic_overview_with_total("holopensene", limit=2, api_key="key")
+        total_indexes, total, lexical_filtered_count, min_recommended_score, max_recommended_score, groups = search_semantic_overview_with_total(
+            "holopensene",
+            limit=2,
+            api_key="key",
+            min_score=0.0,
+        )
 
+        self.assertEqual(total_indexes, 2)
         self.assertEqual(total, 2)
+        self.assertEqual(lexical_filtered_count, 0)
+        self.assertEqual(min_recommended_score, 0.25)
+        self.assertEqual(max_recommended_score, 0.25)
         self.assertEqual(len(groups), 2)
         self.assertEqual(mock_get_query_vector.call_count, 2)
         first_cache = mock_get_query_vector.call_args_list[0].kwargs["cache"]
@@ -138,13 +270,23 @@ class SemanticOverviewServiceTests(unittest.TestCase):
             {
                 "manifest": {"index_label": "Valid", "model": "m1"},
                 "metadata": [{"row": 3, "text": "valid", "metadata": {"title": "V"}}],
+                "search_texts": ("valid",),
                 "embeddings": np.array([[0.85, 0.0]], dtype=np.float32),
             },
         ]
 
-        total, groups = search_semantic_overview_with_total("recin", limit=5, api_key="key")
+        total_indexes, total, lexical_filtered_count, min_recommended_score, max_recommended_score, groups = search_semantic_overview_with_total(
+            "recin",
+            limit=5,
+            api_key="key",
+            min_score=0.0,
+        )
 
+        self.assertEqual(total_indexes, 2)
         self.assertEqual(total, 1)
+        self.assertEqual(lexical_filtered_count, 0)
+        self.assertEqual(min_recommended_score, 0.25)
+        self.assertEqual(max_recommended_score, 0.25)
         self.assertEqual(len(groups), 1)
         self.assertEqual(groups[0]["indexId"], "valid")
 
@@ -152,9 +294,13 @@ class SemanticOverviewServiceTests(unittest.TestCase):
     def test_semantic_overview_returns_empty_when_no_indexes(self, mock_list_indexes) -> None:
         mock_list_indexes.return_value = []
 
-        total, groups = search_semantic_overview_with_total("recin", limit=5, api_key="key")
+        total_indexes, total, lexical_filtered_count, min_recommended_score, max_recommended_score, groups = search_semantic_overview_with_total("recin", limit=5, api_key="key")
 
+        self.assertEqual(total_indexes, 0)
         self.assertEqual(total, 0)
+        self.assertEqual(lexical_filtered_count, 0)
+        self.assertEqual(min_recommended_score, 0.25)
+        self.assertEqual(max_recommended_score, 0.25)
         self.assertEqual(groups, [])
 
 
