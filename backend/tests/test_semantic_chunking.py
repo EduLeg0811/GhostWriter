@@ -17,6 +17,19 @@ class SemanticChunkingTests(unittest.TestCase):
         self.assertGreater(len(chunks), 1)
         self.assertTrue(all(len(chunk) <= 160 for chunk in chunks))
 
+    def test_chunk_semantic_text_splits_structural_bullets(self) -> None:
+        text = (
+            "Invexis aplicada na juventude com autodisciplina tecnica e foco proexologico. "
+            "• Recin sustentada por autocriticidade e mudanca intraconsciencial continua. "
+            "· Tenepes diaria com regularidade energetica e interassistencialidade."
+        )
+
+        chunks = chunk_semantic_text(text, target_chars=70, max_chars=110, min_chars=25)
+
+        self.assertGreaterEqual(len(chunks), 2)
+        self.assertTrue(any("Recin sustentada" in chunk for chunk in chunks))
+        self.assertTrue(any("Tenepes diaria" in chunk for chunk in chunks))
+
     def test_rechunk_semantic_rows_adds_chunk_metadata_for_split_rows(self) -> None:
         rows = [
             {

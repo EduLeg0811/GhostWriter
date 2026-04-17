@@ -8,7 +8,7 @@ DEFAULT_CHUNK_TARGET_CHARS = 280
 DEFAULT_CHUNK_MAX_CHARS = 420
 DEFAULT_CHUNK_MIN_CHARS = 110
 SPLIT_SENTENCE_RE = re.compile(r"(?<=[\.\!\?\:\;])\s+")
-SPLIT_STRUCTURAL_RE = re.compile(r"\n{2,}|\s+\|\s+|\s+[•·]\s+")
+SPLIT_STRUCTURAL_RE = re.compile(r"\n{2,}|\s+\|\s+|\s+[\u2022\u00B7]\s+")
 
 
 def normalize_chunk_text(text: str) -> str:
