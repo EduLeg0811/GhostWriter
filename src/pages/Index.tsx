@@ -101,7 +101,7 @@ const Index = () => {
     biblioExternaYear, setBiblioExternaYear, biblioExternaJournal, setBiblioExternaJournal, biblioExternaPublisher, setBiblioExternaPublisher, biblioExternaIdentifier,
     setBiblioExternaIdentifier, biblioExternaExtra, setBiblioExternaExtra, biblioExternaFreeText, setBiblioExternaFreeText, isRunningBiblioExterna, setIsRunningBiblioExterna,
     lexicalBooks, setLexicalBooks, selectedLexicalBook, setSelectedLexicalBook, lexicalTerm, setLexicalTerm, lexicalMaxResults, setLexicalMaxResults, isRunningLexicalSearch,
-    setIsRunningLexicalSearch, isRunningLexicalOverview, setIsRunningLexicalOverview, semanticSearchQuery, setSemanticSearchQuery, semanticSearchMaxResults, setSemanticSearchMaxResults, semanticMinScore, setSemanticMinScore, semanticSearchIndexes, setSemanticSearchIndexes,
+    setIsRunningLexicalSearch, isRunningLexicalOverview, setIsRunningLexicalOverview, semanticSearchQuery, setSemanticSearchQuery, semanticSearchMaxResults, setSemanticSearchMaxResults, semanticMinScore, setSemanticMinScore, semanticUseRagContext, setSemanticUseRagContext, semanticSearchLastRagContext, setSemanticSearchLastRagContext, semanticOverviewLastRagContext, setSemanticOverviewLastRagContext, semanticSearchIndexes, setSemanticSearchIndexes,
     selectedSemanticSearchIndexId, setSelectedSemanticSearchIndexId, isLoadingSemanticSearchIndexes, setIsLoadingSemanticSearchIndexes, isRunningSemanticSearch, setIsRunningSemanticSearch,
     semanticOverviewTerm, setSemanticOverviewTerm, semanticOverviewMaxResults, setSemanticOverviewMaxResults, isRunningSemanticOverview, setIsRunningSemanticOverview,
     verbeteSearchAuthor, setVerbeteSearchAuthor, verbeteSearchTitle, setVerbeteSearchTitle, verbeteSearchArea, setVerbeteSearchArea, verbeteSearchText, setVerbeteSearchText,
@@ -271,6 +271,7 @@ const Index = () => {
     setAppPanelScope,
     setParameterPanelTarget,
     aiActionsLlmConfigRef,
+    aiActionsSelectedVectorStoreIds,
     uploadedChatFiles,
     getEditorApi,
     backendNotReadyMessage,
@@ -620,6 +621,9 @@ const Index = () => {
         semanticSearchQuery={semanticSearchQuery}
         semanticSearchMaxResults={semanticSearchMaxResults}
         semanticMinScore={semanticMinScore}
+        semanticUseRagContext={semanticUseRagContext}
+        semanticSearchLastRagContext={semanticSearchLastRagContext}
+        semanticOverviewLastRagContext={semanticOverviewLastRagContext}
         isRunningSemanticSearch={isRunningSemanticSearch}
         semanticOverviewTerm={semanticOverviewTerm}
         semanticOverviewMaxResults={semanticOverviewMaxResults}
@@ -734,6 +738,7 @@ const Index = () => {
         onSemanticSearchQueryChange={setSemanticSearchQuery}
         onSemanticSearchMaxResultsChange={setSemanticSearchMaxResults}
         onSemanticMinScoreChange={setSemanticMinScore}
+        onSemanticUseRagContextChange={setSemanticUseRagContext}
         onRunSemanticSearch={handleRunSemanticSearch}
         onSemanticOverviewTermChange={setSemanticOverviewTerm}
         onSemanticOverviewMaxResultsChange={setSemanticOverviewMaxResults}

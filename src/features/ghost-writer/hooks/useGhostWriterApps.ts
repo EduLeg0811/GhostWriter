@@ -7,7 +7,7 @@ import { applySystemPromptOverride, getActionSystemPrompt, type ActionSystemProm
 import { NO_VECTOR_STORE_ID } from "@/features/ghost-writer/config/constants";
 import { normalizeIdList } from "@/features/ghost-writer/config/metadata";
 import { DEFAULT_BOOK_SOURCE_ID } from "@/features/ghost-writer/config/options";
-import type { AIResponse, AppActionId, AppPanelScope, LlmLogEntry, ParameterPanelTarget, RefBookMode, SemanticIndexOption } from "@/features/ghost-writer/types";
+import type { AIResponse, AppActionId, AppPanelScope, LlmLogEntry, ParameterPanelTarget, RefBookMode, SemanticIndexOption, SemanticSearchRagContext } from "@/features/ghost-writer/types";
 import { buildLexicalOverviewHistoryResponsePayload, buildLexicalSearchHistoryResponsePayload, buildSemanticOverviewHistoryResponsePayload, buildSemanticSearchHistoryResponsePayload } from "@/features/ghost-writer/utils/historySearchResponses";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 
@@ -60,6 +60,9 @@ interface UseGhostWriterAppsParams {
   semanticSearchQuery: string;
   semanticSearchMaxResults: number;
   semanticMinScore: number;
+  semanticUseRagContext: boolean;
+  setSemanticSearchLastRagContext: Dispatch<SetStateAction<SemanticSearchRagContext | null>>;
+  setSemanticOverviewLastRagContext: Dispatch<SetStateAction<SemanticSearchRagContext | null>>;
   semanticSearchIndexes: SemanticIndexOption[];
   setSemanticSearchIndexes: Dispatch<SetStateAction<SemanticIndexOption[]>>;
   selectedSemanticSearchIndexId: string;
@@ -112,6 +115,7 @@ interface UseGhostWriterAppsParams {
   setAppPanelScope: Dispatch<SetStateAction<AppPanelScope | null>>;
   setParameterPanelTarget: Dispatch<SetStateAction<ParameterPanelTarget>>;
   aiActionsLlmConfigRef: MutableRefObject<AiActionsLlmConfig>;
+  aiActionsSelectedVectorStoreIds: string[];
   uploadedChatFiles: Array<{ id: string }>;
   getEditorApi: () => Promise<HtmlEditorControlApi | null>;
   backendNotReadyMessage: () => string;
@@ -189,6 +193,9 @@ const useGhostWriterApps = ({
   semanticSearchQuery,
   semanticSearchMaxResults,
   semanticMinScore,
+  semanticUseRagContext,
+  setSemanticSearchLastRagContext,
+  setSemanticOverviewLastRagContext,
   semanticSearchIndexes,
   setSemanticSearchIndexes,
   selectedSemanticSearchIndexId,
@@ -241,6 +248,7 @@ const useGhostWriterApps = ({
   setAppPanelScope,
   setParameterPanelTarget,
   aiActionsLlmConfigRef,
+  aiActionsSelectedVectorStoreIds,
   uploadedChatFiles,
   getEditorApi,
   backendNotReadyMessage,
@@ -782,12 +790,21 @@ const useGhostWriterApps = ({
 
     setIsRunningSemanticSearch(true);
     try {
-      const data = await semanticSearchPensatasApp({ indexId, query, limit: maxResults, minScore: semanticMinScore });
+      const vectorStoreIds = normalizeIdList(aiActionsSelectedVectorStoreIds).filter((id) => id.startsWith("vs_"));
+      const data = await semanticSearchPensatasApp({
+        indexId,
+        query,
+        limit: maxResults,
+        minScore: semanticMinScore,
+        useRagContext: semanticUseRagContext,
+        vectorStoreIds,
+      });
       const totalFound = Number(data.result.total || 0);
       const requestedMinScore = Number(data.result.requestedMinScore ?? semanticMinScore ?? 0);
       const recommendedMinScore = Number(data.result.recommendedMinScore ?? semanticMinScore ?? 0);
       const minScore = Number(data.result.minScore || semanticMinScore || 0);
       const lexicalFilteredCount = Number(data.result.lexicalFilteredCount || 0);
+      setSemanticSearchLastRagContext(data.result.ragContext ?? null);
       const matches = (data.result.matches || []).slice(0, maxResults);
       if (matches.length <= 0) {
         toast.info("Nenhuma pensata semanticamente afim encontrada.");
@@ -811,7 +828,7 @@ const useGhostWriterApps = ({
     } finally {
       setIsRunningSemanticSearch(false);
     }
-  }, [addResponse, selectedSemanticSearchIndexId, semanticMinScore, semanticSearchIndexes, semanticSearchMaxResults, semanticSearchQuery, setIsRunningSemanticSearch, toast]);
+  }, [addResponse, aiActionsSelectedVectorStoreIds, selectedSemanticSearchIndexId, semanticMinScore, semanticSearchIndexes, semanticSearchMaxResults, semanticSearchQuery, semanticUseRagContext, setIsRunningSemanticSearch, setSemanticSearchLastRagContext, toast]);
 
   const handleRunSemanticOverview = useCallback(async () => {
     const term = semanticOverviewTerm.trim();
@@ -823,7 +840,14 @@ const useGhostWriterApps = ({
 
     setIsRunningSemanticOverview(true);
     try {
-      const data = await searchSemanticOverviewApp({ term, limit, minScore: semanticMinScore });
+      const vectorStoreIds = normalizeIdList(aiActionsSelectedVectorStoreIds).filter((id) => id.startsWith("vs_"));
+      const data = await searchSemanticOverviewApp({
+        term,
+        limit,
+        minScore: semanticMinScore,
+        useRagContext: semanticUseRagContext,
+        vectorStoreIds,
+      });
       const totalIndexes = Number(data.result.totalIndexes || 0);
       const totalFound = Number(data.result.totalFound || 0);
       const minScore = Number(data.result.minScore || semanticMinScore || 0);
@@ -831,6 +855,7 @@ const useGhostWriterApps = ({
       const recommendedMinScoreMax = Number(data.result.recommendedMinScoreMax || minScore || 0);
       const usesCalibratedMinScores = Boolean(data.result.usesCalibratedMinScores);
       const lexicalFilteredCount = Number(data.result.lexicalFilteredCount || 0);
+      setSemanticOverviewLastRagContext(data.result.ragContext ?? null);
       const groups = data.result.groups || [];
       if (groups.length <= 0 || totalFound <= 0) {
         toast.info("Nenhum resultado semanticamente afim encontrado.");
@@ -855,7 +880,7 @@ const useGhostWriterApps = ({
     } finally {
       setIsRunningSemanticOverview(false);
     }
-  }, [addResponse, semanticMinScore, semanticOverviewMaxResults, semanticOverviewTerm, setIsRunningSemanticOverview, toast]);
+  }, [addResponse, aiActionsSelectedVectorStoreIds, semanticMinScore, semanticOverviewMaxResults, semanticOverviewTerm, semanticUseRagContext, setIsRunningSemanticOverview, setSemanticOverviewLastRagContext, toast]);
 
   const handleRunVerbeteSearch = useCallback(async () => {
     const author = verbeteSearchAuthor.trim();

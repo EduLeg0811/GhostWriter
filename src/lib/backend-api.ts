@@ -321,6 +321,8 @@ export async function semanticSearchPensatasApp(payload: {
   query: string;
   limit?: number;
   minScore?: number;
+  useRagContext?: boolean;
+  vectorStoreIds?: string[];
 }): Promise<{
   ok: boolean;
   result: {
@@ -331,6 +333,20 @@ export async function semanticSearchPensatasApp(payload: {
     recommendedMinScore: number;
     minScore: number;
     lexicalFilteredCount: number;
+    ragContext: {
+      usedRagContext: boolean;
+      sourceQuery?: string;
+      error?: string;
+      vectorStoreIds: string[];
+      keyTerms: string[];
+      definitions: Array<{
+        term: string;
+        meaning: string;
+      }>;
+      relatedTerms: string[];
+      disambiguatedQuery: string;
+      references: string[];
+    };
     matches: Array<{
       book: string;
       index_id: string;
@@ -339,6 +355,8 @@ export async function semanticSearchPensatasApp(payload: {
       text: string;
       metadata: Record<string, unknown>;
       score: number;
+      semantic_score?: number;
+      alignment_score?: number;
     }>;
   };
 }> {
@@ -354,6 +372,8 @@ export async function searchSemanticOverviewApp(payload: {
   term: string;
   limit?: number;
   minScore?: number;
+  useRagContext?: boolean;
+  vectorStoreIds?: string[];
 }): Promise<{
   ok: boolean;
   result: {
@@ -363,6 +383,20 @@ export async function searchSemanticOverviewApp(payload: {
     recommendedMinScoreMin: number;
     recommendedMinScoreMax: number;
     usesCalibratedMinScores: boolean;
+    ragContext: {
+      usedRagContext: boolean;
+      sourceQuery?: string;
+      error?: string;
+      vectorStoreIds: string[];
+      keyTerms: string[];
+      definitions: Array<{
+        term: string;
+        meaning: string;
+      }>;
+      relatedTerms: string[];
+      disambiguatedQuery: string;
+      references: string[];
+    };
     totalIndexes: number;
     totalFound: number;
     lexicalFilteredCount: number;

@@ -28,6 +28,21 @@ export type SemanticIndexOption = {
   embeddingDtype: string;
   suggestedMinScore: number;
 };
+export type SemanticSearchRagDefinition = {
+  term: string;
+  meaning: string;
+};
+export type SemanticSearchRagContext = {
+  usedRagContext: boolean;
+  sourceQuery?: string;
+  error?: string;
+  vectorStoreIds: string[];
+  keyTerms: string[];
+  definitions: SemanticSearchRagDefinition[];
+  relatedTerms: string[];
+  disambiguatedQuery: string;
+  references: string[];
+};
 export type LlmLogEntry = {
   id: string;
   at: string;

@@ -10,7 +10,7 @@ import { BOOK_SOURCE, DEFAULT_BOOK_SOURCE_ID, MACRO1_HIGHLIGHT_COLORS, TRANSLATE
 import type { TextStats } from "@/hooks/useTextStats";
 import type { BookCode } from "@/lib/bookCatalog";
 import type { UploadedLlmFile } from "@/lib/openai";
-import type { AiActionId, AppActionId, AppPanelScope, Macro2SpacingMode, ParameterPanelTarget, RefBookMode, SelectOption, SemanticIndexOption } from "@/features/ghost-writer/types";
+import type { AiActionId, AppActionId, AppPanelScope, Macro2SpacingMode, ParameterPanelTarget, RefBookMode, SelectOption, SemanticIndexOption, SemanticSearchRagContext } from "@/features/ghost-writer/types";
 
 type NonNullParameterPanelTarget = Exclude<ParameterPanelTarget, null>;
 
@@ -93,6 +93,9 @@ interface ParameterPanelContentProps {
   semanticSearchQuery: string;
   semanticSearchMaxResults: number;
   semanticMinScore: number;
+  semanticUseRagContext: boolean;
+  semanticSearchLastRagContext: SemanticSearchRagContext | null;
+  semanticOverviewLastRagContext: SemanticSearchRagContext | null;
   isRunningSemanticSearch: boolean;
   semanticOverviewTerm: string;
   semanticOverviewMaxResults: number;
@@ -190,6 +193,7 @@ interface ParameterPanelContentProps {
   onSemanticSearchQueryChange: (value: string) => void;
   onSemanticSearchMaxResultsChange: (value: number) => void;
   onSemanticMinScoreChange: (value: number) => void;
+  onSemanticUseRagContextChange: (value: boolean) => void;
   onRunSemanticSearch: () => void | Promise<void>;
   onSemanticOverviewTermChange: (value: string) => void;
   onSemanticOverviewMaxResultsChange: (value: number) => void;
@@ -291,6 +295,9 @@ const ParameterPanelContent = ({
   semanticSearchQuery,
   semanticSearchMaxResults,
   semanticMinScore,
+  semanticUseRagContext,
+  semanticSearchLastRagContext,
+  semanticOverviewLastRagContext,
   isRunningSemanticSearch,
   semanticOverviewTerm,
   semanticOverviewMaxResults,
@@ -388,6 +395,7 @@ const ParameterPanelContent = ({
   onSemanticSearchQueryChange,
   onSemanticSearchMaxResultsChange,
   onSemanticMinScoreChange,
+  onSemanticUseRagContextChange,
   onRunSemanticSearch,
   onSemanticOverviewTermChange,
   onSemanticOverviewMaxResultsChange,
@@ -594,6 +602,9 @@ const ParameterPanelContent = ({
             semanticSearchQuery={semanticSearchQuery}
             semanticSearchMaxResults={semanticSearchMaxResults}
             semanticMinScore={semanticMinScore}
+            semanticUseRagContext={semanticUseRagContext}
+            semanticSearchLastRagContext={semanticSearchLastRagContext}
+            semanticOverviewLastRagContext={semanticOverviewLastRagContext}
             isRunningSemanticSearch={isRunningSemanticSearch}
             semanticOverviewTerm={semanticOverviewTerm}
             semanticOverviewMaxResults={semanticOverviewMaxResults}
@@ -660,6 +671,7 @@ const ParameterPanelContent = ({
             onSemanticSearchQueryChange={onSemanticSearchQueryChange}
             onSemanticSearchMaxResultsChange={onSemanticSearchMaxResultsChange}
             onSemanticMinScoreChange={onSemanticMinScoreChange}
+            onSemanticUseRagContextChange={onSemanticUseRagContextChange}
             onRunSemanticSearch={onRunSemanticSearch}
             onSemanticOverviewTermChange={onSemanticOverviewTermChange}
             onSemanticOverviewMaxResultsChange={onSemanticOverviewMaxResultsChange}

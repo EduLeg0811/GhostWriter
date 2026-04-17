@@ -45,6 +45,10 @@ const baseAppsProps = {
   isLoadingSemanticSearchIndexes: false,
   semanticSearchQuery: "",
   semanticSearchMaxResults: 10,
+  semanticMinScore: 0.25,
+  semanticUseRagContext: true,
+  semanticSearchLastRagContext: null,
+  semanticOverviewLastRagContext: null,
   isRunningSemanticSearch: false,
   semanticOverviewTerm: "",
   semanticOverviewMaxResults: 10,
@@ -107,6 +111,8 @@ const baseAppsProps = {
   onSelectedSemanticSearchIndexIdChange: vi.fn(),
   onSemanticSearchQueryChange: vi.fn(),
   onSemanticSearchMaxResultsChange: vi.fn(),
+  onSemanticMinScoreChange: vi.fn(),
+  onSemanticUseRagContextChange: vi.fn(),
   onRunSemanticSearch: vi.fn(),
   onSemanticOverviewTermChange: vi.fn(),
   onSemanticOverviewMaxResultsChange: vi.fn(),
@@ -290,7 +296,8 @@ describe("verbetografia panels", () => {
           model: "text-embedding-3-large",
           dimensions: 3072,
           embeddingDtype: "float32",
-          sourceFile: ""
+          sourceFile: "",
+          suggestedMinScore: 0.5,
         }]}
         selectedSemanticSearchIndexId="idx-1"
       />,

@@ -14,7 +14,7 @@ import VerbetografiaPanel from "@/features/ghost-writer/components/Verbetografia
 import { getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
 import { CONFIG_PROMPT_ROWS } from "@/features/ghost-writer/config/constants";
 import { APP_PANEL_ICONS, parameterAppMeta } from "@/features/ghost-writer/config/metadata";
-import type { AppActionId, AppPanelScope, RefBookMode, SelectOption, SemanticIndexOption } from "@/features/ghost-writer/types";
+import type { AppActionId, AppPanelScope, RefBookMode, SelectOption, SemanticIndexOption, SemanticSearchRagContext } from "@/features/ghost-writer/types";
 import type { BookCode } from "@/lib/bookCatalog";
 import type { UploadedLlmFile } from "@/lib/openai";
 import { sectionActionButtonClass } from "@/styles/buttonStyles";
@@ -62,6 +62,9 @@ interface AppsParameterSectionProps {
   semanticSearchQuery: string;
   semanticSearchMaxResults: number;
   semanticMinScore: number;
+  semanticUseRagContext: boolean;
+  semanticSearchLastRagContext: SemanticSearchRagContext | null;
+  semanticOverviewLastRagContext: SemanticSearchRagContext | null;
   isRunningSemanticSearch: boolean;
   semanticOverviewTerm: string;
   semanticOverviewMaxResults: number;
@@ -128,6 +131,7 @@ interface AppsParameterSectionProps {
   onSemanticSearchQueryChange: (value: string) => void;
   onSemanticSearchMaxResultsChange: (value: number) => void;
   onSemanticMinScoreChange: (value: number) => void;
+  onSemanticUseRagContextChange: (value: boolean) => void;
   onRunSemanticSearch: () => void | Promise<void>;
   onSemanticOverviewTermChange: (value: string) => void;
   onSemanticOverviewMaxResultsChange: (value: number) => void;
@@ -201,6 +205,9 @@ const AppsParameterSection = ({
   semanticSearchQuery,
   semanticSearchMaxResults,
   semanticMinScore,
+  semanticUseRagContext,
+  semanticSearchLastRagContext,
+  semanticOverviewLastRagContext,
   isRunningSemanticSearch,
   semanticOverviewTerm,
   semanticOverviewMaxResults,
@@ -267,6 +274,7 @@ const AppsParameterSection = ({
   onSemanticSearchQueryChange,
   onSemanticSearchMaxResultsChange,
   onSemanticMinScoreChange,
+  onSemanticUseRagContextChange,
   onRunSemanticSearch,
   onSemanticOverviewTermChange,
   onSemanticOverviewMaxResultsChange,
@@ -507,9 +515,13 @@ const AppsParameterSection = ({
               query={sharedSemanticQuery}
               maxResults={sharedSemanticLimit}
               minScore={semanticMinScore}
+              useRagContext={semanticUseRagContext}
+              ragContext={semanticSearchLastRagContext}
+              selectedVectorStoreLabel={aiActionVectorStoreOptions.find((item) => item.id === aiActionsSelectedVectorStoreId)?.label || ""}
               onQueryChange={handleSharedSemanticQueryChange}
               onMaxResultsChange={handleSharedSemanticLimitChange}
               onMinScoreChange={onSemanticMinScoreChange}
+              onUseRagContextChange={onSemanticUseRagContextChange}
               onRunSearch={() => void onRunSemanticSearch()}
               isRunning={isRunningSemanticSearch}
               showPanelChrome={false}
@@ -525,9 +537,13 @@ const AppsParameterSection = ({
               maxResults={sharedSemanticLimit}
               minScore={semanticMinScore}
               queryLabel="Query"
+              useRagContext={semanticUseRagContext}
+              ragContext={semanticOverviewLastRagContext}
+              selectedVectorStoreLabel={aiActionVectorStoreOptions.find((item) => item.id === aiActionsSelectedVectorStoreId)?.label || ""}
               onTermChange={handleSharedSemanticQueryChange}
               onMaxResultsChange={handleSharedSemanticLimitChange}
               onMinScoreChange={onSemanticMinScoreChange}
+              onUseRagContextChange={onSemanticUseRagContextChange}
               onRunSearch={() => void onRunSemanticOverview()}
               isRunning={isRunningSemanticOverview}
               showPanelChrome={false}

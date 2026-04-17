@@ -301,12 +301,16 @@ class SemanticSearchRequest(BaseModel):
     query: str = ""
     limit: int = 10
     minScore: float | None = None
+    useRagContext: bool = False
+    vectorStoreIds: list[str] = []
 
 
 class SemanticOverviewSearchRequest(BaseModel):
     term: str = ""
     limit: int = 50
     minScore: float | None = None
+    useRagContext: bool = False
+    vectorStoreIds: list[str] = []
 
 
 class OnlineDictionarySearchRequest(BaseModel):
@@ -1420,13 +1424,15 @@ def api_semantic_search(payload: SemanticSearchRequest) -> dict[str, Any]:
         from functions.semantic_search_service import search_semantic_index
 
     try:
-        total, lexical_filtered_count, recommended_min_score, effective_min_score, matches = search_semantic_index(
+        total, lexical_filtered_count, recommended_min_score, effective_min_score, rag_context, matches = search_semantic_index(
             index_id=index_id,
             query=query,
             limit=limit,
             api_key=get_openai_api_key(),
             min_score=min_score,
             exclude_lexical_duplicates=True,
+            use_rag_context=bool(payload.useRagContext),
+            vector_store_ids=payload.vectorStoreIds,
         )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -1445,6 +1451,7 @@ def api_semantic_search(payload: SemanticSearchRequest) -> dict[str, Any]:
             "recommendedMinScore": recommended_min_score,
             "minScore": effective_min_score,
             "lexicalFilteredCount": lexical_filtered_count,
+            "ragContext": rag_context,
             "matches": matches,
         },
     }
@@ -1498,13 +1505,15 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
     )
 
     try:
-        total_indexes, total_found, lexical_filtered_count, min_recommended_score, max_recommended_score, groups = search_semantic_overview_with_total(
+        total_indexes, total_found, lexical_filtered_count, min_recommended_score, max_recommended_score, rag_context, groups = search_semantic_overview_with_total(
             term=term,
             limit=limit,
             api_key=get_openai_api_key(),
             progress_callback=_update_semantic_overview_progress,
             min_score=min_score,
             exclude_lexical_duplicates=True,
+            use_rag_context=bool(payload.useRagContext),
+            vector_store_ids=payload.vectorStoreIds,
         )
         top_score = max(
             (
@@ -1532,7 +1541,7 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
                     "matchesFound": total_found,
                     "totalMatchesAccumulated": total_found,
                     "topScore": top_score,
-                    "note": f"{len(groups)} bases entraram no top final; calibracao entre {min_recommended_score:.2f} e {max_recommended_score:.2f}; {lexical_filtered_count} duplicados lexicos filtrados.",
+                    "note": f"{len(groups)} bases entraram no top final; calibracao entre {min_recommended_score:.2f} e {max_recommended_score:.2f}; {lexical_filtered_count} duplicados lexicos filtrados." + (f" RAG contextual aplicado via {len(rag_context.get('vectorStoreIds') or [])} vector store(s)." if rag_context.get("usedRagContext") else ""),
                 },
             }
         )
@@ -1574,6 +1583,7 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
             "recommendedMinScoreMin": min_recommended_score,
             "recommendedMinScoreMax": max_recommended_score,
             "usesCalibratedMinScores": True,
+            "ragContext": rag_context,
             "totalIndexes": total_indexes,
             "totalFound": total_found,
             "lexicalFilteredCount": lexical_filtered_count,

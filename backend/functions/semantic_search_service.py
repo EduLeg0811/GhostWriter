@@ -11,9 +11,11 @@ import requests
 
 try:
     from backend.functions.semantic_index_calibration import DEFAULT_MIN_SCORE
+    from backend.functions.semantic_query_context_service import resolve_semantic_query_context
     from backend.functions.semantic_query_expansion import build_semantic_query_variants
 except Exception:
     from functions.semantic_index_calibration import DEFAULT_MIN_SCORE
+    from functions.semantic_query_context_service import resolve_semantic_query_context
     from functions.semantic_query_expansion import build_semantic_query_variants
 
 
@@ -289,9 +291,48 @@ def list_semantic_indexes() -> list[dict[str, Any]]:
     return indexes
 
 
-def _get_semantic_query_vector(raw_query: str, api_key: str, model: str, cache: dict[str, np.ndarray] | None = None) -> np.ndarray:
+def _build_contextual_query_variants(raw_query: str, semantic_context: dict[str, Any] | None) -> list[tuple[str, float]]:
+    variants = build_semantic_query_variants(raw_query)
+    if not semantic_context:
+        return variants
+
+    contextual_variants = list(variants)
+    disambiguated_query = str(semantic_context.get("disambiguatedQuery") or "").strip()
+    related_terms = [str(item or "").strip() for item in (semantic_context.get("relatedTerms") or []) if str(item or "").strip()]
+    definitions = [
+        f"{str(item.get('term') or '').strip()}: {str(item.get('meaning') or '').strip()}"
+        for item in (semantic_context.get("definitions") or [])
+        if isinstance(item, dict) and str(item.get("term") or "").strip() and str(item.get("meaning") or "").strip()
+    ]
+
+    if disambiguated_query:
+        contextual_variants.append((disambiguated_query, 0.90))
+    if related_terms:
+        contextual_variants.append((", ".join(related_terms[:8]), 0.72))
+    if definitions:
+        contextual_variants.append((" | ".join(definitions[:4]), 0.64))
+
+    deduped: list[tuple[str, float]] = []
+    seen: set[str] = set()
+    for text, weight in contextual_variants:
+        normalized_text = _normalize_match_text(text)
+        if not normalized_text or normalized_text in seen:
+            continue
+        seen.add(normalized_text)
+        deduped.append((text.strip(), float(weight)))
+    return deduped[:6]
+
+
+def _get_semantic_query_vector(
+    raw_query: str,
+    *,
+    api_key: str,
+    model: str,
+    cache: dict[str, np.ndarray] | None = None,
+    semantic_context: dict[str, Any] | None = None,
+) -> np.ndarray:
     model_name = (model or "").strip() or "text-embedding-3-small"
-    query_variants = build_semantic_query_variants(raw_query)
+    query_variants = _build_contextual_query_variants(raw_query, semantic_context)
     cache_key = model_name if not query_variants else f"{model_name}::{'||'.join(text for text, _ in query_variants)}"
     if cache is not None and cache_key in cache:
         return cache[cache_key]
@@ -447,13 +488,39 @@ def search_semantic_index(
     api_key: str,
     min_score: float = DEFAULT_MIN_SCORE,
     exclude_lexical_duplicates: bool = True,
-) -> tuple[int, int, float, float, list[dict[str, Any]]]:
+    use_rag_context: bool = False,
+    vector_store_ids: list[str] | None = None,
+) -> tuple[int, int, float, float, dict[str, Any], list[dict[str, Any]]]:
     normalized_index_id = _normalize_index_id(index_id)
     loaded = _load_semantic_index(normalized_index_id)
     manifest = loaded["manifest"]
     model = str(manifest.get("model") or "").strip()
     index_label = str(manifest.get("index_label") or normalized_index_id).strip()
-    query_vector = _get_semantic_query_vector(query, api_key=api_key, model=model)
+    rag_context = {
+        "usedRagContext": False,
+        "sourceQuery": query,
+        "vectorStoreIds": [value for value in (vector_store_ids or []) if str(value or "").strip()],
+        "keyTerms": [],
+        "definitions": [],
+        "relatedTerms": [],
+        "disambiguatedQuery": "",
+        "references": [],
+    }
+    if use_rag_context:
+        try:
+            rag_context = resolve_semantic_query_context(
+                query,
+                api_key=api_key,
+                vector_store_ids=vector_store_ids,
+            )
+        except Exception as exc:
+            rag_context["error"] = str(exc)
+    query_vector = _get_semantic_query_vector(
+        query,
+        api_key=api_key,
+        model=model,
+        semantic_context=rag_context if rag_context.get("usedRagContext") else None,
+    )
     effective_min_score = max(float(loaded.get("recommended_min_score") or DEFAULT_MIN_SCORE), max(0.0, float(min_score or 0.0)))
     ranked = _score_matches(
         loaded["metadata"],
@@ -472,6 +539,7 @@ def search_semantic_index(
         ranked["lexical_filtered_count"],
         float(loaded.get("recommended_min_score") or DEFAULT_MIN_SCORE),
         effective_min_score,
+        rag_context,
         ranked["matches"],
     )
 
@@ -483,10 +551,21 @@ def search_semantic_overview_with_total(
     progress_callback: Any | None = None,
     min_score: float = DEFAULT_MIN_SCORE,
     exclude_lexical_duplicates: bool = True,
-) -> tuple[int, int, int, float, float, list[dict[str, Any]]]:
+    use_rag_context: bool = False,
+    vector_store_ids: list[str] | None = None,
+) -> tuple[int, int, int, float, float, dict[str, Any], list[dict[str, Any]]]:
     indexes = list_semantic_indexes()
     if not indexes:
-        return 0, 0, 0, DEFAULT_MIN_SCORE, DEFAULT_MIN_SCORE, []
+        return 0, 0, 0, DEFAULT_MIN_SCORE, DEFAULT_MIN_SCORE, {
+            "usedRagContext": False,
+            "sourceQuery": term,
+            "vectorStoreIds": [value for value in (vector_store_ids or []) if str(value or "").strip()],
+            "keyTerms": [],
+            "definitions": [],
+            "relatedTerms": [],
+            "disambiguatedQuery": "",
+            "references": [],
+        }, []
 
     query_cache: dict[str, np.ndarray] = {}
     collected: list[dict[str, Any]] = []
@@ -496,6 +575,25 @@ def search_semantic_overview_with_total(
     group_totals: dict[str, int] = {}
     min_recommended_used: float | None = None
     max_recommended_used: float | None = None
+    rag_context = {
+        "usedRagContext": False,
+        "sourceQuery": term,
+        "vectorStoreIds": [value for value in (vector_store_ids or []) if str(value or "").strip()],
+        "keyTerms": [],
+        "definitions": [],
+        "relatedTerms": [],
+        "disambiguatedQuery": "",
+        "references": [],
+    }
+    if use_rag_context:
+        try:
+            rag_context = resolve_semantic_query_context(
+                term,
+                api_key=api_key,
+                vector_store_ids=vector_store_ids,
+            )
+        except Exception as exc:
+            rag_context["error"] = str(exc)
 
     for position, index_meta in enumerate(indexes, start=1):
         index_id = _normalize_index_id(str(index_meta.get("id") or ""))
@@ -522,12 +620,14 @@ def search_semantic_overview_with_total(
             recommended_min_score = float(loaded.get("recommended_min_score") or DEFAULT_MIN_SCORE)
             min_recommended_used = recommended_min_score if min_recommended_used is None else min(min_recommended_used, recommended_min_score)
             max_recommended_used = recommended_min_score if max_recommended_used is None else max(max_recommended_used, recommended_min_score)
-            query_vector = _get_semantic_query_vector(
-                term,
-                api_key=api_key,
-                model=str(manifest.get("model") or "").strip(),
-                cache=query_cache,
-            )
+            query_vector_params = {
+                "api_key": api_key,
+                "model": str(manifest.get("model") or "").strip(),
+                "cache": query_cache,
+            }
+            if rag_context.get("usedRagContext"):
+                query_vector_params["semantic_context"] = rag_context
+            query_vector = _get_semantic_query_vector(term, **query_vector_params)
             ranked = _score_matches(
                 loaded["metadata"],
                 loaded["embeddings"],
@@ -592,6 +692,7 @@ def search_semantic_overview_with_total(
             total_lexical_filtered,
             float(min_recommended_used if min_recommended_used is not None else DEFAULT_MIN_SCORE),
             float(max_recommended_used if max_recommended_used is not None else DEFAULT_MIN_SCORE),
+            rag_context,
             [],
         )
 
@@ -618,5 +719,6 @@ def search_semantic_overview_with_total(
         total_lexical_filtered,
         float(min_recommended_used if min_recommended_used is not None else DEFAULT_MIN_SCORE),
         float(max_recommended_used if max_recommended_used is not None else DEFAULT_MIN_SCORE),
+        rag_context,
         groups,
     )

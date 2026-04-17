@@ -6,9 +6,10 @@ import { Loader2, Play, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
-import type { SemanticIndexOption } from "@/features/ghost-writer/types";
+import type { SemanticIndexOption, SemanticSearchRagContext } from "@/features/ghost-writer/types";
 
 interface SemanticSearchPanelProps {
   title: string;
@@ -20,9 +21,13 @@ interface SemanticSearchPanelProps {
   query: string;
   maxResults: number;
   minScore: number;
+  useRagContext: boolean;
+  ragContext: SemanticSearchRagContext | null;
+  selectedVectorStoreLabel: string;
   onQueryChange: (value: string) => void;
   onMaxResultsChange: (value: number) => void;
   onMinScoreChange: (value: number) => void;
+  onUseRagContextChange: (value: boolean) => void;
   onRunSearch: () => void;
   isRunning: boolean;
   onClose?: () => void;
@@ -39,9 +44,13 @@ const SemanticSearchPanel = ({
   query,
   maxResults,
   minScore,
+  useRagContext,
+  ragContext,
+  selectedVectorStoreLabel,
   onQueryChange,
   onMaxResultsChange,
   onMinScoreChange,
+  onUseRagContextChange,
   onRunSearch,
   isRunning,
   onClose,
@@ -49,6 +58,8 @@ const SemanticSearchPanel = ({
 }: SemanticSearchPanelProps) => {
   const queryTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const selectedIndex = availableIndexes.find((item) => item.id === selectedIndexId) ?? null;
+  const currentQuery = query.trim();
+  const visibleRagContext = ragContext && (ragContext.sourceQuery || "").trim() === currentQuery ? ragContext : null;
 
   const resizeQueryTextarea = () => {
     const el = queryTextareaRef.current;
@@ -117,6 +128,75 @@ const SemanticSearchPanel = ({
             }}
             className="h-8 bg-white !text-xs text-right"
           />
+        </div>
+
+        <div className="space-y-2 rounded-lg border border-border/60 bg-slate-50/80 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">RAG Conscienciológico</Label>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Usa o vector store atual das Configurações para contextualizar a query antes do embedding.
+              </p>
+            </div>
+            <Switch checked={useRagContext} onCheckedChange={onUseRagContextChange} />
+          </div>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Vector store atual: {selectedVectorStoreLabel || "nenhum selecionado"}
+          </p>
+          {useRagContext ? (
+            visibleRagContext ? (
+              <div className="space-y-2 rounded-md border border-blue-100 bg-white p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-900">
+                  Contexto aplicado na ultima busca
+                </p>
+                {visibleRagContext.error ? (
+                  <p className="text-[11px] leading-relaxed text-amber-700">
+                    A pré-busca conscienciológica falhou e a busca seguiu apenas com a query normal: {visibleRagContext.error}
+                  </p>
+                ) : null}
+                {visibleRagContext.keyTerms.length > 0 ? (
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    <span className="font-semibold text-foreground">Termos-chave:</span> {visibleRagContext.keyTerms.join(", ")}
+                  </p>
+                ) : null}
+                {visibleRagContext.definitions.length > 0 ? (
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-semibold text-foreground">Definições:</p>
+                    <div className="space-y-1">
+                      {visibleRagContext.definitions.map((item) => (
+                        <p key={`${item.term}:${item.meaning}`} className="text-[11px] leading-relaxed text-muted-foreground">
+                          <span className="font-semibold text-foreground">{item.term}:</span> {item.meaning}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {visibleRagContext.relatedTerms.length > 0 ? (
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    <span className="font-semibold text-foreground">Termos adicionais:</span> {visibleRagContext.relatedTerms.join(", ")}
+                  </p>
+                ) : null}
+                {visibleRagContext.disambiguatedQuery ? (
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    <span className="font-semibold text-foreground">Query expandida:</span> {visibleRagContext.disambiguatedQuery}
+                  </p>
+                ) : null}
+                {visibleRagContext.references.length > 0 ? (
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    <span className="font-semibold text-foreground">Referências RAG:</span> {visibleRagContext.references.join(", ")}
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Execute a busca para visualizar quais definições e termos adicionais foram usados na expansão da query.
+              </p>
+            )
+          ) : (
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              Etapa desabilitada. A busca usa apenas a query digitada e as expansões semânticas locais.
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">

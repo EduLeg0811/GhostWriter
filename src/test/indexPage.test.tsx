@@ -515,6 +515,16 @@ describe("Index page", () => {
         totalIndexes: 2,
         totalFound: 2,
         lexicalFilteredCount: 0,
+        ragContext: {
+          usedRagContext: false,
+          sourceQuery: "cosmoetica",
+          vectorStoreIds: [],
+          keyTerms: [],
+          definitions: [],
+          relatedTerms: [],
+          disambiguatedQuery: "",
+          references: [],
+        },
         groups: [
           {
             indexId: "lo",
@@ -568,7 +578,13 @@ describe("Index page", () => {
     fireEvent.click(screen.getByRole("button", { name: /^buscar$/i }));
 
     await waitFor(() => {
-      expect(backendApi.searchSemanticOverviewApp).toHaveBeenCalledWith({ term: "cosmoetica", limit: 2, minScore: 0.25 });
+      expect(backendApi.searchSemanticOverviewApp).toHaveBeenCalledWith({
+        term: "cosmoetica",
+        limit: 2,
+        minScore: 0.25,
+        useRagContext: true,
+        vectorStoreIds: [],
+      });
     });
 
     expect(await screen.findByRole("button", { name: /lo semantic/i })).toBeInTheDocument();
