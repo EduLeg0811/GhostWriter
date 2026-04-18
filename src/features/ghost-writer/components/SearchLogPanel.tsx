@@ -325,6 +325,7 @@ const SearchLogPanel = ({ onClose, shouldPoll = false, activeSearchType = null, 
                           <span>{typeof event.matchesFound === "number" ? `${event.matchesFound} achados` : formatStageLabel(event.stage)}</span>
                           {typeof event.totalMatchesAccumulated === "number" ? <span>{` | acumulado ${event.totalMatchesAccumulated}`}</span> : null}
                           {typeof event.topScore === "number" ? <span>{` | top ${event.topScore.toFixed(2)}`}</span> : null}
+                          {event.note ? <span>{` | ${event.note}`}</span> : null}
                         </li>
                       ))}
                     </ul>

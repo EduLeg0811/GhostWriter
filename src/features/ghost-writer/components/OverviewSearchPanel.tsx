@@ -129,7 +129,7 @@ const OverviewSearchPanel = ({
 
         {semanticConfig ? (
           <>
-            <div className="space-y-1">
+            {/*<div className="space-y-1">*/}
               <div className="flex items-center gap-2">
                 <Label className="w-16 shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Score Min</Label>
                 <Input
@@ -153,16 +153,14 @@ const OverviewSearchPanel = ({
                   className="h-8 bg-white !text-xs text-right"
                 />
               </div>
+              
               <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Piso global. No Semantic Overview, cada base ainda aplica o score calibrado proprio quando ele for maior.
-              </p>
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Score digitado: {typeof semanticConfig.minScore === "number" ? semanticConfig.minScore.toFixed(2) : "-"} | Piso efetivo previsto: {typeof semanticConfig.effectiveMinScorePreview === "number" ? semanticConfig.effectiveMinScorePreview.toFixed(2) : "-"}
+                Piso efetivo previsto: {typeof semanticConfig.effectiveMinScorePreview === "number" ? semanticConfig.effectiveMinScorePreview.toFixed(2) : "-"}
                 {typeof semanticConfig.recommendedMinScoreMin === "number" && typeof semanticConfig.recommendedMinScoreMax === "number"
                   ? ` | Faixa calibrada: ${semanticConfig.recommendedMinScoreMin.toFixed(2)}-${semanticConfig.recommendedMinScoreMax.toFixed(2)}`
                   : ""}
               </p>
-            </div>
+            {/*</div>*/}
 
             <div className="space-y-2 rounded-lg border border-border/60 bg-slate-50/80 p-3">
               <div className="flex items-center justify-between gap-3">
@@ -174,6 +172,21 @@ const OverviewSearchPanel = ({
                 </div>
                 <Switch checked={semanticConfig.useRagContext} onCheckedChange={semanticConfig.onUseRagContextChange} />
               </div>
+
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Vector store atual: {semanticConfig.selectedVectorStoreLabel || "nenhum selecionado"}
+              </p>
+              {semanticConfig.useRagContext ? (
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  {/* Contexto exibido em Logs &gt; Search. */}
+                </p>
+              ) : (
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                {/* Etapa desabilitada. */}
+                </p>
+              )}
+
+
               <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-3">
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Duplicados lexicos</Label>
@@ -183,18 +196,7 @@ const OverviewSearchPanel = ({
                 </div>
                 <Switch checked={semanticConfig.excludeLexicalDuplicates} onCheckedChange={semanticConfig.onExcludeLexicalDuplicatesChange} />
               </div>
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Vector store atual: {semanticConfig.selectedVectorStoreLabel || "nenhum selecionado"}
-              </p>
-              {semanticConfig.useRagContext ? (
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  O contexto aplicado na ultima busca e exibido em Logs &gt; Search.
-                </p>
-              ) : (
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  Etapa desabilitada.
-                </p>
-              )}
+              
             </div>
           </>
         ) : null}
@@ -215,7 +217,7 @@ const OverviewSearchPanel = ({
             ) : (
               <>
                 <Play className="mr-2 h-4 w-4 text-black relative z-10" />
-                <span className="relative z-10 text-blue-500">Buscar</span>
+                <span className="relative z-10 text-blue-500">Overview</span>
               </>
             )}
           </Button>

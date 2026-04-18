@@ -191,6 +191,7 @@ interface AiActionsLlmConfigRefValue {
 
 const TRANSLATE_FIXED_VECTOR_STORE_IDS = [LLM_VECTOR_STORE_TRANSLATE_RAG.trim()].filter(Boolean);
 const TERMS_CONCEPTS_WVBOOKS_VECTOR_STORE_IDS = ["vs_6912908250e4819197e23fe725e04fae"];
+const HISTORY_HIGHLIGHT_OFF_RESPONSE_TYPES: AIResponse["type"][] = ["app_semantic_search", "app_semantic_overview"];
 
 const normalizeVerbosity = (value: string | undefined): "low" | "medium" | "high" | undefined => {
   if (!value) return undefined;
@@ -555,6 +556,9 @@ const useGhostWriterLlm = ({
   }, [setBackendStatus]);
 
   const addResponse = useCallback((type: AIResponse["type"], query: string, content: string, payload?: AIResponse["payload"], isConscienciografia?: boolean) => {
+    if (HISTORY_HIGHLIGHT_OFF_RESPONSE_TYPES.includes(type)) {
+      setEnableHistoryHighlight(false);
+    }
     setResponses((prev) => [{
       id: crypto.randomUUID(),
       type,
@@ -564,7 +568,7 @@ const useGhostWriterLlm = ({
       isConscienciografia,
       timestamp: new Date(),
     }, ...prev]);
-  }, [setResponses]);
+  }, [setEnableHistoryHighlight, setResponses]);
 
   const executeLLMWithLog = useCallback(async (payload: Parameters<typeof executeLLM>[0]) => {
     const currentConfig = llmConfigRef.current;

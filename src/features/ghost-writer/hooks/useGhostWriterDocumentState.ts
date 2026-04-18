@@ -124,7 +124,7 @@ export const useGhostWriterAppsState = () => {
   const [semanticMinScore, setSemanticMinScore] = useState<number | null>(null);
   const [semanticMinScoreMode, setSemanticMinScoreMode] = useState<"auto" | "manual">("auto");
   const [semanticUseRagContext, setSemanticUseRagContext] = useState(false);
-  const [semanticExcludeLexicalDuplicates, setSemanticExcludeLexicalDuplicates] = useState(true);
+  const [semanticExcludeLexicalDuplicates, setSemanticExcludeLexicalDuplicates] = useState(false);
   const [semanticSearchLastRagContext, setSemanticSearchLastRagContext] = useState<SemanticSearchRagContext | null>(null);
   const [semanticOverviewLastRagContext, setSemanticOverviewLastRagContext] = useState<SemanticSearchRagContext | null>(null);
   const [semanticSearchIndexes, setSemanticSearchIndexes] = useState<SemanticIndexOption[]>([]);

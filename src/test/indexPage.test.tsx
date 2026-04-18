@@ -571,13 +571,19 @@ describe("Index page", () => {
     fireEvent.click(await screen.findByRole("button", { name: /semantic search/i }));
     fireEvent.click(screen.getByRole("button", { name: /semantic overview/i }));
 
+    const lexicalDuplicatesSwitch = screen.getAllByRole("switch")[1];
+    const highlightButton = screen.getByRole("button", { name: /highlight/i });
+
+    expect(lexicalDuplicatesSwitch).toHaveAttribute("aria-checked", "false");
+    expect(highlightButton.className).toContain("bg-green-100");
+
     fireEvent.change(screen.getAllByRole("textbox")[0], {
       target: { value: "cosmoetica" },
     });
     fireEvent.change(screen.getAllByRole("spinbutton")[0], {
       target: { value: "2" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /^buscar$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^overview$/i }));
 
     await waitFor(() => {
       expect(backendApi.searchSemanticOverviewApp).toHaveBeenCalledWith({
@@ -585,7 +591,7 @@ describe("Index page", () => {
         limit: 2,
         minScore: 0.5,
         useRagContext: false,
-        excludeLexicalDuplicates: true,
+        excludeLexicalDuplicates: false,
         vectorStoreIds: [],
       });
     });
@@ -593,6 +599,7 @@ describe("Index page", () => {
     expect(await screen.findByRole("button", { name: /lo semantic/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /quest semantic/i })).toBeInTheDocument();
     expect(screen.getAllByText((_, node) => (node?.textContent || "").includes("Trecho com cosmoetica expandida")).length).toBeGreaterThan(0);
+    expect(highlightButton.className).not.toContain("bg-green-100");
   });
 
   it("sets WVBooks as initial IA vector store when Semantic RAG is toggled on", async () => {
@@ -664,6 +671,7 @@ describe("Index page", () => {
     expect(screen.getByText(/^bases$/i)).toBeInTheDocument();
     expect(screen.getAllByText(/lo semantic/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/5 achados/i)).toBeInTheDocument();
+    expect(screen.getByText(/trechos ranqueados/i)).toBeInTheDocument();
   });
 
   it("resets persisted config from LLM Sources after confirmation", async () => {

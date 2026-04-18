@@ -48,7 +48,7 @@ const baseAppsProps = {
   semanticMinScore: 0.25,
   semanticMinScoreMode: "auto" as const,
   semanticUseRagContext: true,
-  semanticExcludeLexicalDuplicates: true,
+  semanticExcludeLexicalDuplicates: false,
   semanticSearchLastRagContext: null,
   semanticOverviewLastRagContext: null,
   isRunningSemanticSearch: false,
@@ -513,6 +513,6 @@ describe("verbetografia panels", () => {
     fireEvent.click(screen.getByRole("button", { name: /busca sem.*ntica/i }));
     fireEvent.click(screen.getAllByRole("switch")[1]);
 
-    expect(onSemanticExcludeLexicalDuplicatesChange).toHaveBeenCalledWith(false);
+    expect(onSemanticExcludeLexicalDuplicatesChange).toHaveBeenCalledWith(true);
   });
 });

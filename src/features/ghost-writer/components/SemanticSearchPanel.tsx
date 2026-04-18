@@ -134,31 +134,34 @@ const SemanticSearchPanel = ({
           />
         </div>
 
+
         <div className="flex items-center gap-2">
           <Label className="w-16 shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Score Min</Label>
-          <Input
-            type="number"
-            inputMode="decimal"
-            min={0}
-            max={1}
-            step="0.01"
-            value={minScoreDraft}
-            onChange={(e) => {
-              setMinScoreDraft(e.target.value);
-            }}
-            onBlur={commitMinScoreDraft}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                commitMinScoreDraft();
-                event.currentTarget.blur();
-              }
-            }}
-            placeholder="0.00"
-            className="h-8 bg-white !text-xs text-right"
-          />
-        </div>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  max={1}
+                  step="0.01"
+                  value={minScoreDraft}
+                  onChange={(event) => {
+                    setMinScoreDraft(event.target.value);
+                  }}
+                  onBlur={commitMinScoreDraft}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      commitMinScoreDraft();
+                      event.currentTarget.blur();
+                    }
+                  }}
+                  placeholder="0.50"
+                  className="h-8 bg-white !text-xs text-right"
+                />
+              </div>
+
+
         <p className="text-[11px] leading-relaxed text-muted-foreground">
-          Score digitado: {typeof minScore === "number" ? minScore.toFixed(2) : "-"} | Score efetivo previsto: {typeof effectiveMinScorePreview === "number" ? effectiveMinScorePreview.toFixed(2) : "-"}
+          Score efetivo previsto: {typeof effectiveMinScorePreview === "number" ? effectiveMinScorePreview.toFixed(2) : "-"}
           {typeof recommendedMinScore === "number" ? ` | Calibrado da base: ${recommendedMinScore.toFixed(2)}` : ""}
         </p>
 
@@ -169,9 +172,17 @@ const SemanticSearchPanel = ({
               <p className="text-[11px] leading-relaxed text-muted-foreground">
                 Contextualizar a query.
               </p>
+             
+              
             </div>
+            
+
             <Switch checked={useRagContext} onCheckedChange={onUseRagContextChange} />
           </div>
+           <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Vector store atual: {selectedVectorStoreLabel || "nenhum selecionado"}
+              </p>
+
           <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-3">
             <div className="space-y-1">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Duplicados lexicos</Label>
@@ -181,16 +192,14 @@ const SemanticSearchPanel = ({
             </div>
             <Switch checked={excludeLexicalDuplicates} onCheckedChange={onExcludeLexicalDuplicatesChange} />
           </div>
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
-            Vector store atual: {selectedVectorStoreLabel || "nenhum selecionado"}
-          </p>
+          
           {useRagContext ? (
             <p className="text-[11px] leading-relaxed text-muted-foreground">
-              O contexto aplicado na ultima busca e exibido em Logs &gt; Search.
+              {/* Contexto exibido em Logs &gt; Search. */}
             </p>
           ) : (
             <p className="text-[11px] leading-relaxed text-muted-foreground">
-              Etapa desabilitada.
+              {/* Etapa desabilitada. */}
             </p>
           )}
         </div>
@@ -241,7 +250,7 @@ const SemanticSearchPanel = ({
             ) : (
               <>
                 <Play className="mr-2 h-4 w-4 text-black relative z-10" />
-                <span className="relative z-10 text-blue-500">Buscar</span>
+                <span className="relative z-10 text-blue-500">Search</span>
               </>
             )}
           </Button>
