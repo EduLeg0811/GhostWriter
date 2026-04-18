@@ -8,6 +8,7 @@ import BookSearchPanel from "@/features/ghost-writer/components/BookSearchPanel"
 import LexicalOverviewPanel from "@/features/ghost-writer/components/LexicalOverviewPanel";
 import InsertRefBookPanel from "@/features/ghost-writer/components/InsertRefBookPanel";
 import InsertRefVerbetePanel from "@/features/ghost-writer/components/InsertRefVerbetePanel";
+import SemanticOverviewPanel from "@/features/ghost-writer/components/SemanticOverviewPanel";
 import SemanticSearchPanel from "@/features/ghost-writer/components/SemanticSearchPanel";
 import VerbeteSearchPanel from "@/features/ghost-writer/components/VerbeteSearchPanel";
 import VerbetografiaPanel from "@/features/ghost-writer/components/VerbetografiaPanel";
@@ -61,9 +62,10 @@ interface AppsParameterSectionProps {
   isLoadingSemanticSearchIndexes: boolean;
   semanticSearchQuery: string;
   semanticSearchMaxResults: number;
-  semanticMinScore: number;
+  semanticMinScore: number | null;
+  semanticMinScoreMode: "auto" | "manual";
   semanticUseRagContext: boolean;
-  semanticSearchLastRagContext: SemanticSearchRagContext | null;
+  semanticExcludeLexicalDuplicates: boolean;
   semanticOverviewLastRagContext: SemanticSearchRagContext | null;
   isRunningSemanticSearch: boolean;
   semanticOverviewTerm: string;
@@ -130,8 +132,10 @@ interface AppsParameterSectionProps {
   onSelectedSemanticSearchIndexIdChange: (value: string) => void;
   onSemanticSearchQueryChange: (value: string) => void;
   onSemanticSearchMaxResultsChange: (value: number) => void;
-  onSemanticMinScoreChange: (value: number) => void;
+  onSemanticMinScoreChange: (value: number | null) => void;
+  onSemanticMinScoreDefaultChange: (value: number | null) => void;
   onSemanticUseRagContextChange: (value: boolean) => void;
+  onSemanticExcludeLexicalDuplicatesChange: (value: boolean) => void;
   onRunSemanticSearch: () => void | Promise<void>;
   onSemanticOverviewTermChange: (value: string) => void;
   onSemanticOverviewMaxResultsChange: (value: number) => void;
@@ -205,8 +209,9 @@ const AppsParameterSection = ({
   semanticSearchQuery,
   semanticSearchMaxResults,
   semanticMinScore,
+  semanticMinScoreMode,
   semanticUseRagContext,
-  semanticSearchLastRagContext,
+  semanticExcludeLexicalDuplicates,
   semanticOverviewLastRagContext,
   isRunningSemanticSearch,
   semanticOverviewTerm,
@@ -274,7 +279,9 @@ const AppsParameterSection = ({
   onSemanticSearchQueryChange,
   onSemanticSearchMaxResultsChange,
   onSemanticMinScoreChange,
+  onSemanticMinScoreDefaultChange,
   onSemanticUseRagContextChange,
+  onSemanticExcludeLexicalDuplicatesChange,
   onRunSemanticSearch,
   onSemanticOverviewTermChange,
   onSemanticOverviewMaxResultsChange,
@@ -316,6 +323,25 @@ const AppsParameterSection = ({
   useEffect(() => {
     setSelectedTableVerbeteAction(null);
   }, [appId]);
+
+  useEffect(() => {
+    if (appId !== "app12" || semanticPanelMode === null || semanticMinScoreMode !== "auto") return;
+
+    let nextDefault: number | null = null;
+    if (semanticPanelMode === "overview") {
+      nextDefault = 0.5;
+    } else {
+      const selectedSemanticIndex = semanticSearchIndexes.find((item) => item.id === selectedSemanticSearchIndexId);
+      const recommendedScore = selectedSemanticIndex?.suggestedMinScore;
+      if (typeof recommendedScore === "number" && Number.isFinite(recommendedScore)) {
+        nextDefault = Number((recommendedScore / 2).toFixed(2));
+      }
+    }
+
+    if (semanticMinScore !== nextDefault) {
+      onSemanticMinScoreDefaultChange(nextDefault);
+    }
+  }, [appId, onSemanticMinScoreDefaultChange, selectedSemanticSearchIndexId, semanticMinScore, semanticMinScoreMode, semanticPanelMode, semanticSearchIndexes]);
 
   if (appId === "app1") {
     return (
@@ -466,6 +492,13 @@ const AppsParameterSection = ({
     const SemanticSearchIcon = APP_PANEL_ICONS.app12;
     const sharedSemanticQuery = semanticSearchQuery || semanticOverviewTerm;
     const sharedSemanticLimit = semanticSearchMaxResults || semanticOverviewMaxResults;
+    const selectedSemanticIndex = semanticSearchIndexes.find((item) => item.id === selectedSemanticSearchIndexId);
+    const searchRecommendedMinScore = selectedSemanticIndex?.suggestedMinScore;
+    const searchEffectiveMinScorePreview = semanticMinScore ?? searchRecommendedMinScore;
+    const overviewRecommendedMinScores = semanticSearchIndexes.map((item) => item.suggestedMinScore).filter((value) => Number.isFinite(value));
+    const overviewRecommendedMinScoreMin = overviewRecommendedMinScores.length > 0 ? Math.min(...overviewRecommendedMinScores) : undefined;
+    const overviewRecommendedMinScoreMax = overviewRecommendedMinScores.length > 0 ? Math.max(...overviewRecommendedMinScores) : undefined;
+    const overviewEffectiveMinScorePreview = semanticMinScore ?? overviewRecommendedMinScoreMin;
     const handleSharedSemanticQueryChange = (value: string) => {
       onSemanticSearchQueryChange(value);
       onSemanticOverviewTermChange(value);
@@ -515,13 +548,16 @@ const AppsParameterSection = ({
               query={sharedSemanticQuery}
               maxResults={sharedSemanticLimit}
               minScore={semanticMinScore}
+              effectiveMinScorePreview={searchEffectiveMinScorePreview}
+              recommendedMinScore={searchRecommendedMinScore}
               useRagContext={semanticUseRagContext}
-              ragContext={semanticSearchLastRagContext}
+              excludeLexicalDuplicates={semanticExcludeLexicalDuplicates}
               selectedVectorStoreLabel={aiActionVectorStoreOptions.find((item) => item.id === aiActionsSelectedVectorStoreId)?.label || ""}
               onQueryChange={handleSharedSemanticQueryChange}
               onMaxResultsChange={handleSharedSemanticLimitChange}
               onMinScoreChange={onSemanticMinScoreChange}
               onUseRagContextChange={onSemanticUseRagContextChange}
+              onExcludeLexicalDuplicatesChange={onSemanticExcludeLexicalDuplicatesChange}
               onRunSearch={() => void onRunSemanticSearch()}
               isRunning={isRunningSemanticSearch}
               showPanelChrome={false}
@@ -530,20 +566,24 @@ const AppsParameterSection = ({
         ) : null}
         {semanticPanelMode === "overview" ? (
           <div className="min-h-0 flex-1">
-            <LexicalOverviewPanel
+            <SemanticOverviewPanel
               title="Semantic Overview"
               description="Busca em todas as bases semânticas."
               term={sharedSemanticQuery}
               maxResults={sharedSemanticLimit}
               minScore={semanticMinScore}
+              effectiveMinScorePreview={overviewEffectiveMinScorePreview}
+              recommendedMinScoreMin={overviewRecommendedMinScoreMin}
+              recommendedMinScoreMax={overviewRecommendedMinScoreMax}
               queryLabel="Query"
               useRagContext={semanticUseRagContext}
-              ragContext={semanticOverviewLastRagContext}
+              excludeLexicalDuplicates={semanticExcludeLexicalDuplicates}
               selectedVectorStoreLabel={aiActionVectorStoreOptions.find((item) => item.id === aiActionsSelectedVectorStoreId)?.label || ""}
               onTermChange={handleSharedSemanticQueryChange}
               onMaxResultsChange={handleSharedSemanticLimitChange}
               onMinScoreChange={onSemanticMinScoreChange}
               onUseRagContextChange={onSemanticUseRagContextChange}
+              onExcludeLexicalDuplicatesChange={onSemanticExcludeLexicalDuplicatesChange}
               onRunSearch={() => void onRunSemanticOverview()}
               isRunning={isRunningSemanticOverview}
               showPanelChrome={false}

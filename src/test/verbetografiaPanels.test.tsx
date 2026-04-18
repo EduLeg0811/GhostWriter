@@ -46,7 +46,9 @@ const baseAppsProps = {
   semanticSearchQuery: "",
   semanticSearchMaxResults: 10,
   semanticMinScore: 0.25,
+  semanticMinScoreMode: "auto" as const,
   semanticUseRagContext: true,
+  semanticExcludeLexicalDuplicates: true,
   semanticSearchLastRagContext: null,
   semanticOverviewLastRagContext: null,
   isRunningSemanticSearch: false,
@@ -112,7 +114,9 @@ const baseAppsProps = {
   onSemanticSearchQueryChange: vi.fn(),
   onSemanticSearchMaxResultsChange: vi.fn(),
   onSemanticMinScoreChange: vi.fn(),
+  onSemanticMinScoreDefaultChange: vi.fn(),
   onSemanticUseRagContextChange: vi.fn(),
+  onSemanticExcludeLexicalDuplicatesChange: vi.fn(),
   onRunSemanticSearch: vi.fn(),
   onSemanticOverviewTermChange: vi.fn(),
   onSemanticOverviewMaxResultsChange: vi.fn(),
@@ -312,5 +316,203 @@ describe("verbetografia panels", () => {
     expect(screen.getByText("Base Vetorial")).toBeInTheDocument();
     expect(screen.getByText("Query")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /buscar/i })).toBeInTheDocument();
+  });
+
+  it("initializes Semantic Search score with half of the calibrated base", () => {
+    const onSemanticMinScoreDefaultChange = vi.fn();
+
+    render(
+      <AppsParameterSection
+        hasDocumentOpen={false}
+        includeEditorContextInLlm={false}
+        onToggleIncludeEditorContextInLlm={function (): void {
+          throw new Error("Function not implemented.");
+        }}
+        aiActionSystemPrompts={undefined}
+        onAiActionSystemPromptChange={function (actionId: ActionSystemPromptId, value: string): void {
+          throw new Error("Function not implemented.");
+        }}
+        {...baseAppsProps}
+        appId="app12"
+        appPanelScope={null}
+        semanticMinScore={null}
+        onSemanticMinScoreDefaultChange={onSemanticMinScoreDefaultChange}
+        semanticSearchIndexes={[{
+          id: "idx-1",
+          label: "Indice 1",
+          sourceRows: 10,
+          model: "text-embedding-3-large",
+          dimensions: 3072,
+          embeddingDtype: "float32",
+          sourceFile: "",
+          suggestedMinScore: 0.72,
+        }]}
+        selectedSemanticSearchIndexId="idx-1"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /busca sem.*ntica/i }));
+
+    expect(onSemanticMinScoreDefaultChange).toHaveBeenCalledWith(0.36);
+  });
+
+  it("initializes Semantic Overview score with 0.5", () => {
+    const onSemanticMinScoreDefaultChange = vi.fn();
+
+    render(
+      <AppsParameterSection
+        hasDocumentOpen={false}
+        includeEditorContextInLlm={false}
+        onToggleIncludeEditorContextInLlm={function (): void {
+          throw new Error("Function not implemented.");
+        }}
+        aiActionSystemPrompts={undefined}
+        onAiActionSystemPromptChange={function (actionId: ActionSystemPromptId, value: string): void {
+          throw new Error("Function not implemented.");
+        }}
+        {...baseAppsProps}
+        appId="app12"
+        appPanelScope={null}
+        semanticMinScore={null}
+        onSemanticMinScoreDefaultChange={onSemanticMinScoreDefaultChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /semantic overview/i }));
+
+    expect(onSemanticMinScoreDefaultChange).toHaveBeenCalledWith(0.5);
+  });
+
+  it("recomputes the Semantic Search auto score when the selected base changes", () => {
+    const onSemanticMinScoreDefaultChange = vi.fn();
+
+    const { rerender } = render(
+      <AppsParameterSection
+        hasDocumentOpen={false}
+        includeEditorContextInLlm={false}
+        onToggleIncludeEditorContextInLlm={function (): void {
+          throw new Error("Function not implemented.");
+        }}
+        aiActionSystemPrompts={undefined}
+        onAiActionSystemPromptChange={function (actionId: ActionSystemPromptId, value: string): void {
+          throw new Error("Function not implemented.");
+        }}
+        {...baseAppsProps}
+        appId="app12"
+        appPanelScope={null}
+        semanticMinScore={0.36}
+        semanticMinScoreMode="auto"
+        onSemanticMinScoreDefaultChange={onSemanticMinScoreDefaultChange}
+        semanticSearchIndexes={[
+          {
+            id: "idx-1",
+            label: "Indice 1",
+            sourceRows: 10,
+            model: "text-embedding-3-large",
+            dimensions: 3072,
+            embeddingDtype: "float32",
+            sourceFile: "",
+            suggestedMinScore: 0.72,
+          },
+          {
+            id: "idx-2",
+            label: "Indice 2",
+            sourceRows: 20,
+            model: "text-embedding-3-large",
+            dimensions: 3072,
+            embeddingDtype: "float32",
+            sourceFile: "",
+            suggestedMinScore: 0.8,
+          },
+        ]}
+        selectedSemanticSearchIndexId="idx-1"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /busca sem.*ntica/i }));
+    onSemanticMinScoreDefaultChange.mockClear();
+
+    rerender(
+      <AppsParameterSection
+        hasDocumentOpen={false}
+        includeEditorContextInLlm={false}
+        onToggleIncludeEditorContextInLlm={function (): void {
+          throw new Error("Function not implemented.");
+        }}
+        aiActionSystemPrompts={undefined}
+        onAiActionSystemPromptChange={function (actionId: ActionSystemPromptId, value: string): void {
+          throw new Error("Function not implemented.");
+        }}
+        {...baseAppsProps}
+        appId="app12"
+        appPanelScope={null}
+        semanticMinScore={0.36}
+        semanticMinScoreMode="auto"
+        onSemanticMinScoreDefaultChange={onSemanticMinScoreDefaultChange}
+        semanticSearchIndexes={[
+          {
+            id: "idx-1",
+            label: "Indice 1",
+            sourceRows: 10,
+            model: "text-embedding-3-large",
+            dimensions: 3072,
+            embeddingDtype: "float32",
+            sourceFile: "",
+            suggestedMinScore: 0.72,
+          },
+          {
+            id: "idx-2",
+            label: "Indice 2",
+            sourceRows: 20,
+            model: "text-embedding-3-large",
+            dimensions: 3072,
+            embeddingDtype: "float32",
+            sourceFile: "",
+            suggestedMinScore: 0.8,
+          },
+        ]}
+        selectedSemanticSearchIndexId="idx-2"
+      />,
+    );
+
+    expect(onSemanticMinScoreDefaultChange).toHaveBeenCalledWith(0.4);
+  });
+
+  it("toggles lexical duplicate filtering in Semantic Search", () => {
+    const onSemanticExcludeLexicalDuplicatesChange = vi.fn();
+
+    render(
+      <AppsParameterSection
+        hasDocumentOpen={false}
+        includeEditorContextInLlm={false}
+        onToggleIncludeEditorContextInLlm={function (): void {
+          throw new Error("Function not implemented.");
+        }}
+        aiActionSystemPrompts={undefined}
+        onAiActionSystemPromptChange={function (actionId: ActionSystemPromptId, value: string): void {
+          throw new Error("Function not implemented.");
+        }}
+        {...baseAppsProps}
+        appId="app12"
+        appPanelScope={null}
+        onSemanticExcludeLexicalDuplicatesChange={onSemanticExcludeLexicalDuplicatesChange}
+        semanticSearchIndexes={[{
+          id: "idx-1",
+          label: "Indice 1",
+          sourceRows: 10,
+          model: "text-embedding-3-large",
+          dimensions: 3072,
+          embeddingDtype: "float32",
+          sourceFile: "",
+          suggestedMinScore: 0.72,
+        }]}
+        selectedSemanticSearchIndexId="idx-1"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /busca sem.*ntica/i }));
+    fireEvent.click(screen.getAllByRole("switch")[1]);
+
+    expect(onSemanticExcludeLexicalDuplicatesChange).toHaveBeenCalledWith(false);
   });
 });

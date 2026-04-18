@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   fetchLexicalOverviewProgress,
   fetchSemanticOverviewProgress,
+  fetchSemanticSearchProgress,
   type SemanticOverviewProgressEvent,
   type SemanticOverviewProgressSnapshot,
 } from "@/lib/backend-api";
@@ -16,32 +17,9 @@ const statusStyles: Record<SemanticOverviewProgressSnapshot["status"], { chip: s
   error: { chip: "bg-rose-100 text-rose-800 ring-rose-200", label: "Error" },
 };
 
-const stageStyles: Record<string, string> = {
-  started: "border-blue-200 bg-blue-50/80",
-  index_started: "border-emerald-200 bg-emerald-50/80",
-  index_completed: "border-sky-200 bg-sky-50/80",
-  index_skipped: "border-amber-200 bg-amber-50/80",
-  completed: "border-blue-200 bg-blue-50/80",
-  error: "border-rose-200 bg-rose-50/80",
-};
-
 const initialProgress: SemanticOverviewProgressSnapshot = {
   status: "idle",
   events: [],
-};
-
-const formatDateTime = (value?: string | null): string => {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime())
-    ? value
-    : parsed.toLocaleString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        day: "2-digit",
-        month: "2-digit",
-      });
 };
 
 const formatScore = (value?: number | null): string => (typeof value === "number" ? value.toFixed(2) : "-");
@@ -66,14 +44,14 @@ const formatStageLabel = (stage: string): string => {
 };
 
 const buildTimelineEntries = (events: SemanticOverviewProgressEvent[]) => {
-  const relevantStages = new Set(["index_completed", "index_skipped", "error", "completed"]);
+  const relevantStages = new Set(["started", "index_completed", "index_skipped", "error", "completed"]);
   return events.filter((event) => relevantStages.has(event.stage));
 };
 
 interface SearchLogPanelProps {
   onClose?: () => void;
   shouldPoll?: boolean;
-  activeSearchType?: "semantic_overview" | "lexical_overview" | null;
+  activeSearchType?: "semantic_search" | "semantic_overview" | "lexical_overview" | null;
   embedded?: boolean;
 }
 
@@ -92,18 +70,20 @@ const getSnapshotTime = (snapshot: SemanticOverviewProgressSnapshot | null | und
 };
 
 const chooseProgressSnapshot = (
-  semantic: SemanticOverviewProgressSnapshot,
-  lexical: SemanticOverviewProgressSnapshot,
-  activeSearchType: "semantic_overview" | "lexical_overview" | null,
+  semanticSearch: SemanticOverviewProgressSnapshot,
+  semanticOverview: SemanticOverviewProgressSnapshot,
+  lexicalOverview: SemanticOverviewProgressSnapshot,
+  activeSearchType: "semantic_search" | "semantic_overview" | "lexical_overview" | null,
 ): SemanticOverviewProgressSnapshot => {
-  if (activeSearchType === "lexical_overview" && lexical.status !== "idle") return lexical;
-  if (activeSearchType === "semantic_overview" && semantic.status !== "idle") return semantic;
-  const ranked = [semantic, lexical].sort((a, b) => {
+  if (activeSearchType === "semantic_search" && semanticSearch.status !== "idle") return semanticSearch;
+  if (activeSearchType === "semantic_overview" && semanticOverview.status !== "idle") return semanticOverview;
+  if (activeSearchType === "lexical_overview" && lexicalOverview.status !== "idle") return lexicalOverview;
+  const ranked = [semanticSearch, semanticOverview, lexicalOverview].sort((a, b) => {
     const rankDiff = getSnapshotRank(b) - getSnapshotRank(a);
     if (rankDiff !== 0) return rankDiff;
     return getSnapshotTime(b) - getSnapshotTime(a);
   });
-  return ranked[0] || semantic;
+  return ranked[0] || semanticSearch;
 };
 
 const SearchLogPanel = ({ onClose, shouldPoll = false, activeSearchType = null, embedded = false }: SearchLogPanelProps) => {
@@ -118,14 +98,16 @@ const SearchLogPanel = ({ onClose, shouldPoll = false, activeSearchType = null, 
     const refresh = async () => {
       try {
         setIsRefreshing(true);
-        const [semanticData, lexicalData] = await Promise.all([
+        const [semanticSearchData, semanticOverviewData, lexicalOverviewData] = await Promise.all([
+          fetchSemanticSearchProgress(),
           fetchSemanticOverviewProgress(),
           fetchLexicalOverviewProgress(),
         ]);
         if (cancelled) return;
         setProgress(chooseProgressSnapshot(
-          semanticData.result || { ...initialProgress, searchType: "semantic_overview" },
-          lexicalData.result || { ...initialProgress, searchType: "lexical_overview" },
+          semanticSearchData.result || { ...initialProgress, searchType: "semantic_search" },
+          semanticOverviewData.result || { ...initialProgress, searchType: "semantic_overview" },
+          lexicalOverviewData.result || { ...initialProgress, searchType: "lexical_overview" },
           activeSearchType,
         ));
         setLoadError(null);
@@ -154,13 +136,40 @@ const SearchLogPanel = ({ onClose, shouldPoll = false, activeSearchType = null, 
   const processedIndexes = Number(progress.processedIndexes || 0);
   const totalIndexes = Number(progress.totalIndexes || 0);
   const isLexical = progress.searchType === "lexical_overview";
-  const overviewTitle = isLexical ? "Lexical Overview Monitor" : "Semantic Overview Monitor";
+  const isSemanticSearch = progress.searchType === "semantic_search";
+  const overviewTitle = isLexical
+    ? "Lexical Overview Monitor"
+    : isSemanticSearch
+      ? "Semantic Search Monitor"
+      : "Semantic Overview Monitor";
   const overviewSubtitle = isLexical
-    ? "Varredura léxica"
-    : "Varredura semântica";
-  const processedLabel = isLexical ? "Fontes" : "Bases";
+    ? "Varredura lexica"
+    : isSemanticSearch
+      ? "Busca semantica"
+      : "Varredura semantica";
+  const processedLabel = isLexical ? "Fontes" : isSemanticSearch ? "Base" : "Bases";
+  const queryLabel = isSemanticSearch ? "Query" : "Termo";
   const timelineEntries = buildTimelineEntries(progress.events);
   const statusMessage = loadError || progress.error || progress.message || "Sem atividade recente.";
+  const showsSemanticCalibration = !isLexical;
+  const semanticCalibrationLabel = progress.ignoreBaseCalibration
+    ? "Calibracao ignorada"
+    : progress.usesCalibratedMinScores === false
+      ? "Sem calibracao"
+      : "Calibracao ativa";
+  const semanticRagContext = !isLexical ? (progress.ragContext || null) : null;
+  const hasSemanticRagDetails = Boolean(
+    semanticRagContext
+    && (
+      semanticRagContext.usedRagContext
+      || semanticRagContext.error
+      || semanticRagContext.keyTerms.length > 0
+      || semanticRagContext.definitions.length > 0
+      || semanticRagContext.relatedTerms.length > 0
+      || semanticRagContext.disambiguatedQuery
+      || semanticRagContext.references.length > 0
+    ),
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-muted/40">
@@ -175,13 +184,7 @@ const SearchLogPanel = ({ onClose, shouldPoll = false, activeSearchType = null, 
               {statusMeta.label}
             </span>
             {onClose ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={onClose}
-                title="Fechar Search Log"
-              >
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose} title="Fechar Search Log">
                 <X className="h-3 w-3" />
               </Button>
             ) : null}
@@ -219,12 +222,14 @@ const SearchLogPanel = ({ onClose, shouldPoll = false, activeSearchType = null, 
 
             <div className="mt-3 flex flex-wrap gap-1.5">
               <div className="rounded-lg border border-slate-200 bg-slate-50/90 px-2 py-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Termo</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{queryLabel}</p>
                 <p className="max-w-[18rem] truncate text-[11px] font-medium text-slate-900">{progress.term || "-"}</p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50/90 px-2 py-1.5">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{processedLabel}</p>
-                <p className="text-[11px] font-medium text-slate-900">{processedIndexes}/{totalIndexes || "-"}</p>
+                <p className="text-[11px] font-medium text-slate-900">
+                  {isSemanticSearch ? (progress.currentIndexLabel || progress.currentIndexId || "-") : `${processedIndexes}/${totalIndexes || "-"}`}
+                </p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50/90 px-2 py-1.5">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Achados</p>
@@ -234,6 +239,12 @@ const SearchLogPanel = ({ onClose, shouldPoll = false, activeSearchType = null, 
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Top</p>
                 <p className="text-[11px] font-medium text-slate-900">{formatScore(progress.topScore)}</p>
               </div>
+              {showsSemanticCalibration ? (
+                <div className="rounded-lg border border-slate-200 bg-slate-50/90 px-2 py-1.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Calibracao</p>
+                  <p className="text-[11px] font-medium text-slate-900">{semanticCalibrationLabel}</p>
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -242,6 +253,46 @@ const SearchLogPanel = ({ onClose, shouldPoll = false, activeSearchType = null, 
               <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Status</p>
               <p className="mt-0.5 text-[11px] leading-5 text-slate-700">{statusMessage}</p>
             </div>
+            {!isLexical ? (
+              <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Contexto aplicado na ultima busca</p>
+                {hasSemanticRagDetails && semanticRagContext ? (
+                  <div className="mt-1 space-y-1 text-[11px] leading-5 text-slate-700">
+                    {semanticRagContext.error ? (
+                      <p className="text-amber-700">
+                        A pre-busca conscienciologica falhou e a busca seguiu apenas com a query normal: {semanticRagContext.error}
+                      </p>
+                    ) : null}
+                    {semanticRagContext.keyTerms.length > 0 ? (
+                      <p><span className="font-semibold text-slate-900">Termos-chave:</span> {semanticRagContext.keyTerms.join(", ")}</p>
+                    ) : null}
+                    {semanticRagContext.definitions.length > 0 ? (
+                      <div>
+                        <p className="font-semibold text-slate-900">Definicoes:</p>
+                        {semanticRagContext.definitions.map((item) => (
+                          <p key={`${item.term}:${item.meaning}`}>
+                            <span className="font-semibold text-slate-900">{item.term}:</span> {item.meaning}
+                          </p>
+                        ))}
+                      </div>
+                    ) : null}
+                    {semanticRagContext.relatedTerms.length > 0 ? (
+                      <p><span className="font-semibold text-slate-900">Termos adicionais:</span> {semanticRagContext.relatedTerms.join(", ")}</p>
+                    ) : null}
+                    {semanticRagContext.disambiguatedQuery ? (
+                      <p><span className="font-semibold text-slate-900">Query expandida:</span> {semanticRagContext.disambiguatedQuery}</p>
+                    ) : null}
+                    {semanticRagContext.references.length > 0 ? (
+                      <p><span className="font-semibold text-slate-900">Referencias RAG:</span> {semanticRagContext.references.join(", ")}</p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="mt-0.5 text-[11px] leading-5 text-slate-700">
+                    Nenhum contexto adicional aplicado na ultima busca.
+                  </p>
+                )}
+              </div>
+            ) : null}
             <div className="rounded-xl border border-slate-200/80 bg-white/95 p-3 shadow-[0_16px_40px_-36px_rgba(15,23,42,0.45)]">
               <div className="flex items-center gap-1.5">
                 {progress.status === "error" ? (

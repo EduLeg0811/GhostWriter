@@ -92,9 +92,10 @@ interface ParameterPanelContentProps {
   isLoadingSemanticSearchIndexes: boolean;
   semanticSearchQuery: string;
   semanticSearchMaxResults: number;
-  semanticMinScore: number;
+  semanticMinScore: number | null;
+  semanticMinScoreMode: "auto" | "manual";
   semanticUseRagContext: boolean;
-  semanticSearchLastRagContext: SemanticSearchRagContext | null;
+  semanticExcludeLexicalDuplicates: boolean;
   semanticOverviewLastRagContext: SemanticSearchRagContext | null;
   isRunningSemanticSearch: boolean;
   semanticOverviewTerm: string;
@@ -192,8 +193,10 @@ interface ParameterPanelContentProps {
   onSelectedSemanticSearchIndexIdChange: (value: string) => void;
   onSemanticSearchQueryChange: (value: string) => void;
   onSemanticSearchMaxResultsChange: (value: number) => void;
-  onSemanticMinScoreChange: (value: number) => void;
+  onSemanticMinScoreChange: (value: number | null) => void;
+  onSemanticMinScoreDefaultChange: (value: number | null) => void;
   onSemanticUseRagContextChange: (value: boolean) => void;
+  onSemanticExcludeLexicalDuplicatesChange: (value: boolean) => void;
   onRunSemanticSearch: () => void | Promise<void>;
   onSemanticOverviewTermChange: (value: string) => void;
   onSemanticOverviewMaxResultsChange: (value: number) => void;
@@ -295,8 +298,9 @@ const ParameterPanelContent = ({
   semanticSearchQuery,
   semanticSearchMaxResults,
   semanticMinScore,
+  semanticMinScoreMode,
   semanticUseRagContext,
-  semanticSearchLastRagContext,
+  semanticExcludeLexicalDuplicates,
   semanticOverviewLastRagContext,
   isRunningSemanticSearch,
   semanticOverviewTerm,
@@ -395,7 +399,9 @@ const ParameterPanelContent = ({
   onSemanticSearchQueryChange,
   onSemanticSearchMaxResultsChange,
   onSemanticMinScoreChange,
+  onSemanticMinScoreDefaultChange,
   onSemanticUseRagContextChange,
+  onSemanticExcludeLexicalDuplicatesChange,
   onRunSemanticSearch,
   onSemanticOverviewTermChange,
   onSemanticOverviewMaxResultsChange,
@@ -602,8 +608,9 @@ const ParameterPanelContent = ({
             semanticSearchQuery={semanticSearchQuery}
             semanticSearchMaxResults={semanticSearchMaxResults}
             semanticMinScore={semanticMinScore}
+            semanticMinScoreMode={semanticMinScoreMode}
             semanticUseRagContext={semanticUseRagContext}
-            semanticSearchLastRagContext={semanticSearchLastRagContext}
+            semanticExcludeLexicalDuplicates={semanticExcludeLexicalDuplicates}
             semanticOverviewLastRagContext={semanticOverviewLastRagContext}
             isRunningSemanticSearch={isRunningSemanticSearch}
             semanticOverviewTerm={semanticOverviewTerm}
@@ -671,7 +678,9 @@ const ParameterPanelContent = ({
             onSemanticSearchQueryChange={onSemanticSearchQueryChange}
             onSemanticSearchMaxResultsChange={onSemanticSearchMaxResultsChange}
             onSemanticMinScoreChange={onSemanticMinScoreChange}
+            onSemanticMinScoreDefaultChange={onSemanticMinScoreDefaultChange}
             onSemanticUseRagContextChange={onSemanticUseRagContextChange}
+            onSemanticExcludeLexicalDuplicatesChange={onSemanticExcludeLexicalDuplicatesChange}
             onRunSemanticSearch={onRunSemanticSearch}
             onSemanticOverviewTermChange={onSemanticOverviewTermChange}
             onSemanticOverviewMaxResultsChange={onSemanticOverviewMaxResultsChange}

@@ -101,7 +101,7 @@ const Index = () => {
     biblioExternaYear, setBiblioExternaYear, biblioExternaJournal, setBiblioExternaJournal, biblioExternaPublisher, setBiblioExternaPublisher, biblioExternaIdentifier,
     setBiblioExternaIdentifier, biblioExternaExtra, setBiblioExternaExtra, biblioExternaFreeText, setBiblioExternaFreeText, isRunningBiblioExterna, setIsRunningBiblioExterna,
     lexicalBooks, setLexicalBooks, selectedLexicalBook, setSelectedLexicalBook, lexicalTerm, setLexicalTerm, lexicalMaxResults, setLexicalMaxResults, isRunningLexicalSearch,
-    setIsRunningLexicalSearch, isRunningLexicalOverview, setIsRunningLexicalOverview, semanticSearchQuery, setSemanticSearchQuery, semanticSearchMaxResults, setSemanticSearchMaxResults, semanticMinScore, setSemanticMinScore, semanticUseRagContext, setSemanticUseRagContext, semanticSearchLastRagContext, setSemanticSearchLastRagContext, semanticOverviewLastRagContext, setSemanticOverviewLastRagContext, semanticSearchIndexes, setSemanticSearchIndexes,
+    setIsRunningLexicalSearch, isRunningLexicalOverview, setIsRunningLexicalOverview, semanticSearchQuery, setSemanticSearchQuery, semanticSearchMaxResults, setSemanticSearchMaxResults, semanticMinScore, setSemanticMinScore, semanticMinScoreMode, setSemanticMinScoreMode, semanticUseRagContext, setSemanticUseRagContext, semanticExcludeLexicalDuplicates, setSemanticExcludeLexicalDuplicates, semanticOverviewLastRagContext, semanticSearchIndexes, setSemanticSearchIndexes,
     selectedSemanticSearchIndexId, setSelectedSemanticSearchIndexId, isLoadingSemanticSearchIndexes, setIsLoadingSemanticSearchIndexes, isRunningSemanticSearch, setIsRunningSemanticSearch,
     semanticOverviewTerm, setSemanticOverviewTerm, semanticOverviewMaxResults, setSemanticOverviewMaxResults, isRunningSemanticOverview, setIsRunningSemanticOverview,
     verbeteSearchAuthor, setVerbeteSearchAuthor, verbeteSearchTitle, setVerbeteSearchTitle, verbeteSearchArea, setVerbeteSearchArea, verbeteSearchText, setVerbeteSearchText,
@@ -341,6 +341,25 @@ const Index = () => {
       return next;
     });
   }, [parameterPanelTarget, setAiActionsSelectedVectorStoreIds, setIsTermsConceptsConscienciografiaEnabled]);
+
+  const handleSemanticUseRagContextChange = useCallback((value: boolean) => {
+    setSemanticUseRagContext((prev) => {
+      if (!prev && value && DEFAULT_BOOK_SOURCE_ID) {
+        setAiActionsSelectedVectorStoreIds([DEFAULT_BOOK_SOURCE_ID]);
+      }
+      return value;
+    });
+  }, [setAiActionsSelectedVectorStoreIds, setSemanticUseRagContext]);
+
+  const handleSemanticMinScoreChange = useCallback((value: number | null) => {
+    setSemanticMinScoreMode("manual");
+    setSemanticMinScore(value);
+  }, [setSemanticMinScore, setSemanticMinScoreMode]);
+
+  const handleSemanticMinScoreDefaultChange = useCallback((value: number | null) => {
+    setSemanticMinScoreMode("auto");
+    setSemanticMinScore(value);
+  }, [setSemanticMinScore, setSemanticMinScoreMode]);
 
   const handleResetAllConfig = useCallback(() => {
     window.localStorage.removeItem(LLM_SETTINGS_STORAGE_KEY);
@@ -621,8 +640,9 @@ const Index = () => {
         semanticSearchQuery={semanticSearchQuery}
         semanticSearchMaxResults={semanticSearchMaxResults}
         semanticMinScore={semanticMinScore}
+        semanticMinScoreMode={semanticMinScoreMode}
         semanticUseRagContext={semanticUseRagContext}
-        semanticSearchLastRagContext={semanticSearchLastRagContext}
+        semanticExcludeLexicalDuplicates={semanticExcludeLexicalDuplicates}
         semanticOverviewLastRagContext={semanticOverviewLastRagContext}
         isRunningSemanticSearch={isRunningSemanticSearch}
         semanticOverviewTerm={semanticOverviewTerm}
@@ -737,8 +757,10 @@ const Index = () => {
         onSelectedSemanticSearchIndexIdChange={setSelectedSemanticSearchIndexId}
         onSemanticSearchQueryChange={setSemanticSearchQuery}
         onSemanticSearchMaxResultsChange={setSemanticSearchMaxResults}
-        onSemanticMinScoreChange={setSemanticMinScore}
-        onSemanticUseRagContextChange={setSemanticUseRagContext}
+        onSemanticMinScoreChange={handleSemanticMinScoreChange}
+        onSemanticMinScoreDefaultChange={handleSemanticMinScoreDefaultChange}
+        onSemanticUseRagContextChange={handleSemanticUseRagContextChange}
+        onSemanticExcludeLexicalDuplicatesChange={setSemanticExcludeLexicalDuplicates}
         onRunSemanticSearch={handleRunSemanticSearch}
         onSemanticOverviewTermChange={setSemanticOverviewTerm}
         onSemanticOverviewMaxResultsChange={setSemanticOverviewMaxResults}
@@ -811,8 +833,8 @@ const Index = () => {
         activeTab={activeLogPanel ?? lastActiveLogPanel}
         onTabChange={setActiveLogPanel}
         onClose={() => setActiveLogPanel(null)}
-        shouldPollSearch={isRunningSemanticOverview || isRunningLexicalOverview}
-        activeSearchType={isRunningSemanticOverview ? "semantic_overview" : isRunningLexicalOverview ? "lexical_overview" : null}
+        shouldPollSearch={isRunningSemanticSearch || isRunningSemanticOverview || isRunningLexicalOverview}
+        activeSearchType={isRunningSemanticSearch ? "semantic_search" : isRunningSemanticOverview ? "semantic_overview" : isRunningLexicalOverview ? "lexical_overview" : null}
         llmLogs={llmLogs}
         llmSessionLogs={llmSessionLogs}
         llmLogFontScale={llmLogFontScale}

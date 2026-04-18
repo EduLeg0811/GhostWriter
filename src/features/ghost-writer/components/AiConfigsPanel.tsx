@@ -90,13 +90,22 @@ const AiConfigsPanel = ({
     && (parameterPanelTarget.id === "app8" || parameterPanelTarget.id === "app9" || parameterPanelTarget.id === "app10" || parameterPanelTarget.id === "app11")
       ? parameterPanelTarget.id
       : null;
+  const isSemanticSearchConfig =
+    parameterPanelTarget?.section === "apps"
+    && appPanelScope === "semantic_search"
+    && parameterPanelTarget.id === "app12";
 
   const promptId = actionId && supportsConscienciografiaPrompt(actionId)
     ? getConscienciografiaActionSystemPromptId(actionId, isTermsConceptsConscienciografiaEnabled)
     : (actionId as ActionSystemPromptId | null);
   const effectivePromptId = (verbetografiaActionId ?? promptId) as ActionSystemPromptId | null;
   const selectedActionSystemPrompt = effectivePromptId ? getActionSystemPrompt(aiActionSystemPrompts, effectivePromptId) : "";
-  const canRender = Boolean(actionId || verbetografiaActionId || (parameterPanelTarget?.section === "apps" && parameterPanelTarget.id === "app7"));
+  const canRender = Boolean(
+    actionId
+    || verbetografiaActionId
+    || isSemanticSearchConfig
+    || (parameterPanelTarget?.section === "apps" && parameterPanelTarget.id === "app7"),
+  );
 
   if (!canRender) {
     return (
@@ -129,17 +138,29 @@ const AiConfigsPanel = ({
         includeEditorContextInLlm={includeEditorContextInLlm}
         onToggleIncludeEditorContextInLlm={onToggleIncludeEditorContextInLlm}
         canToggleIncludeEditorContextInLlm={hasDocumentOpen}
-        extraContent={effectivePromptId ? (
-          <div className="space-y-1.5">
-            <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt</Label>
-            <textarea
-              value={selectedActionSystemPrompt}
-              onChange={(event) => onAiActionSystemPromptChange(effectivePromptId, event.target.value)}
-              rows={CONFIG_PROMPT_ROWS}
-              className="w-full rounded-md border border-input bg-white px-2.5 py-1.5 text-[10px] text-foreground outline-none resize-none overflow-y-auto"
-            />
-          </div>
-        ) : null}
+        extraContent={(
+          <>
+            {isSemanticSearchConfig ? (
+              <div className="space-y-1.5">
+                <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">RAG Conscienciologico</Label>
+                <p className="text-[10px] leading-relaxed text-muted-foreground">
+                  O vector store selecionado aqui e o usado pelo RAG Conscienciologico em Busca Semantica e Semantic Overview.
+                </p>
+              </div>
+            ) : null}
+            {effectivePromptId ? (
+              <div className="space-y-1.5">
+                <Label className="w-36 shrink-0 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">System Prompt</Label>
+                <textarea
+                  value={selectedActionSystemPrompt}
+                  onChange={(event) => onAiActionSystemPromptChange(effectivePromptId, event.target.value)}
+                  rows={CONFIG_PROMPT_ROWS}
+                  className="w-full rounded-md border border-input bg-white px-2.5 py-1.5 text-[10px] text-foreground outline-none resize-none overflow-y-auto"
+                />
+              </div>
+            ) : null}
+          </>
+        )}
         footerContent={(
           <div className="flex justify-center">
             <button

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { primaryActionButtonClass } from "@/styles/buttonStyles";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
-import type { SemanticIndexOption, SemanticSearchRagContext } from "@/features/ghost-writer/types";
+import type { SemanticIndexOption } from "@/features/ghost-writer/types";
 
 interface SemanticSearchPanelProps {
   title: string;
@@ -20,14 +20,17 @@ interface SemanticSearchPanelProps {
   onSelectedIndexChange: (value: string) => void;
   query: string;
   maxResults: number;
-  minScore: number;
+  minScore: number | null;
+  effectiveMinScorePreview?: number;
+  recommendedMinScore?: number;
   useRagContext: boolean;
-  ragContext: SemanticSearchRagContext | null;
+  excludeLexicalDuplicates: boolean;
   selectedVectorStoreLabel: string;
   onQueryChange: (value: string) => void;
   onMaxResultsChange: (value: number) => void;
-  onMinScoreChange: (value: number) => void;
+  onMinScoreChange: (value: number | null) => void;
   onUseRagContextChange: (value: boolean) => void;
+  onExcludeLexicalDuplicatesChange: (value: boolean) => void;
   onRunSearch: () => void;
   isRunning: boolean;
   onClose?: () => void;
@@ -44,13 +47,16 @@ const SemanticSearchPanel = ({
   query,
   maxResults,
   minScore,
+  effectiveMinScorePreview,
+  recommendedMinScore,
   useRagContext,
-  ragContext,
+  excludeLexicalDuplicates,
   selectedVectorStoreLabel,
   onQueryChange,
   onMaxResultsChange,
   onMinScoreChange,
   onUseRagContextChange,
+  onExcludeLexicalDuplicatesChange,
   onRunSearch,
   isRunning,
   onClose,
@@ -58,8 +64,7 @@ const SemanticSearchPanel = ({
 }: SemanticSearchPanelProps) => {
   const queryTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const selectedIndex = availableIndexes.find((item) => item.id === selectedIndexId) ?? null;
-  const currentQuery = query.trim();
-  const visibleRagContext = ragContext && (ragContext.sourceQuery || "").trim() === currentQuery ? ragContext : null;
+  const [minScoreDraft, setMinScoreDraft] = useState("");
 
   const resizeQueryTextarea = () => {
     const el = queryTextareaRef.current;
@@ -71,6 +76,21 @@ const SemanticSearchPanel = ({
   useEffect(() => {
     resizeQueryTextarea();
   }, [query]);
+
+  useEffect(() => {
+    setMinScoreDraft(typeof minScore === "number" && Number.isFinite(minScore) ? minScore.toFixed(2) : "");
+  }, [minScore]);
+
+  const commitMinScoreDraft = () => {
+    const normalized = minScoreDraft.replace(",", ".").trim();
+    if (!normalized) {
+      onMinScoreChange(null);
+      return;
+    }
+    const raw = Number.parseFloat(normalized);
+    if (!Number.isFinite(raw)) return;
+    onMinScoreChange(Math.max(0, Math.min(1, raw)));
+  };
 
   const content = (
     <div className="scrollbar-thin flex-1 overflow-y-auto p-4">
@@ -117,84 +137,60 @@ const SemanticSearchPanel = ({
         <div className="flex items-center gap-2">
           <Label className="w-16 shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Score Min</Label>
           <Input
-            type="text"
+            type="number"
             inputMode="decimal"
-            value={Number.isFinite(minScore) ? minScore.toFixed(2) : "0.25"}
+            min={0}
+            max={1}
+            step="0.01"
+            value={minScoreDraft}
             onChange={(e) => {
-              const normalized = e.target.value.replace(",", ".").trim();
-              const raw = Number.parseFloat(normalized || "0");
-              const next = Number.isFinite(raw) ? Math.max(0, Math.min(1, raw)) : 0;
-              onMinScoreChange(next);
+              setMinScoreDraft(e.target.value);
             }}
+            onBlur={commitMinScoreDraft}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                commitMinScoreDraft();
+                event.currentTarget.blur();
+              }
+            }}
+            placeholder="0.00"
             className="h-8 bg-white !text-xs text-right"
           />
         </div>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Score digitado: {typeof minScore === "number" ? minScore.toFixed(2) : "-"} | Score efetivo previsto: {typeof effectiveMinScorePreview === "number" ? effectiveMinScorePreview.toFixed(2) : "-"}
+          {typeof recommendedMinScore === "number" ? ` | Calibrado da base: ${recommendedMinScore.toFixed(2)}` : ""}
+        </p>
 
         <div className="space-y-2 rounded-lg border border-border/60 bg-slate-50/80 p-3">
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-1">
-              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">RAG Conscienciológico</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">RAG Conscienciologico</Label>
               <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Usa o vector store atual das Configurações para contextualizar a query antes do embedding.
+                Contextualizar a query.
               </p>
             </div>
             <Switch checked={useRagContext} onCheckedChange={onUseRagContextChange} />
+          </div>
+          <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-3">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Duplicados lexicos</Label>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Descartar resultados lexicos.
+              </p>
+            </div>
+            <Switch checked={excludeLexicalDuplicates} onCheckedChange={onExcludeLexicalDuplicatesChange} />
           </div>
           <p className="text-[11px] leading-relaxed text-muted-foreground">
             Vector store atual: {selectedVectorStoreLabel || "nenhum selecionado"}
           </p>
           {useRagContext ? (
-            visibleRagContext ? (
-              <div className="space-y-2 rounded-md border border-blue-100 bg-white p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-900">
-                  Contexto aplicado na ultima busca
-                </p>
-                {visibleRagContext.error ? (
-                  <p className="text-[11px] leading-relaxed text-amber-700">
-                    A pré-busca conscienciológica falhou e a busca seguiu apenas com a query normal: {visibleRagContext.error}
-                  </p>
-                ) : null}
-                {visibleRagContext.keyTerms.length > 0 ? (
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
-                    <span className="font-semibold text-foreground">Termos-chave:</span> {visibleRagContext.keyTerms.join(", ")}
-                  </p>
-                ) : null}
-                {visibleRagContext.definitions.length > 0 ? (
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-semibold text-foreground">Definições:</p>
-                    <div className="space-y-1">
-                      {visibleRagContext.definitions.map((item) => (
-                        <p key={`${item.term}:${item.meaning}`} className="text-[11px] leading-relaxed text-muted-foreground">
-                          <span className="font-semibold text-foreground">{item.term}:</span> {item.meaning}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-                {visibleRagContext.relatedTerms.length > 0 ? (
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
-                    <span className="font-semibold text-foreground">Termos adicionais:</span> {visibleRagContext.relatedTerms.join(", ")}
-                  </p>
-                ) : null}
-                {visibleRagContext.disambiguatedQuery ? (
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
-                    <span className="font-semibold text-foreground">Query expandida:</span> {visibleRagContext.disambiguatedQuery}
-                  </p>
-                ) : null}
-                {visibleRagContext.references.length > 0 ? (
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
-                    <span className="font-semibold text-foreground">Referências RAG:</span> {visibleRagContext.references.join(", ")}
-                  </p>
-                ) : null}
-              </div>
-            ) : (
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Execute a busca para visualizar quais definições e termos adicionais foram usados na expansão da query.
-              </p>
-            )
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              O contexto aplicado na ultima busca e exibido em Logs &gt; Search.
+            </p>
           ) : (
             <p className="text-[11px] leading-relaxed text-muted-foreground">
-              Etapa desabilitada. A busca usa apenas a query digitada e as expansões semânticas locais.
+              Etapa desabilitada.
             </p>
           )}
         </div>

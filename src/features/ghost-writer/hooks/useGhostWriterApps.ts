@@ -59,8 +59,9 @@ interface UseGhostWriterAppsParams {
   lexicalMaxResults: number;
   semanticSearchQuery: string;
   semanticSearchMaxResults: number;
-  semanticMinScore: number;
+  semanticMinScore: number | null;
   semanticUseRagContext: boolean;
+  semanticExcludeLexicalDuplicates: boolean;
   setSemanticSearchLastRagContext: Dispatch<SetStateAction<SemanticSearchRagContext | null>>;
   setSemanticOverviewLastRagContext: Dispatch<SetStateAction<SemanticSearchRagContext | null>>;
   semanticSearchIndexes: SemanticIndexOption[];
@@ -133,6 +134,56 @@ const normalizeRefPages = (pages: string) => (
     .join(", ")
 );
 
+const createLlmLogEntry = (incomingLog: { request?: unknown; response?: unknown; error?: unknown } | null | undefined): LlmLogEntry | null => {
+  if (!incomingLog) return null;
+  if (incomingLog.request === undefined && incomingLog.response === undefined && incomingLog.error === undefined) return null;
+  return {
+    id: crypto.randomUUID(),
+    at: new Date().toISOString(),
+    request: incomingLog.request ?? {},
+    response: incomingLog.response ?? {},
+    error: typeof incomingLog.error === "string" ? incomingLog.error : undefined,
+  };
+};
+
+const buildSemanticSearchEmptyMessage = ({
+  minScore,
+  requestedMinScore,
+  recommendedMinScore,
+  lexicalFilteredCount,
+}: {
+  minScore: number;
+  requestedMinScore: number | null;
+  recommendedMinScore: number;
+  lexicalFilteredCount: number;
+}) => {
+  const details = [
+    `Score minimo efetivo: ${minScore.toFixed(2)}`,
+    requestedMinScore === null ? `Calibrado da base: ${recommendedMinScore.toFixed(2)}` : "",
+    lexicalFilteredCount > 0 ? `Duplicados lexicos filtrados: ${lexicalFilteredCount}` : "",
+  ].filter(Boolean);
+  return `Nenhuma pensata semanticamente afim encontrada.${details.length > 0 ? ` ${details.join(" | ")}` : ""}`;
+};
+
+const buildSemanticOverviewEmptyMessage = ({
+  minScore,
+  recommendedMinScoreMin,
+  recommendedMinScoreMax,
+  lexicalFilteredCount,
+}: {
+  minScore: number;
+  recommendedMinScoreMin: number;
+  recommendedMinScoreMax: number;
+  lexicalFilteredCount: number;
+}) => {
+  const details = [
+    `Piso global: ${minScore.toFixed(2)}`,
+    `Faixa calibrada: ${recommendedMinScoreMin.toFixed(2)}-${recommendedMinScoreMax.toFixed(2)}`,
+    lexicalFilteredCount > 0 ? `Duplicados lexicos filtrados: ${lexicalFilteredCount}` : "",
+  ].filter(Boolean);
+  return `Nenhum resultado semanticamente afim encontrado.${details.length > 0 ? ` ${details.join(" | ")}` : ""}`;
+};
+
 const buildVerbeteSearchMarkdown = (matches: Array<{
   title?: string;
   text?: string;
@@ -194,6 +245,7 @@ const useGhostWriterApps = ({
   semanticSearchMaxResults,
   semanticMinScore,
   semanticUseRagContext,
+  semanticExcludeLexicalDuplicates,
   setSemanticSearchLastRagContext,
   setSemanticOverviewLastRagContext,
   semanticSearchIndexes,
@@ -257,6 +309,13 @@ const useGhostWriterApps = ({
   addResponse,
   toast,
 }: UseGhostWriterAppsParams) => {
+  const pushLlmLogEntry = useCallback((incomingLog: { request?: unknown; response?: unknown; error?: unknown } | null | undefined) => {
+    const nextLog = createLlmLogEntry(incomingLog);
+    if (!nextLog) return;
+    setLlmLogs([nextLog]);
+    setLlmSessionLogs((prev) => [...prev, nextLog]);
+  }, [setLlmLogs, setLlmSessionLogs]);
+
   const handleSelectRefBook = useCallback((book: BookCode) => {
     setSelectedRefBook(book);
   }, [setSelectedRefBook]);
@@ -379,16 +438,7 @@ const useGhostWriterApps = ({
         ? data.result.llmLogs
         : (data.result.llmLog ? [data.result.llmLog] : []);
       if (incomingLogs.length > 0) {
-        const latestEntry = incomingLogs[incomingLogs.length - 1];
-        const nextLog: LlmLogEntry = {
-          id: crypto.randomUUID(),
-          at: new Date().toISOString(),
-          request: latestEntry?.request ?? {},
-          response: latestEntry?.response ?? {},
-          error: typeof latestEntry?.error === "string" ? latestEntry.error : undefined,
-        };
-        setLlmLogs([nextLog]);
-        setLlmSessionLogs((prev) => [...prev, nextLog]);
+        pushLlmLogEntry(incomingLogs[incomingLogs.length - 1]);
       }
       const markdown = (data.result.markdown || "").trim();
       const scorePercentual = Number(data.result.score?.score_percentual ?? NaN);
@@ -420,7 +470,7 @@ const useGhostWriterApps = ({
     } finally {
       setIsRunningBiblioExterna(false);
     }
-  }, [addResponse, biblioExternaAuthor, biblioExternaExtra, biblioExternaFreeText, biblioExternaIdentifier, biblioExternaJournal, biblioExternaLlmEffort, biblioExternaLlmMaxOutputTokens, biblioExternaLlmModel, biblioExternaLlmSystemPrompt, biblioExternaLlmTemperature, biblioExternaLlmVerbosity, biblioExternaPublisher, biblioExternaTitle, biblioExternaYear, setIsRunningBiblioExterna, setLlmLogs, setLlmSessionLogs, toast]);
+  }, [addResponse, biblioExternaAuthor, biblioExternaExtra, biblioExternaFreeText, biblioExternaIdentifier, biblioExternaJournal, biblioExternaLlmEffort, biblioExternaLlmMaxOutputTokens, biblioExternaLlmModel, biblioExternaLlmSystemPrompt, biblioExternaLlmTemperature, biblioExternaLlmVerbosity, biblioExternaPublisher, biblioExternaTitle, biblioExternaYear, pushLlmLogEntry, setIsRunningBiblioExterna, toast]);
 
   const ensureLexicalBooksLoaded = useCallback(async () => {
     if (lexicalBooks.length > 0) return lexicalBooks;
@@ -795,19 +845,26 @@ const useGhostWriterApps = ({
         indexId,
         query,
         limit: maxResults,
-        minScore: semanticMinScore,
+        minScore: semanticMinScore ?? undefined,
         useRagContext: semanticUseRagContext,
+        excludeLexicalDuplicates: semanticExcludeLexicalDuplicates,
         vectorStoreIds,
       });
       const totalFound = Number(data.result.total || 0);
-      const requestedMinScore = Number(data.result.requestedMinScore ?? semanticMinScore ?? 0);
-      const recommendedMinScore = Number(data.result.recommendedMinScore ?? semanticMinScore ?? 0);
-      const minScore = Number(data.result.minScore || semanticMinScore || 0);
+      const requestedMinScore = typeof data.result.requestedMinScore === "number" ? data.result.requestedMinScore : null;
+      const recommendedMinScore = Number(data.result.recommendedMinScore ?? 0);
+      const minScore = Number(data.result.minScore || recommendedMinScore || 0);
       const lexicalFilteredCount = Number(data.result.lexicalFilteredCount || 0);
       setSemanticSearchLastRagContext(data.result.ragContext ?? null);
+      pushLlmLogEntry(data.result.ragLlmLog);
       const matches = (data.result.matches || []).slice(0, maxResults);
       if (matches.length <= 0) {
-        toast.info("Nenhuma pensata semanticamente afim encontrada.");
+        toast.info(buildSemanticSearchEmptyMessage({
+          minScore,
+          requestedMinScore,
+          recommendedMinScore,
+          lexicalFilteredCount,
+        }));
         return;
       }
       const payload = buildSemanticSearchHistoryResponsePayload({
@@ -818,6 +875,7 @@ const useGhostWriterApps = ({
         requestedMinScore,
         recommendedMinScore,
         minScore,
+        ignoreBaseCalibration: requestedMinScore !== null,
         lexicalFilteredCount,
         matches,
       });
@@ -828,7 +886,7 @@ const useGhostWriterApps = ({
     } finally {
       setIsRunningSemanticSearch(false);
     }
-  }, [addResponse, aiActionsSelectedVectorStoreIds, selectedSemanticSearchIndexId, semanticMinScore, semanticSearchIndexes, semanticSearchMaxResults, semanticSearchQuery, semanticUseRagContext, setIsRunningSemanticSearch, setSemanticSearchLastRagContext, toast]);
+  }, [addResponse, aiActionsSelectedVectorStoreIds, pushLlmLogEntry, selectedSemanticSearchIndexId, semanticExcludeLexicalDuplicates, semanticMinScore, semanticSearchIndexes, semanticSearchMaxResults, semanticSearchQuery, semanticUseRagContext, setIsRunningSemanticSearch, setSemanticSearchLastRagContext, toast]);
 
   const handleRunSemanticOverview = useCallback(async () => {
     const term = semanticOverviewTerm.trim();
@@ -844,21 +902,28 @@ const useGhostWriterApps = ({
       const data = await searchSemanticOverviewApp({
         term,
         limit,
-        minScore: semanticMinScore,
+        minScore: semanticMinScore ?? undefined,
         useRagContext: semanticUseRagContext,
+        excludeLexicalDuplicates: semanticExcludeLexicalDuplicates,
         vectorStoreIds,
       });
       const totalIndexes = Number(data.result.totalIndexes || 0);
       const totalFound = Number(data.result.totalFound || 0);
-      const minScore = Number(data.result.minScore || semanticMinScore || 0);
-      const recommendedMinScoreMin = Number(data.result.recommendedMinScoreMin || minScore || 0);
-      const recommendedMinScoreMax = Number(data.result.recommendedMinScoreMax || minScore || 0);
+      const recommendedMinScoreMin = Number(data.result.recommendedMinScoreMin || 0);
+      const recommendedMinScoreMax = Number(data.result.recommendedMinScoreMax || 0);
+      const minScore = typeof data.result.minScore === "number" ? data.result.minScore : recommendedMinScoreMin;
       const usesCalibratedMinScores = Boolean(data.result.usesCalibratedMinScores);
       const lexicalFilteredCount = Number(data.result.lexicalFilteredCount || 0);
       setSemanticOverviewLastRagContext(data.result.ragContext ?? null);
+      pushLlmLogEntry(data.result.ragLlmLog);
       const groups = data.result.groups || [];
       if (groups.length <= 0 || totalFound <= 0) {
-        toast.info("Nenhum resultado semanticamente afim encontrado.");
+        toast.info(buildSemanticOverviewEmptyMessage({
+          minScore,
+          recommendedMinScoreMin,
+          recommendedMinScoreMax,
+          lexicalFilteredCount,
+        }));
         return;
       }
       const payload = buildSemanticOverviewHistoryResponsePayload({
@@ -868,6 +933,7 @@ const useGhostWriterApps = ({
         recommendedMinScoreMin,
         recommendedMinScoreMax,
         usesCalibratedMinScores,
+        ignoreBaseCalibration: !usesCalibratedMinScores,
         totalIndexes,
         totalFound,
         lexicalFilteredCount,
@@ -880,7 +946,7 @@ const useGhostWriterApps = ({
     } finally {
       setIsRunningSemanticOverview(false);
     }
-  }, [addResponse, aiActionsSelectedVectorStoreIds, semanticMinScore, semanticOverviewMaxResults, semanticOverviewTerm, semanticUseRagContext, setIsRunningSemanticOverview, setSemanticOverviewLastRagContext, toast]);
+  }, [addResponse, aiActionsSelectedVectorStoreIds, pushLlmLogEntry, semanticExcludeLexicalDuplicates, semanticMinScore, semanticOverviewMaxResults, semanticOverviewTerm, semanticUseRagContext, setIsRunningSemanticOverview, setSemanticOverviewLastRagContext, toast]);
 
   const handleRunVerbeteSearch = useCallback(async () => {
     const author = verbeteSearchAuthor.trim();

@@ -64,6 +64,35 @@ def validate_external_dictionary_term(raw_term: str, param_name: str = "palavra"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 META_DIR.mkdir(parents=True, exist_ok=True)
 
+SEMANTIC_SEARCH_PROGRESS_LOCK = Lock()
+SEMANTIC_SEARCH_PROGRESS: dict[str, Any] = {
+    "searchType": "semantic_search",
+    "status": "idle",
+    "startedAt": None,
+    "finishedAt": None,
+    "updatedAt": None,
+    "term": "",
+    "limit": 0,
+    "minScore": None,
+    "ignoreBaseCalibration": False,
+    "usesCalibratedMinScores": True,
+    "totalIndexes": 1,
+    "processedIndexes": 0,
+    "currentIndexPosition": 0,
+    "currentIndexId": "",
+    "currentIndexLabel": "",
+    "currentMatches": 0,
+    "totalMatchesAccumulated": 0,
+    "totalFound": 0,
+    "lexicalFilteredCount": 0,
+    "groupsCount": 0,
+    "topScore": None,
+    "message": "",
+    "error": None,
+    "ragContext": None,
+    "events": [],
+}
+
 SEMANTIC_OVERVIEW_PROGRESS_LOCK = Lock()
 SEMANTIC_OVERVIEW_PROGRESS: dict[str, Any] = {
     "searchType": "semantic_overview",
@@ -74,6 +103,8 @@ SEMANTIC_OVERVIEW_PROGRESS: dict[str, Any] = {
     "term": "",
     "limit": 0,
     "minScore": None,
+    "ignoreBaseCalibration": False,
+    "usesCalibratedMinScores": True,
     "totalIndexes": 0,
     "processedIndexes": 0,
     "currentIndexPosition": 0,
@@ -87,6 +118,7 @@ SEMANTIC_OVERVIEW_PROGRESS: dict[str, Any] = {
     "topScore": None,
     "message": "",
     "error": None,
+    "ragContext": None,
     "events": [],
 }
 
@@ -111,6 +143,7 @@ LEXICAL_OVERVIEW_PROGRESS: dict[str, Any] = {
     "topScore": None,
     "message": "",
     "error": None,
+    "ragContext": None,
     "events": [],
 }
 
@@ -133,6 +166,29 @@ def _update_semantic_overview_progress(update: dict[str, Any], *, reset_events: 
         current["events"] = events
         SEMANTIC_OVERVIEW_PROGRESS.clear()
         SEMANTIC_OVERVIEW_PROGRESS.update(current)
+
+
+def _update_semantic_search_progress(update: dict[str, Any], *, reset_events: bool = False) -> None:
+    event = update.pop("event", None)
+    timestamp = _utc_iso_now()
+    with SEMANTIC_SEARCH_PROGRESS_LOCK:
+        current = dict(SEMANTIC_SEARCH_PROGRESS)
+        events = [] if reset_events else list(current.get("events") or [])
+        if event:
+            events.insert(0, {"at": timestamp, **event})
+            events = events[:80]
+        current.update(update)
+        current["updatedAt"] = timestamp
+        current["events"] = events
+        SEMANTIC_SEARCH_PROGRESS.clear()
+        SEMANTIC_SEARCH_PROGRESS.update(current)
+
+
+def _snapshot_semantic_search_progress() -> dict[str, Any]:
+    with SEMANTIC_SEARCH_PROGRESS_LOCK:
+        snapshot = dict(SEMANTIC_SEARCH_PROGRESS)
+        snapshot["events"] = [dict(item) for item in SEMANTIC_SEARCH_PROGRESS.get("events", [])]
+        return snapshot
 
 
 def _snapshot_semantic_overview_progress() -> dict[str, Any]:
@@ -163,6 +219,14 @@ def _snapshot_lexical_overview_progress() -> dict[str, Any]:
         snapshot = dict(LEXICAL_OVERVIEW_PROGRESS)
         snapshot["events"] = [dict(item) for item in LEXICAL_OVERVIEW_PROGRESS.get("events", [])]
         return snapshot
+
+
+def _sanitize_rag_context(rag_context: Any) -> dict[str, Any] | None:
+    if not isinstance(rag_context, dict):
+        return None
+    sanitized = dict(rag_context)
+    sanitized.pop("llmLog", None)
+    return sanitized
 
 PORT = int(os.getenv("PORT") or os.getenv("SERVER_PORT", "8787"))
 pdf2docx_python_cmd = (os.getenv("PDF2DOCX_PYTHON_CMD") or "python").strip()
@@ -302,7 +366,9 @@ class SemanticSearchRequest(BaseModel):
     limit: int = 10
     minScore: float | None = None
     useRagContext: bool = False
+    excludeLexicalDuplicates: bool = True
     vectorStoreIds: list[str] = []
+    ignoreBaseCalibration: bool = False
 
 
 class SemanticOverviewSearchRequest(BaseModel):
@@ -310,7 +376,9 @@ class SemanticOverviewSearchRequest(BaseModel):
     limit: int = 50
     minScore: float | None = None
     useRagContext: bool = False
+    excludeLexicalDuplicates: bool = True
     vectorStoreIds: list[str] = []
+    ignoreBaseCalibration: bool = False
 
 
 class OnlineDictionarySearchRequest(BaseModel):
@@ -1416,7 +1484,45 @@ def api_semantic_search(payload: SemanticSearchRequest) -> dict[str, Any]:
     if not query:
         raise HTTPException(status_code=400, detail="Parametro 'query' e obrigatorio.")
     limit = max(1, min(int(payload.limit or 10), 50))
-    min_score = max(0.0, float(payload.minScore if payload.minScore is not None else 0.25))
+    min_score = max(0.0, float(payload.minScore)) if payload.minScore is not None else None
+    ignore_base_calibration = bool(payload.ignoreBaseCalibration or payload.minScore is not None)
+    exclude_lexical_duplicates = bool(payload.excludeLexicalDuplicates)
+
+    _update_semantic_search_progress(
+        {
+            "status": "running",
+            "startedAt": _utc_iso_now(),
+            "finishedAt": None,
+            "term": query,
+            "limit": limit,
+            "minScore": min_score,
+            "ignoreBaseCalibration": ignore_base_calibration,
+            "usesCalibratedMinScores": not ignore_base_calibration,
+            "excludeLexicalDuplicates": exclude_lexical_duplicates,
+            "totalIndexes": 1,
+            "processedIndexes": 0,
+            "currentIndexPosition": 1,
+            "currentIndexId": index_id,
+            "currentIndexLabel": index_id.upper(),
+            "currentMatches": 0,
+            "totalMatchesAccumulated": 0,
+            "totalFound": 0,
+            "lexicalFilteredCount": 0,
+            "groupsCount": 0,
+            "topScore": None,
+            "message": f"Processando busca semantica na base {index_id.upper()}.",
+            "error": None,
+            "ragContext": None,
+            "event": {
+                "stage": "started",
+                "indexId": index_id,
+                "indexLabel": index_id.upper(),
+                "position": 1,
+                "totalIndexes": 1,
+            },
+        },
+        reset_events=True,
+    )
 
     try:
         from backend.functions.semantic_search_service import search_semantic_index
@@ -1430,16 +1536,90 @@ def api_semantic_search(payload: SemanticSearchRequest) -> dict[str, Any]:
             limit=limit,
             api_key=get_openai_api_key(),
             min_score=min_score,
-            exclude_lexical_duplicates=True,
+            exclude_lexical_duplicates=exclude_lexical_duplicates,
             use_rag_context=bool(payload.useRagContext),
             vector_store_ids=payload.vectorStoreIds,
+            ignore_base_calibration=ignore_base_calibration,
         )
     except FileNotFoundError as exc:
+        _update_semantic_search_progress({
+            "status": "error",
+            "finishedAt": _utc_iso_now(),
+            "error": str(exc),
+            "message": "Semantic Search falhou ao carregar a base.",
+            "event": {
+                "stage": "error",
+                "indexId": index_id,
+                "indexLabel": index_id.upper(),
+                "position": 1,
+                "totalIndexes": 1,
+                "note": str(exc),
+            },
+        })
         raise HTTPException(status_code=500, detail=str(exc))
     except ValueError as exc:
+        _update_semantic_search_progress({
+            "status": "error",
+            "finishedAt": _utc_iso_now(),
+            "error": str(exc),
+            "message": "Semantic Search interrompido por erro de validacao.",
+            "event": {
+                "stage": "error",
+                "indexId": index_id,
+                "indexLabel": index_id.upper(),
+                "position": 1,
+                "totalIndexes": 1,
+                "note": str(exc),
+            },
+        })
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
+        _update_semantic_search_progress({
+            "status": "error",
+            "finishedAt": _utc_iso_now(),
+            "error": str(exc),
+            "message": "Semantic Search falhou durante o processamento.",
+            "event": {
+                "stage": "error",
+                "indexId": index_id,
+                "indexLabel": index_id.upper(),
+                "position": 1,
+                "totalIndexes": 1,
+                "note": str(exc),
+            },
+        })
         raise HTTPException(status_code=500, detail=f"Falha ao executar Semantic Search: {exc}")
+
+    rag_llm_log = rag_context.get("llmLog") if isinstance(rag_context, dict) else None
+    rag_context_payload = _sanitize_rag_context(rag_context)
+    top_score = max((float(match.get("score") or 0.0) for match in matches), default=None)
+    current_index_label = str(matches[0].get("index_label") or index_id).strip() if matches else index_id.upper()
+    _update_semantic_search_progress({
+        "status": "completed",
+        "finishedAt": _utc_iso_now(),
+        "processedIndexes": 1,
+        "currentIndexPosition": 1,
+        "currentIndexId": index_id,
+        "currentIndexLabel": current_index_label,
+        "currentMatches": total,
+        "totalMatchesAccumulated": total,
+        "totalFound": total,
+        "lexicalFilteredCount": lexical_filtered_count,
+        "topScore": top_score,
+        "message": f"Semantic Search concluido com {total} resultados.",
+        "ragContext": rag_context_payload,
+        "event": {
+            "stage": "completed",
+            "indexId": index_id,
+            "indexLabel": current_index_label,
+            "position": 1,
+            "totalIndexes": 1,
+            "matchesFound": total,
+            "totalMatchesAccumulated": total,
+            "topScore": top_score,
+            "note": f"{lexical_filtered_count} duplicados lexicos filtrados." + (f" RAG contextual aplicado via {len((rag_context_payload or {}).get('vectorStoreIds') or [])} vector store(s)." if (rag_context_payload or {}).get("usedRagContext") else ""),
+        },
+    })
 
     return {
         "ok": True,
@@ -1450,8 +1630,11 @@ def api_semantic_search(payload: SemanticSearchRequest) -> dict[str, Any]:
             "requestedMinScore": min_score,
             "recommendedMinScore": recommended_min_score,
             "minScore": effective_min_score,
+            "ignoreBaseCalibration": ignore_base_calibration,
+            "excludeLexicalDuplicates": exclude_lexical_duplicates,
             "lexicalFilteredCount": lexical_filtered_count,
-            "ragContext": rag_context,
+            "ragContext": rag_context_payload,
+            "ragLlmLog": rag_llm_log,
             "matches": matches,
         },
     }
@@ -1465,6 +1648,14 @@ def api_lexical_overview_progress() -> dict[str, Any]:
     }
 
 
+@app.get("/api/apps/semantic/search/progress")
+def api_semantic_search_progress() -> dict[str, Any]:
+    return {
+        "ok": True,
+        "result": _snapshot_semantic_search_progress(),
+    }
+
+
 @app.post("/api/apps/semantic/overview")
 def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, Any]:
     require_openai_key()
@@ -1472,7 +1663,8 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
     if not term:
         raise HTTPException(status_code=400, detail="Parametro 'term' e obrigatorio.")
     limit = max(1, min(int(payload.limit or 50), 100))
-    min_score = max(0.0, float(payload.minScore if payload.minScore is not None else 0.25))
+    min_score = max(0.0, float(payload.minScore)) if payload.minScore is not None else None
+    exclude_lexical_duplicates = bool(payload.excludeLexicalDuplicates)
 
     try:
         from backend.functions.semantic_search_service import search_semantic_overview_with_total
@@ -1487,6 +1679,9 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
             "term": term,
             "limit": limit,
             "minScore": min_score,
+            "ignoreBaseCalibration": bool(payload.ignoreBaseCalibration or payload.minScore is not None),
+            "usesCalibratedMinScores": not bool(payload.ignoreBaseCalibration or payload.minScore is not None),
+            "excludeLexicalDuplicates": exclude_lexical_duplicates,
             "totalIndexes": 0,
             "processedIndexes": 0,
             "currentIndexPosition": 0,
@@ -1500,6 +1695,7 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
             "topScore": None,
             "message": "Preparando Semantic Overview.",
             "error": None,
+            "ragContext": None,
         },
         reset_events=True,
     )
@@ -1511,10 +1707,13 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
             api_key=get_openai_api_key(),
             progress_callback=_update_semantic_overview_progress,
             min_score=min_score,
-            exclude_lexical_duplicates=True,
+            exclude_lexical_duplicates=exclude_lexical_duplicates,
             use_rag_context=bool(payload.useRagContext),
             vector_store_ids=payload.vectorStoreIds,
+            ignore_base_calibration=bool(payload.ignoreBaseCalibration),
         )
+        rag_llm_log = rag_context.get("llmLog") if isinstance(rag_context, dict) else None
+        rag_context_payload = _sanitize_rag_context(rag_context)
         top_score = max(
             (
                 float(match.get("score") or 0.0)
@@ -1536,12 +1735,13 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
                 "groupsCount": len(groups),
                 "topScore": top_score,
                 "message": f"Semantic Overview concluido com {total_found} resultados.",
+                "ragContext": rag_context_payload,
                 "event": {
                     "stage": "completed",
                     "matchesFound": total_found,
                     "totalMatchesAccumulated": total_found,
                     "topScore": top_score,
-                    "note": f"{len(groups)} bases entraram no top final; calibracao entre {min_recommended_score:.2f} e {max_recommended_score:.2f}; {lexical_filtered_count} duplicados lexicos filtrados." + (f" RAG contextual aplicado via {len(rag_context.get('vectorStoreIds') or [])} vector store(s)." if rag_context.get("usedRagContext") else ""),
+                    "note": f"{len(groups)} bases entraram no top final; calibracao entre {min_recommended_score:.2f} e {max_recommended_score:.2f}; {lexical_filtered_count} duplicados lexicos filtrados." + (f" RAG contextual aplicado via {len((rag_context_payload or {}).get('vectorStoreIds') or [])} vector store(s)." if (rag_context_payload or {}).get("usedRagContext") else ""),
                 },
             }
         )
@@ -1552,6 +1752,7 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
                 "finishedAt": _utc_iso_now(),
                 "error": str(exc),
                 "message": "Semantic Overview interrompido por erro de validacao.",
+                "ragContext": None,
                 "event": {
                     "stage": "error",
                     "note": str(exc),
@@ -1566,6 +1767,7 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
                 "finishedAt": _utc_iso_now(),
                 "error": str(exc),
                 "message": "Semantic Overview falhou durante o processamento.",
+                "ragContext": None,
                 "event": {
                     "stage": "error",
                     "note": str(exc),
@@ -1582,8 +1784,11 @@ def api_semantic_overview(payload: SemanticOverviewSearchRequest) -> dict[str, A
             "minScore": min_score,
             "recommendedMinScoreMin": min_recommended_score,
             "recommendedMinScoreMax": max_recommended_score,
-            "usesCalibratedMinScores": True,
-            "ragContext": rag_context,
+            "usesCalibratedMinScores": not bool(payload.ignoreBaseCalibration or payload.minScore is not None),
+            "ignoreBaseCalibration": bool(payload.ignoreBaseCalibration or payload.minScore is not None),
+            "excludeLexicalDuplicates": exclude_lexical_duplicates,
+            "ragContext": rag_context_payload,
+            "ragLlmLog": rag_llm_log,
             "totalIndexes": total_indexes,
             "totalFound": total_found,
             "lexicalFilteredCount": lexical_filtered_count,

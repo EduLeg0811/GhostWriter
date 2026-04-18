@@ -486,10 +486,11 @@ def search_semantic_index(
     query: str,
     limit: int,
     api_key: str,
-    min_score: float = DEFAULT_MIN_SCORE,
+    min_score: float | None = None,
     exclude_lexical_duplicates: bool = True,
     use_rag_context: bool = False,
     vector_store_ids: list[str] | None = None,
+    ignore_base_calibration: bool = False,
 ) -> tuple[int, int, float, float, dict[str, Any], list[dict[str, Any]]]:
     normalized_index_id = _normalize_index_id(index_id)
     loaded = _load_semantic_index(normalized_index_id)
@@ -521,7 +522,10 @@ def search_semantic_index(
         model=model,
         semantic_context=rag_context if rag_context.get("usedRagContext") else None,
     )
-    effective_min_score = max(float(loaded.get("recommended_min_score") or DEFAULT_MIN_SCORE), max(0.0, float(min_score or 0.0)))
+    requested_min_score = None if min_score is None else max(0.0, float(min_score))
+    recommended_min_score = float(loaded.get("recommended_min_score") or DEFAULT_MIN_SCORE)
+    should_ignore_base_calibration = ignore_base_calibration or requested_min_score is not None
+    effective_min_score = requested_min_score if should_ignore_base_calibration and requested_min_score is not None else recommended_min_score
     ranked = _score_matches(
         loaded["metadata"],
         loaded["embeddings"],
@@ -537,7 +541,7 @@ def search_semantic_index(
     return (
         ranked["total_found"],
         ranked["lexical_filtered_count"],
-        float(loaded.get("recommended_min_score") or DEFAULT_MIN_SCORE),
+        recommended_min_score,
         effective_min_score,
         rag_context,
         ranked["matches"],
@@ -549,10 +553,11 @@ def search_semantic_overview_with_total(
     limit: int,
     api_key: str,
     progress_callback: Any | None = None,
-    min_score: float = DEFAULT_MIN_SCORE,
+    min_score: float | None = None,
     exclude_lexical_duplicates: bool = True,
     use_rag_context: bool = False,
     vector_store_ids: list[str] | None = None,
+    ignore_base_calibration: bool = False,
 ) -> tuple[int, int, int, float, float, dict[str, Any], list[dict[str, Any]]]:
     indexes = list_semantic_indexes()
     if not indexes:
@@ -628,6 +633,8 @@ def search_semantic_overview_with_total(
             if rag_context.get("usedRagContext"):
                 query_vector_params["semantic_context"] = rag_context
             query_vector = _get_semantic_query_vector(term, **query_vector_params)
+            requested_min_score = None if min_score is None else max(0.0, float(min_score))
+            should_ignore_base_calibration = ignore_base_calibration or requested_min_score is not None
             ranked = _score_matches(
                 loaded["metadata"],
                 loaded["embeddings"],
@@ -636,7 +643,7 @@ def search_semantic_overview_with_total(
                 index_id,
                 index_label,
                 limit=limit,
-                min_score=max(recommended_min_score, max(0.0, float(min_score or 0.0))),
+                min_score=requested_min_score if should_ignore_base_calibration and requested_min_score is not None else recommended_min_score,
                 exclude_lexical_duplicates=exclude_lexical_duplicates,
                 lexical_query=term,
             )

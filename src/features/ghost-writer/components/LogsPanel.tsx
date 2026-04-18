@@ -10,7 +10,7 @@ interface LogsPanelProps {
   onTabChange: (tab: LogPanelTabId) => void;
   onClose: () => void;
   shouldPollSearch: boolean;
-  activeSearchType: "semantic_overview" | "lexical_overview" | null;
+  activeSearchType: "semantic_search" | "semantic_overview" | "lexical_overview" | null;
   llmLogs: LlmLogEntry[];
   llmSessionLogs: LlmLogEntry[];
   llmLogFontScale: number;

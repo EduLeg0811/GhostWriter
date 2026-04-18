@@ -131,6 +131,7 @@ def resolve_semantic_query_context(
         "relatedTerms": [],
         "disambiguatedQuery": "",
         "references": [],
+        "llmLog": None,
     }
     if not query or not cleaned_vector_store_ids:
         return empty_result
@@ -175,6 +176,19 @@ def resolve_semantic_query_context(
     definitions = _coerce_definitions(parsed.get("definitions"))
     related_terms = _coerce_related_terms(parsed.get("related_terms"))
     disambiguated_query = str(parsed.get("disambiguated_query") or "").strip()
+    references = _dedupe_clean_strings([str(item or "") for item in (result.get("references") or [])])[:12]
+    raw_payload = result.get("raw") if isinstance(result.get("raw"), dict) else {}
+    llm_log_response_meta = {
+        **raw_payload,
+        "rag_references": references,
+    }
+    llm_log = {
+        "request": result.get("request") or {},
+        "response": {
+            "content": str(result.get("content") or "").strip(),
+            "meta": llm_log_response_meta,
+        },
+    }
 
     return {
         "usedRagContext": bool(definitions or related_terms or disambiguated_query),
@@ -184,5 +198,6 @@ def resolve_semantic_query_context(
         "definitions": definitions,
         "relatedTerms": related_terms,
         "disambiguatedQuery": disambiguated_query,
-        "references": _dedupe_clean_strings([str(item or "") for item in (result.get("references") or [])])[:12],
+        "references": references,
+        "llmLog": llm_log,
     }

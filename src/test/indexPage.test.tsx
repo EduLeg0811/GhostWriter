@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Index from "@/pages/Index";
+import { DEFAULT_BOOK_SOURCE_ID } from "@/features/ghost-writer/config/options";
 
 vi.mock("@/lib/backend-api", () => ({
   createBlankDocOnServer: vi.fn(),
@@ -9,6 +10,7 @@ vi.mock("@/lib/backend-api", () => ({
   fetchFileContentBuffer: vi.fn(),
   fetchFileText: vi.fn(),
   healthCheck: vi.fn().mockResolvedValue({ openaiConfigured: true }),
+  fetchSemanticSearchProgress: vi.fn().mockResolvedValue({ ok: true, result: { status: "idle", events: [] } }),
   fetchSemanticOverviewProgress: vi.fn().mockResolvedValue({ ok: true, result: { status: "idle", events: [] } }),
   fetchLexicalOverviewProgress: vi.fn().mockResolvedValue({ ok: true, result: { status: "idle", events: [] } }),
   insertRefBookMacro: vi.fn(),
@@ -572,7 +574,7 @@ describe("Index page", () => {
     fireEvent.change(screen.getAllByRole("textbox")[0], {
       target: { value: "cosmoetica" },
     });
-    fireEvent.change(screen.getByRole("spinbutton"), {
+    fireEvent.change(screen.getAllByRole("spinbutton")[0], {
       target: { value: "2" },
     });
     fireEvent.click(screen.getByRole("button", { name: /^buscar$/i }));
@@ -581,8 +583,9 @@ describe("Index page", () => {
       expect(backendApi.searchSemanticOverviewApp).toHaveBeenCalledWith({
         term: "cosmoetica",
         limit: 2,
-        minScore: 0.25,
-        useRagContext: true,
+        minScore: 0.5,
+        useRagContext: false,
+        excludeLexicalDuplicates: true,
         vectorStoreIds: [],
       });
     });
@@ -590,6 +593,27 @@ describe("Index page", () => {
     expect(await screen.findByRole("button", { name: /lo semantic/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /quest semantic/i })).toBeInTheDocument();
     expect(screen.getAllByText((_, node) => (node?.textContent || "").includes("Trecho com cosmoetica expandida")).length).toBeGreaterThan(0);
+  });
+
+  it("sets WVBooks as initial IA vector store when Semantic RAG is toggled on", async () => {
+    render(<Index />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /semantic search/i }));
+    fireEvent.click(screen.getByRole("button", { name: /busca sem[aâ]ntica/i }));
+
+    const ragSwitch = screen.getAllByRole("switch")[0];
+    fireEvent.click(ragSwitch);
+    fireEvent.click(ragSwitch);
+
+    fireEvent.click(screen.getByRole("button", { name: /configs/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^ia$/i }));
+
+    await waitFor(() => {
+      const vectorStoreSelect = screen.getAllByRole("combobox").find(
+        (element) => (element as HTMLSelectElement).value === DEFAULT_BOOK_SOURCE_ID,
+      ) as HTMLSelectElement | undefined;
+      expect(vectorStoreSelect?.value).toBe(DEFAULT_BOOK_SOURCE_ID);
+    });
   });
 
   it("opens Search Log from Configuracoes and loads the monitor panel", async () => {

@@ -320,19 +320,27 @@ export async function semanticSearchPensatasApp(payload: {
   indexId: string;
   query: string;
   limit?: number;
-  minScore?: number;
+  minScore?: number | null;
   useRagContext?: boolean;
+  excludeLexicalDuplicates?: boolean;
   vectorStoreIds?: string[];
+  ignoreBaseCalibration?: boolean;
 }): Promise<{
   ok: boolean;
   result: {
     indexId: string;
     query: string;
     total: number;
-    requestedMinScore: number;
+    requestedMinScore: number | null;
     recommendedMinScore: number;
     minScore: number;
+    ignoreBaseCalibration: boolean;
     lexicalFilteredCount: number;
+    ragLlmLog?: {
+      request?: unknown;
+      response?: unknown;
+      error?: string;
+    } | null;
     ragContext: {
       usedRagContext: boolean;
       sourceQuery?: string;
@@ -371,18 +379,26 @@ export async function semanticSearchPensatasApp(payload: {
 export async function searchSemanticOverviewApp(payload: {
   term: string;
   limit?: number;
-  minScore?: number;
+  minScore?: number | null;
   useRagContext?: boolean;
+  excludeLexicalDuplicates?: boolean;
   vectorStoreIds?: string[];
+  ignoreBaseCalibration?: boolean;
 }): Promise<{
   ok: boolean;
   result: {
     term: string;
     limit: number;
-    minScore: number;
+    minScore: number | null;
     recommendedMinScoreMin: number;
     recommendedMinScoreMax: number;
     usesCalibratedMinScores: boolean;
+    ignoreBaseCalibration: boolean;
+    ragLlmLog?: {
+      request?: unknown;
+      response?: unknown;
+      error?: string;
+    } | null;
     ragContext: {
       usedRagContext: boolean;
       sourceQuery?: string;
@@ -439,7 +455,7 @@ export interface SemanticOverviewProgressEvent {
 }
 
 export interface SemanticOverviewProgressSnapshot {
-  searchType?: "semantic_overview" | "lexical_overview";
+  searchType?: "semantic_search" | "semantic_overview" | "lexical_overview";
   status: "idle" | "running" | "completed" | "error";
   startedAt?: string | null;
   finishedAt?: string | null;
@@ -447,6 +463,8 @@ export interface SemanticOverviewProgressSnapshot {
   term?: string;
   limit?: number;
   minScore?: number | null;
+  ignoreBaseCalibration?: boolean;
+  usesCalibratedMinScores?: boolean;
   totalIndexes?: number;
   processedIndexes?: number;
   currentIndexPosition?: number;
@@ -460,7 +478,28 @@ export interface SemanticOverviewProgressSnapshot {
   topScore?: number | null;
   message?: string;
   error?: string | null;
+  ragContext?: {
+    usedRagContext: boolean;
+    sourceQuery?: string;
+    error?: string;
+    vectorStoreIds: string[];
+    keyTerms: string[];
+    definitions: Array<{
+      term: string;
+      meaning: string;
+    }>;
+    relatedTerms: string[];
+    disambiguatedQuery: string;
+    references: string[];
+  } | null;
   events: SemanticOverviewProgressEvent[];
+}
+
+export async function fetchSemanticSearchProgress(): Promise<{ ok: boolean; result: SemanticOverviewProgressSnapshot }> {
+  return fetchJsonWithRetry(apiUrl("/api/apps/semantic/search/progress"), {
+    method: "GET",
+    cache: "no-store",
+  });
 }
 
 export async function fetchSemanticOverviewProgress(): Promise<{ ok: boolean; result: SemanticOverviewProgressSnapshot }> {

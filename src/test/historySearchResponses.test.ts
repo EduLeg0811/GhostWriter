@@ -258,6 +258,33 @@ describe("historySearchResponses", () => {
     expect(payload.markdown).toContain("(**Indice DAC**)");
     expect(payload.markdown).toContain("Indice DAC | Tema semantico | author: Autor X");
     expect(payload.markdown).toContain("score: 0.82");
-    expect(payload.querySummary).toBe(`Base: Indice DAC | Consulta: ${"x".repeat(117)}... | Total semantic: 7 | Score minimo efetivo: 0.65 | Calibrado da base: 0.65 | Duplicados lexicos filtrados: 2`);
+    expect(payload.querySummary).toBe(`Base: Indice DAC | Consulta: ${"x".repeat(117)}... | Total semantic: 7 | Score minimo efetivo: 0.65 | Duplicados lexicos filtrados: 2`);
+  });
+
+  it("marks semantic search history when base calibration is ignored", () => {
+    const payload = buildSemanticSearchHistoryResponsePayload({
+      selectedIndexId: "LO",
+      indexes: [{ id: "LO", label: "Indice LO", sourceFile: "", sourceRows: 0, model: "", dimensions: 0, embeddingDtype: "", suggestedMinScore: 0.6 }],
+      query: "cosmoetica",
+      totalFound: 3,
+      requestedMinScore: 0.25,
+      recommendedMinScore: 0.6,
+      minScore: 0.25,
+      ignoreBaseCalibration: true,
+      lexicalFilteredCount: 0,
+      matches: [
+        {
+          book: "LO",
+          index_id: "LO",
+          index_label: "Indice LO",
+          row: 2,
+          text: "Trecho semanticamente afim",
+          metadata: {},
+          score: 0.77,
+        },
+      ],
+    });
+
+    expect(payload.querySummary).toBe("Base: Indice LO | Consulta: cosmoetica | Total semantic: 3 | Score minimo efetivo: 0.25 | Calibracao da base ignorada: 0.60");
   });
 });

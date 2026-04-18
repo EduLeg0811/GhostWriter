@@ -188,20 +188,25 @@ export const buildSemanticSearchHistoryResponsePayload = (params: {
   indexes: SemanticIndexOption[];
   query: string;
   totalFound: number;
-  requestedMinScore: number;
+  requestedMinScore: number | null;
   recommendedMinScore: number;
   minScore: number;
+  ignoreBaseCalibration?: boolean;
   lexicalFilteredCount: number;
   matches: SemanticSearchMatch[];
 }): HistorySearchResponsePayload => {
-  const { selectedIndexId, indexes, query, matches, totalFound, requestedMinScore, recommendedMinScore, minScore, lexicalFilteredCount } = params;
+  const { selectedIndexId, indexes, query, matches, totalFound, requestedMinScore, recommendedMinScore, minScore, ignoreBaseCalibration, lexicalFilteredCount } = params;
   const indexLabel = resolveSemanticSearchIndexLabel({ matches, selectedIndexId, indexes });
   const markdown = buildHistorySearchCards(matches, {
     getTextParagraphs: (item) => [(item.text || "").trim()],
     getMetadata: (item) => buildSemanticHistorySearchMetadata(item, indexLabel),
   });
   const lexicalInfo = lexicalFilteredCount > 0 ? ` | Duplicados lexicos filtrados: ${lexicalFilteredCount}` : "";
-  const calibrationInfo = minScore > requestedMinScore ? ` | Calibrado da base: ${recommendedMinScore.toFixed(2)}` : "";
+  const calibrationInfo = ignoreBaseCalibration
+    ? ` | Calibracao da base ignorada: ${recommendedMinScore.toFixed(2)}`
+    : requestedMinScore === null
+      ? ` | Calibrado da base: ${recommendedMinScore.toFixed(2)}`
+      : "";
 
   return {
     markdown,
@@ -216,6 +221,7 @@ export const buildSemanticOverviewHistoryResponsePayload = (params: {
   recommendedMinScoreMin: number;
   recommendedMinScoreMax: number;
   usesCalibratedMinScores: boolean;
+  ignoreBaseCalibration?: boolean;
   totalIndexes: number;
   totalFound: number;
   lexicalFilteredCount: number;
@@ -247,6 +253,6 @@ export const buildSemanticOverviewHistoryResponsePayload = (params: {
   return {
     payload,
     markdown,
-    querySummary: `Termo: ${params.term} | Total semantic: ${params.totalFound} | Bases analisadas: ${params.totalIndexes} | Piso global: ${params.minScore.toFixed(2)} | Faixa calibrada: ${params.recommendedMinScoreMin.toFixed(2)}-${params.recommendedMinScoreMax.toFixed(2)} | Limite global: ${params.limit}${params.lexicalFilteredCount > 0 ? ` | Duplicados lexicos filtrados: ${params.lexicalFilteredCount}` : ""}`,
+    querySummary: `Termo: ${params.term} | Total semantic: ${params.totalFound} | Bases analisadas: ${params.totalIndexes} | Piso global: ${params.minScore.toFixed(2)} | Faixa calibrada: ${params.recommendedMinScoreMin.toFixed(2)}-${params.recommendedMinScoreMax.toFixed(2)}${params.ignoreBaseCalibration ? " | Calibracao da base ignorada" : ""} | Limite global: ${params.limit}${params.lexicalFilteredCount > 0 ? ` | Duplicados lexicos filtrados: ${params.lexicalFilteredCount}` : ""}`,
   };
 };
