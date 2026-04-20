@@ -84,8 +84,10 @@ interface ParameterPanelContentProps {
   lexicalBooks: string[];
   selectedLexicalBook: string;
   lexicalTerm: string;
+  lexicalCitationText: string;
   lexicalMaxResults: number;
   isRunningLexicalSearch: boolean;
+  isRunningLexicalCitationLookup: boolean;
   isRunningLexicalOverview: boolean;
   selectedSemanticSearchIndexId: string;
   semanticSearchIndexes: SemanticIndexOption[];
@@ -187,8 +189,11 @@ interface ParameterPanelContentProps {
   onBiblioExternaLlmSystemPromptChange: (value: string) => void;
   onSelectedLexicalBookChange: (value: string) => void;
   onLexicalTermChange: (value: string) => void;
+  onLexicalCitationTextChange: (value: string) => void;
+  onImportLexicalCitationText: () => void | Promise<void>;
   onLexicalMaxResultsChange: (value: number) => void;
   onRunLexicalSearch: () => void | Promise<void>;
+  onRunLexicalCitationLookup: () => void | Promise<void>;
   onRunLexicalOverview: () => void | Promise<void>;
   onSelectedSemanticSearchIndexIdChange: (value: string) => void;
   onSemanticSearchQueryChange: (value: string) => void;
@@ -289,8 +294,10 @@ const ParameterPanelContent = ({
   lexicalBooks,
   selectedLexicalBook,
   lexicalTerm,
+  lexicalCitationText,
   lexicalMaxResults,
   isRunningLexicalSearch,
+  isRunningLexicalCitationLookup,
   isRunningLexicalOverview,
   selectedSemanticSearchIndexId,
   semanticSearchIndexes,
@@ -392,8 +399,11 @@ const ParameterPanelContent = ({
   onBiblioExternaLlmSystemPromptChange,
   onSelectedLexicalBookChange,
   onLexicalTermChange,
+  onLexicalCitationTextChange,
+  onImportLexicalCitationText,
   onLexicalMaxResultsChange,
   onRunLexicalSearch,
+  onRunLexicalCitationLookup,
   onRunLexicalOverview,
   onSelectedSemanticSearchIndexIdChange,
   onSemanticSearchQueryChange,
@@ -599,8 +609,10 @@ const ParameterPanelContent = ({
             lexicalBooks={lexicalBooks}
             selectedLexicalBook={selectedLexicalBook}
             lexicalTerm={lexicalTerm}
+            lexicalCitationText={lexicalCitationText}
             lexicalMaxResults={lexicalMaxResults}
             isRunningLexicalSearch={isRunningLexicalSearch}
+            isRunningLexicalCitationLookup={isRunningLexicalCitationLookup}
             isRunningLexicalOverview={isRunningLexicalOverview}
             selectedSemanticSearchIndexId={selectedSemanticSearchIndexId}
             semanticSearchIndexes={semanticSearchIndexes}
@@ -671,8 +683,11 @@ const ParameterPanelContent = ({
             onBiblioExternaLlmSystemPromptChange={onBiblioExternaLlmSystemPromptChange}
             onSelectedLexicalBookChange={onSelectedLexicalBookChange}
             onLexicalTermChange={onLexicalTermChange}
+            onLexicalCitationTextChange={onLexicalCitationTextChange}
+            onImportLexicalCitationText={onImportLexicalCitationText}
             onLexicalMaxResultsChange={onLexicalMaxResultsChange}
             onRunLexicalSearch={onRunLexicalSearch}
+            onRunLexicalCitationLookup={onRunLexicalCitationLookup}
             onRunLexicalOverview={onRunLexicalOverview}
             onSelectedSemanticSearchIndexIdChange={onSelectedSemanticSearchIndexIdChange}
             onSemanticSearchQueryChange={onSemanticSearchQueryChange}

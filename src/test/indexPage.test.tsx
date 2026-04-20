@@ -17,6 +17,7 @@ vi.mock("@/lib/backend-api", () => ({
   insertRefVerbeteApp: vi.fn(),
   listSemanticIndexesApp: vi.fn().mockResolvedValue({ result: { indexes: [] } }),
   listLexicalBooksApp: vi.fn().mockResolvedValue({ result: { books: [] } }),
+  lookupLexicalCitationsApp: vi.fn(),
   openVerbetografiaTableApp: vi.fn(),
   openVerbetografiaTableWordApp: vi.fn(),
   randomPensataApp: vi.fn(),
@@ -600,6 +601,58 @@ describe("Index page", () => {
     expect(screen.getByRole("button", { name: /quest semantic/i })).toBeInTheDocument();
     expect(screen.getAllByText((_, node) => (node?.textContent || "").includes("Trecho com cosmoetica expandida")).length).toBeGreaterThan(0);
     expect(highlightButton.className).not.toContain("bg-green-100");
+  });
+
+  it("runs Localiza Trechos inside Lexical Search and renders table in history", async () => {
+    const backendApi = await import("@/lib/backend-api");
+    vi.mocked(backendApi.lookupLexicalCitationsApp).mockResolvedValue({
+      ok: true,
+      result: {
+        inputText: "Trecho original",
+        paragraphs: ["Trecho original"],
+        total: 1,
+        indexOrigin: "cache_disco",
+        availableBooks: ["LO"],
+        results: [
+          {
+            inputParagraph: "Trecho original",
+            matchedParagraph: "Trecho achado",
+            book: "LO",
+            page: "41",
+            similarity: 97.32,
+            method: "inicio",
+            matchedRow: 12,
+          },
+        ],
+      },
+    });
+
+    render(<Index />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /lexical search/i }));
+    fireEvent.click(screen.getByRole("button", { name: /localiza trechos/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/localiza trechos/i)[0]).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText(/cole aqui varios trechos/i), {
+      target: { value: "Trecho original" },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: /localiza trechos/i })[1]);
+
+    await waitFor(() => {
+      expect(backendApi.lookupLexicalCitationsApp).toHaveBeenCalledWith({
+        text: "Trecho original",
+        paginasAntes: 2,
+        paginasDepois: 3,
+      });
+    });
+
+    expect((await screen.findAllByText(/Trecho achado/i)).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Localiza Trechos/i).length).toBeGreaterThan(0);
+    expect(screen.getByText("LO")).toBeInTheDocument();
+    expect(screen.getByText("41")).toBeInTheDocument();
   });
 
   it("sets WVBooks as initial IA vector store when Semantic RAG is toggled on", async () => {

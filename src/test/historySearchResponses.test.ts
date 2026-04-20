@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLexicalOverviewHistoryResponsePayload, buildLexicalSearchHistoryResponsePayload, buildSemanticSearchHistoryResponsePayload, resolveSemanticSearchIndexLabel } from "@/features/ghost-writer/utils/historySearchResponses";
+import { buildLexicalCitationLookupHistoryResponsePayload, buildLexicalOverviewHistoryResponsePayload, buildLexicalSearchHistoryResponsePayload, buildSemanticSearchHistoryResponsePayload, resolveSemanticSearchIndexLabel } from "@/features/ghost-writer/utils/historySearchResponses";
 
 describe("historySearchResponses", () => {
   it("builds lexical markdown from explicit text and preserves query summary", () => {
@@ -69,6 +69,35 @@ describe("historySearchResponses", () => {
     });
 
     expect(payload.markdown).toBe("");
+  });
+
+  it("builds lexical citation lookup table markdown", () => {
+    const payload = buildLexicalCitationLookupHistoryResponsePayload({
+      paragraphsCount: 2,
+      results: [
+        {
+          inputParagraph: "Trecho original",
+          matchedParagraph: "Trecho achado",
+          book: "LO",
+          page: "41",
+          similarity: 97.32,
+          method: "inicio",
+        },
+        {
+          inputParagraph: "Outro trecho",
+          matchedParagraph: "",
+          book: "",
+          page: "",
+          similarity: 0,
+          method: "sem_match",
+        },
+      ],
+    });
+
+    expect(payload.querySummary).toBe("Localiza Trechos | Paragrafos: 2 | Localizados: 2");
+    expect(payload.markdown).toContain("| Trecho Original | Trecho Achado | Fonte | Pagina | Similaridade | Metodo |");
+    expect(payload.markdown).toContain("| Trecho original | Trecho achado | LO | 41 | 97.32 | inicio |");
+    expect(payload.markdown).toContain("| Outro trecho | N/D | N/D | N/D | 0.00 | sem_match |");
   });
 
   it("builds lexical overview payload grouped by book and appends page in text", () => {

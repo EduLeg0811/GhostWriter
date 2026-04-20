@@ -278,6 +278,45 @@ describe("historyResponseHtml", () => {
     expect(html).toContain("Moradia habitual.");
   });
 
+  it("renders lexical citation lookup card as html table and preserves table in copy and append", () => {
+    const response = buildResponse(
+      "app_lexical_citation_lookup",
+      "Localiza Trechos | Paragrafos: 1 | Localizados: 1",
+      [
+        "| Trecho Original | Trecho Achado | Fonte | Pagina | Similaridade | Metodo |",
+        "| --- | --- | --- | --- | ---: | --- |",
+        "| Trecho original | Trecho achado | LO | 41 | 97.32 | inicio |",
+      ].join("\n"),
+    );
+
+    const editorHtml = renderHistoryResponseEditorHtml(response, {
+      applyNumbering: true,
+      applyReferences: true,
+      applyMetadata: true,
+      applyHighlight: true,
+    });
+    const appendHtml = renderHistoryResponseAppendBodyHtml(response, {
+      applyNumbering: false,
+      applyReferences: true,
+      applyMetadata: true,
+      applyHighlight: true,
+    });
+    const copyHtml = renderHistoryResponseCopyHtml(response, {
+      applyNumbering: true,
+      applyReferences: true,
+      applyMetadata: true,
+      applyHighlight: true,
+    });
+
+    expect(editorHtml).toContain("<table");
+    expect(editorHtml).toContain("Trecho original");
+    expect(appendHtml).toContain("<table");
+    expect(appendHtml).toContain("border:1px solid");
+    expect(copyHtml).toContain("<table");
+    expect(historyHtmlToPlainText(copyHtml)).toContain("Trecho original");
+    expect(historyHtmlToPlainText(copyHtml)).toContain("97.32");
+  });
+
   it("renders regular numbered history items with aligned flex layout", () => {
     const response = buildResponse(
       "summarize",

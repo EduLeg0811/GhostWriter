@@ -100,8 +100,8 @@ const Index = () => {
     biblioGeralExtra, setBiblioGeralExtra, isRunningBiblioGeral, setIsRunningBiblioGeral, biblioExternaAuthor, setBiblioExternaAuthor, biblioExternaTitle, setBiblioExternaTitle,
     biblioExternaYear, setBiblioExternaYear, biblioExternaJournal, setBiblioExternaJournal, biblioExternaPublisher, setBiblioExternaPublisher, biblioExternaIdentifier,
     setBiblioExternaIdentifier, biblioExternaExtra, setBiblioExternaExtra, biblioExternaFreeText, setBiblioExternaFreeText, isRunningBiblioExterna, setIsRunningBiblioExterna,
-    lexicalBooks, setLexicalBooks, selectedLexicalBook, setSelectedLexicalBook, lexicalTerm, setLexicalTerm, lexicalMaxResults, setLexicalMaxResults, isRunningLexicalSearch,
-    setIsRunningLexicalSearch, isRunningLexicalOverview, setIsRunningLexicalOverview, semanticSearchQuery, setSemanticSearchQuery, semanticSearchMaxResults, setSemanticSearchMaxResults, semanticMinScore, setSemanticMinScore, semanticMinScoreMode, setSemanticMinScoreMode, semanticUseRagContext, setSemanticUseRagContext, semanticExcludeLexicalDuplicates, setSemanticExcludeLexicalDuplicates, semanticOverviewLastRagContext, semanticSearchIndexes, setSemanticSearchIndexes,
+    lexicalBooks, setLexicalBooks, selectedLexicalBook, setSelectedLexicalBook, lexicalTerm, setLexicalTerm, lexicalCitationText, setLexicalCitationText, lexicalMaxResults, setLexicalMaxResults, isRunningLexicalSearch,
+    setIsRunningLexicalSearch, isRunningLexicalCitationLookup, isRunningLexicalOverview, setIsRunningLexicalOverview, semanticSearchQuery, setSemanticSearchQuery, semanticSearchMaxResults, setSemanticSearchMaxResults, semanticMinScore, setSemanticMinScore, semanticMinScoreMode, setSemanticMinScoreMode, semanticUseRagContext, setSemanticUseRagContext, semanticExcludeLexicalDuplicates, setSemanticExcludeLexicalDuplicates, semanticOverviewLastRagContext, semanticSearchIndexes, setSemanticSearchIndexes,
     selectedSemanticSearchIndexId, setSelectedSemanticSearchIndexId, isLoadingSemanticSearchIndexes, setIsLoadingSemanticSearchIndexes, isRunningSemanticSearch, setIsRunningSemanticSearch,
     semanticOverviewTerm, setSemanticOverviewTerm, semanticOverviewMaxResults, setSemanticOverviewMaxResults, isRunningSemanticOverview, setIsRunningSemanticOverview,
     verbeteSearchAuthor, setVerbeteSearchAuthor, verbeteSearchTitle, setVerbeteSearchTitle, verbeteSearchArea, setVerbeteSearchArea, verbeteSearchText, setVerbeteSearchText,
@@ -161,7 +161,6 @@ const Index = () => {
     handleCreateBlankDocument,
     handleRefreshStats,
     handleRetrieveSelectedText,
-    handleImportSelectedTextToActions,
     handleSelectAllContent,
     handleTriggerSave,
     getEditorApi,
@@ -240,6 +239,7 @@ const Index = () => {
     handleRunVerbeteFatologia,
     handleSelectVerbetografiaAction,
     handleRunLexicalSearch,
+    handleRunLexicalCitationLookup,
     handleRunLexicalOverview,
     handleRunSemanticSearch,
     handleRunSemanticOverview,
@@ -292,6 +292,94 @@ const Index = () => {
     }
     await handleOpenVerbetografiaTable();
   }, [currentFileId, handleExportDocx, handleOpenVerbetografiaTable]);
+
+  const handleImportSelectedTextToLexicalCitation = useCallback(async () => {
+    const editorApi = await getEditorApi();
+    if (!editorApi) {
+      toast.error("API do editor indisponivel no momento.");
+      return;
+    }
+    try {
+      const selected = (await editorApi.getSelectedText()).trim();
+      if (!selected) throw new Error("Nenhum texto selecionado no editor.");
+      setLexicalCitationText(selected);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Falha ao obter selecao.");
+    }
+  }, [getEditorApi, setLexicalCitationText, toast]);
+
+  const handleImportSelectedTextToCurrentInput = useCallback(async () => {
+    const editorApi = await getEditorApi();
+    if (!editorApi) {
+      toast.error("API do editor indisponivel no momento.");
+      return;
+    }
+
+    try {
+      const selected = (await editorApi.getSelectedText()).trim();
+      if (!selected) throw new Error("Nenhum texto selecionado no editor.");
+
+      if (!parameterPanelTarget) {
+        toast.error("Nenhuma caixa de entrada esta aberta no momento.");
+        return;
+      }
+
+      switch (parameterPanelTarget.section) {
+        case "actions":
+        case "rewriting":
+        case "translation":
+        case "customized_prompts":
+          setActionText(selected);
+          return;
+        case "apps":
+          switch (parameterPanelTarget.id) {
+            case "app4":
+            case "app13":
+              setLexicalTerm(selected);
+              return;
+            case "app14":
+              setLexicalCitationText(selected);
+              return;
+            case "app12":
+              setSemanticSearchQuery(selected);
+              setSemanticOverviewTerm(selected);
+              return;
+            case "app5":
+              setVerbeteSearchText(selected);
+              return;
+            case "app2":
+              setVerbeteInput(selected);
+              return;
+            default:
+              toast.error("A tela atual nao possui uma caixa de entrada de texto compativel com a importacao.");
+              return;
+          }
+        case "document":
+          if (parameterPanelTarget.id === "macro1") {
+            setMacro1Term(selected);
+            return;
+          }
+          toast.error("A tela atual nao possui uma caixa de entrada de texto compativel com a importacao.");
+          return;
+        default:
+          toast.error("A tela atual nao possui uma caixa de entrada de texto compativel com a importacao.");
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Falha ao obter selecao.");
+    }
+  }, [
+    getEditorApi,
+    parameterPanelTarget,
+    setActionText,
+    setLexicalCitationText,
+    setLexicalTerm,
+    setMacro1Term,
+    setSemanticOverviewTerm,
+    setSemanticSearchQuery,
+    setVerbeteInput,
+    setVerbeteSearchText,
+    toast,
+  ]);
 
   const focusMobilePanel = useCallback((panel: MobilePanelId) => {
     if (!isMobileView) return;
@@ -631,8 +719,10 @@ const Index = () => {
         lexicalBooks={lexicalBooks}
         selectedLexicalBook={selectedLexicalBook}
         lexicalTerm={lexicalTerm}
+        lexicalCitationText={lexicalCitationText}
         lexicalMaxResults={lexicalMaxResults}
         isRunningLexicalSearch={isRunningLexicalSearch}
+        isRunningLexicalCitationLookup={isRunningLexicalCitationLookup}
         isRunningLexicalOverview={isRunningLexicalOverview}
         selectedSemanticSearchIndexId={selectedSemanticSearchIndexId}
         semanticSearchIndexes={semanticSearchIndexes}
@@ -751,8 +841,11 @@ const Index = () => {
         onBiblioExternaLlmSystemPromptChange={setBiblioExternaLlmSystemPrompt}
         onSelectedLexicalBookChange={setSelectedLexicalBook}
         onLexicalTermChange={setLexicalTerm}
+        onLexicalCitationTextChange={setLexicalCitationText}
+        onImportLexicalCitationText={handleImportSelectedTextToLexicalCitation}
         onLexicalMaxResultsChange={setLexicalMaxResults}
         onRunLexicalSearch={handleRunLexicalSearch}
+        onRunLexicalCitationLookup={handleRunLexicalCitationLookup}
         onRunLexicalOverview={handleRunLexicalOverview}
         onSelectedSemanticSearchIndexIdChange={setSelectedSemanticSearchIndexId}
         onSemanticSearchQueryChange={setSemanticSearchQuery}
@@ -946,7 +1039,7 @@ const Index = () => {
           if (!currentFileId) return;
           setIncludeEditorContextInLlm((prev) => !prev);
         }}
-        onImportSelectedText={() => void handleImportSelectedTextToActions()}
+        onImportSelectedText={() => void handleImportSelectedTextToCurrentInput()}
         onCloseEditor={() => void handleCloseEditorWithPrompt()}
       />
       {isOpeningDocument && (

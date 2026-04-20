@@ -352,6 +352,12 @@ class LexicalOverviewSearchRequest(BaseModel):
     limit: int = 50
 
 
+class LexicalCitationLookupRequest(BaseModel):
+    text: str
+    paginasAntes: int = 2
+    paginasDepois: int = 3
+
+
 class LexicalVerbeteSearchRequest(BaseModel):
     author: str = ""
     title: str = ""
@@ -1407,6 +1413,33 @@ def api_lexical_overview(payload: LexicalOverviewSearchRequest) -> dict[str, Any
             "groups": groups,
         },
     }
+
+
+@app.post("/api/apps/lexical/citations/lookup")
+def api_lexical_citations_lookup(payload: LexicalCitationLookupRequest) -> dict[str, Any]:
+    text = (payload.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Parametro 'text' e obrigatorio.")
+
+    try:
+        from backend.functions.lookup_citations_service import lookup_citations
+    except Exception:
+        from functions.lookup_citations_service import lookup_citations
+
+    try:
+        result = lookup_citations(
+            text=text,
+            paginas_antes=payload.paginasAntes,
+            paginas_depois=payload.paginasDepois,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Falha ao localizar trechos: {exc}")
+
+    return {"ok": True, "result": result}
 
 
 @app.post("/api/apps/lexical/verbetes/search")

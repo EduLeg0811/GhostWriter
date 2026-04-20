@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { biblioExternaApp, biblioGeralApp, insertRefBookMacro, insertRefVerbeteApp, listLexicalBooksApp, listSemanticIndexesApp, openVerbetografiaTableApp, openVerbetografiaTableWordApp, randomPensataApp, searchLexicalBookApp, searchLexicalOverviewApp, searchSemanticOverviewApp, searchVerbeteApp, semanticSearchPensatasApp } from "@/lib/backend-api";
+import { biblioExternaApp, biblioGeralApp, insertRefBookMacro, insertRefVerbeteApp, listLexicalBooksApp, listSemanticIndexesApp, lookupLexicalCitationsApp, openVerbetografiaTableApp, openVerbetografiaTableWordApp, randomPensataApp, searchLexicalBookApp, searchLexicalOverviewApp, searchSemanticOverviewApp, searchVerbeteApp, semanticSearchPensatasApp } from "@/lib/backend-api";
 import { executeLLM, buildPensataAnalysisPrompt, buildVerbeteDefinologiaPrompt, buildVerbeteFatologiaPrompt, buildVerbeteFraseEnfaticaPrompt, buildVerbeteSinonimologiaPrompt } from "@/lib/openai";
 import { BOOK_LABELS, type BookCode } from "@/lib/bookCatalog";
 import { applySystemPromptOverride, getActionSystemPrompt, type ActionSystemPromptId } from "@/features/ghost-writer/config/actionSystemPrompts";
@@ -8,7 +8,7 @@ import { NO_VECTOR_STORE_ID } from "@/features/ghost-writer/config/constants";
 import { normalizeIdList } from "@/features/ghost-writer/config/metadata";
 import { DEFAULT_BOOK_SOURCE_ID } from "@/features/ghost-writer/config/options";
 import type { AIResponse, AppActionId, AppPanelScope, LlmLogEntry, ParameterPanelTarget, RefBookMode, SemanticIndexOption, SemanticSearchRagContext } from "@/features/ghost-writer/types";
-import { buildLexicalOverviewHistoryResponsePayload, buildLexicalSearchHistoryResponsePayload, buildSemanticOverviewHistoryResponsePayload, buildSemanticSearchHistoryResponsePayload } from "@/features/ghost-writer/utils/historySearchResponses";
+import { buildLexicalCitationLookupHistoryResponsePayload, buildLexicalOverviewHistoryResponsePayload, buildLexicalSearchHistoryResponsePayload, buildSemanticOverviewHistoryResponsePayload, buildSemanticSearchHistoryResponsePayload } from "@/features/ghost-writer/utils/historySearchResponses";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 
 interface ToastApi {
@@ -56,6 +56,7 @@ interface UseGhostWriterAppsParams {
   selectedLexicalBook: string;
   setSelectedLexicalBook: Dispatch<SetStateAction<string>>;
   lexicalTerm: string;
+  lexicalCitationText: string;
   lexicalMaxResults: number;
   semanticSearchQuery: string;
   semanticSearchMaxResults: number;
@@ -101,6 +102,7 @@ interface UseGhostWriterAppsParams {
   setIsRunningBiblioGeral: Dispatch<SetStateAction<boolean>>;
   setIsRunningBiblioExterna: Dispatch<SetStateAction<boolean>>;
   setIsRunningLexicalSearch: Dispatch<SetStateAction<boolean>>;
+  setIsRunningLexicalCitationLookup: Dispatch<SetStateAction<boolean>>;
   setIsRunningLexicalOverview: Dispatch<SetStateAction<boolean>>;
   setIsRunningSemanticSearch: Dispatch<SetStateAction<boolean>>;
   setIsRunningSemanticOverview: Dispatch<SetStateAction<boolean>>;
@@ -240,6 +242,7 @@ const useGhostWriterApps = ({
   selectedLexicalBook,
   setSelectedLexicalBook,
   lexicalTerm,
+  lexicalCitationText,
   lexicalMaxResults,
   semanticSearchQuery,
   semanticSearchMaxResults,
@@ -285,6 +288,7 @@ const useGhostWriterApps = ({
   setIsRunningBiblioGeral,
   setIsRunningBiblioExterna,
   setIsRunningLexicalSearch,
+  setIsRunningLexicalCitationLookup,
   setIsRunningLexicalOverview,
   setIsRunningSemanticSearch,
   setIsRunningSemanticOverview,
@@ -516,7 +520,7 @@ const useGhostWriterApps = ({
   }, [semanticSearchIndexes, setIsLoadingSemanticSearchIndexes, setSemanticSearchIndexes, setSelectedSemanticSearchIndexId, toast]);
 
   const handleActionApps = useCallback((type: AppActionId) => {
-    if (type === "app4" || type === "app13" || type === "app5") {
+    if (type === "app4" || type === "app13" || type === "app14" || type === "app5") {
       setAppPanelScope("busca_termos");
     } else if (type === "app12") {
       setAppPanelScope("semantic_search");
@@ -825,6 +829,40 @@ const useGhostWriterApps = ({
     }
   }, [addResponse, lexicalMaxResults, lexicalTerm, setIsRunningLexicalOverview, toast]);
 
+  const handleRunLexicalCitationLookup = useCallback(async () => {
+    const text = lexicalCitationText.trim();
+    if (!text) {
+      toast.error("Informe ao menos um trecho para localizar.");
+      return;
+    }
+
+    setIsRunningLexicalCitationLookup(true);
+    try {
+      const data = await lookupLexicalCitationsApp({
+        text,
+        paginasAntes: 2,
+        paginasDepois: 3,
+      });
+      const paragraphs = Array.isArray(data.result.paragraphs) ? data.result.paragraphs : [];
+      const results = Array.isArray(data.result.results) ? data.result.results : [];
+      if (results.length <= 0) {
+        toast.info("Nenhum trecho localizado.");
+        return;
+      }
+
+      const payload = buildLexicalCitationLookupHistoryResponsePayload({
+        paragraphsCount: paragraphs.length,
+        results,
+      });
+      addResponse("app_lexical_citation_lookup", payload.querySummary, payload.markdown);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Falha ao localizar trechos.";
+      toast.error(msg);
+    } finally {
+      setIsRunningLexicalCitationLookup(false);
+    }
+  }, [addResponse, lexicalCitationText, setIsRunningLexicalCitationLookup, toast]);
+
   const handleRunSemanticSearch = useCallback(async () => {
     const indexId = selectedSemanticSearchIndexId.trim();
     const query = semanticSearchQuery.trim();
@@ -1040,6 +1078,7 @@ const useGhostWriterApps = ({
     handleRunVerbeteFatologia,
     handleSelectVerbetografiaAction,
     handleRunLexicalSearch,
+    handleRunLexicalCitationLookup,
     handleRunLexicalOverview,
     handleRunSemanticSearch,
     handleRunSemanticOverview,

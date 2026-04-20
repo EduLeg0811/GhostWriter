@@ -1,7 +1,7 @@
 import type { BookCode } from "@/lib/bookCatalog";
 
 export type MacroActionId = "macro1" | "macro2";
-export type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7" | "app8" | "app9" | "app10" | "app11" | "app12" | "app13";
+export type AppActionId = "app1" | "app2" | "app3" | "app4" | "app5" | "app6" | "app7" | "app8" | "app9" | "app10" | "app11" | "app12" | "app13" | "app14";
 export type AppPanelScope = "bibliografia" | "busca_termos" | "semantic_search" | "verbetografia";
 export type AiPanelScope = "actions" | "rewriting" | "translation" | "customized_prompts";
 export type AiActionId = "synonyms" | "antonyms" | "etymology" | "dictionary" | "epigraph" | "rewrite" | "summarize" | "cognatos" | "translate" | "dict_lookup" | "ai_command" | "analogies" | "comparisons" | "examples" | "counterpoints" | "neoparadigma";
@@ -143,6 +143,7 @@ export interface AIResponse {
     | "app_biblio_externa"
     | "app_random_pensata"
     | "app_book_search"
+    | "app_lexical_citation_lookup"
     | "app_lexical_overview"
     | "app_semantic_search"
     | "app_semantic_overview"

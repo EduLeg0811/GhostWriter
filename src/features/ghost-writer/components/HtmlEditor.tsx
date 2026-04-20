@@ -1,5 +1,9 @@
 import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Highlight from "@tiptap/extension-highlight";
+import { Table } from "@tiptap/extension-table";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
+import TableRow from "@tiptap/extension-table-row";
 import TextAlign from "@tiptap/extension-text-align";
 import { Color, FontFamily, FontSize, LineHeight, TextStyle } from "@tiptap/extension-text-style";
 import StarterKit from "@tiptap/starter-kit";
@@ -8,6 +12,19 @@ import { ArrowLeft, Bold, Download, Highlighter, Italic, List, ListOrdered, Pape
 import { Button } from "@/components/ui/button";
 import { HtmlEditorControlApi } from "@/lib/html-editor-control";
 import { panelsTopMenuBarBgClass } from "@/styles/backgroundColors";
+
+const GhostWriterTable = Table.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      style: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("style"),
+        renderHTML: (attributes) => (attributes.style ? { style: attributes.style } : {}),
+      },
+    };
+  },
+});
 
 interface HtmlEditorProps {
   contentHtml: string;
@@ -141,6 +158,12 @@ const HtmlEditor = ({
       FontFamily,
       FontSize,
       LineHeight,
+      GhostWriterTable.configure({
+        resizable: true,
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
       TextAlign.configure({ types: ["paragraph", "heading"] }),
     ],
     content: normalizedContent || "<p></p>",
@@ -218,13 +241,44 @@ const HtmlEditor = ({
         } as CSSProperties
       }
     >
+      <style>{`
+        .doc-editor-root .tableWrapper {
+          margin: 0.75em 0;
+          overflow-x: auto;
+        }
+
+        .doc-editor-root .tableWrapper table,
+        .doc-editor-root table {
+          width: 100%;
+          border-collapse: collapse;
+          border-spacing: 0;
+          border: 1px solid rgba(34,197,94,0.22);
+          background: rgba(255,255,255,0.78);
+        }
+
+        .doc-editor-root .tableWrapper th,
+        .doc-editor-root .tableWrapper td,
+        .doc-editor-root table th,
+        .doc-editor-root table td {
+          border: 1px solid rgba(24,24,27,0.12);
+          padding: 8px 10px;
+          vertical-align: top;
+        }
+
+        .doc-editor-root .tableWrapper th,
+        .doc-editor-root table th {
+          background: rgba(115,115,115,0.5);
+          color: rgb(255,255,255);
+          font-weight: 600;
+        }
+      `}</style>
       <div className={`flex flex-wrap items-center gap-1 border-b border-border ${panelsTopMenuBarBgClass} px-4 py-2.5`}>
         <Button
           type="button"
           size="icon"
           variant="ghost"
           className="h-8 w-8 bg-amber-50 text-blue-600 hover:bg-amber-100 hover:text-blue-700"
-          title="Importar selecao do editor para Acoes IA"
+          title="Importar texto selecionado"
           onClick={onImportSelectedText}
         >
           <ArrowLeft className="h-4 w-4" />

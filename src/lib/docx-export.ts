@@ -8,7 +8,9 @@ type InlineStyle = {
 type DocxModule = typeof import("docx");
 type DocxTextRun = InstanceType<DocxModule["TextRun"]>;
 type DocxParagraph = InstanceType<DocxModule["Paragraph"]>;
+type DocxTable = InstanceType<DocxModule["Table"]>;
 type DocxHeading = DocxModule["HeadingLevel"][keyof DocxModule["HeadingLevel"]];
+type DocxFileChild = DocxParagraph | DocxTable;
 
 const BLOCK_TAGS = new Set(["p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "li"]);
 
@@ -85,22 +87,19 @@ async function paragraphFromElement(
   });
 }
 
-async function htmlToDocxParagraphs(html: string, docx: DocxModule): Promise<DocxParagraph[]> {
-  const { Paragraph, HeadingLevel } = docx;
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(`<div>${(html || "").trim() || "<p></p>"}</div>`, "text/html");
-  const root = doc.body.firstElementChild as HTMLDivElement | null;
-  if (!root) return [new Paragraph("")];
+async function paragraphsFromTableCell(el: Element, docx: DocxModule): Promise<DocxParagraph[]> {
+  const { Paragraph } = docx;
+  const blockChildren = Array.from(el.children).filter((child) => BLOCK_TAGS.has(child.tagName.toLowerCase()) || child.tagName.toLowerCase() === "ul" || child.tagName.toLowerCase() === "ol");
+  if (blockChildren.length === 0) {
+    return [await paragraphFromElement(el, docx)];
+  }
 
   const paragraphs: DocxParagraph[] = [];
-  for (const child of Array.from(root.children)) {
+  for (const child of blockChildren) {
     const tag = child.tagName.toLowerCase();
-
     if (tag === "ul") {
       const items = Array.from(child.querySelectorAll(":scope > li"));
-      for (const li of items) {
-        paragraphs.push(await paragraphFromElement(li, docx, { bullet: true }));
-      }
+      for (const li of items) paragraphs.push(await paragraphFromElement(li, docx, { bullet: true }));
       continue;
     }
 
@@ -108,6 +107,74 @@ async function htmlToDocxParagraphs(html: string, docx: DocxModule): Promise<Doc
       const items = Array.from(child.querySelectorAll(":scope > li"));
       for (let i = 0; i < items.length; i += 1) {
         paragraphs.push(await paragraphFromElement(items[i], docx, { numberPrefix: `${i + 1}. ` }));
+      }
+      continue;
+    }
+
+    paragraphs.push(await paragraphFromElement(child, docx));
+  }
+
+  return paragraphs.length > 0 ? paragraphs : [new Paragraph("")];
+}
+
+async function tableFromElement(el: Element, docx: DocxModule): Promise<DocxTable> {
+  const { Table, TableRow, TableCell, WidthType, BorderStyle } = docx;
+  const rows = Array.from(el.querySelectorAll(":scope > thead > tr, :scope > tbody > tr, :scope > tr"));
+  const tableRows = await Promise.all(rows.map(async (row) => {
+    const cells = Array.from(row.querySelectorAll(":scope > th, :scope > td"));
+    const tableCells = await Promise.all(cells.map(async (cell) => new TableCell({
+      children: await paragraphsFromTableCell(cell, docx),
+      columnSpan: Number(cell.getAttribute("colspan") || 1) || 1,
+      rowSpan: Number(cell.getAttribute("rowspan") || 1) || 1,
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 1, color: "BFC7D1" },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: "BFC7D1" },
+        left: { style: BorderStyle.SINGLE, size: 1, color: "BFC7D1" },
+        right: { style: BorderStyle.SINGLE, size: 1, color: "BFC7D1" },
+      },
+      shading: cell.tagName.toLowerCase() === "th" ? { fill: "E5E7EB" } : undefined,
+    })));
+
+    return new TableRow({ children: tableCells });
+  }));
+
+  return new Table({
+    rows: tableRows,
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 1, color: "BFC7D1" },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: "BFC7D1" },
+      left: { style: BorderStyle.SINGLE, size: 1, color: "BFC7D1" },
+      right: { style: BorderStyle.SINGLE, size: 1, color: "BFC7D1" },
+      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "D1D5DB" },
+      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "D1D5DB" },
+    },
+  });
+}
+
+async function htmlToDocxBlocks(html: string, docx: DocxModule): Promise<DocxFileChild[]> {
+  const { Paragraph, HeadingLevel } = docx;
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div>${(html || "").trim() || "<p></p>"}</div>`, "text/html");
+  const root = doc.body.firstElementChild as HTMLDivElement | null;
+  if (!root) return [new Paragraph("")];
+
+  const blocks: DocxFileChild[] = [];
+  for (const child of Array.from(root.children)) {
+    const tag = child.tagName.toLowerCase();
+
+    if (tag === "ul") {
+      const items = Array.from(child.querySelectorAll(":scope > li"));
+      for (const li of items) {
+        blocks.push(await paragraphFromElement(li, docx, { bullet: true }));
+      }
+      continue;
+    }
+
+    if (tag === "ol") {
+      const items = Array.from(child.querySelectorAll(":scope > li"));
+      for (let i = 0; i < items.length; i += 1) {
+        blocks.push(await paragraphFromElement(items[i], docx, { numberPrefix: `${i + 1}. ` }));
       }
       continue;
     }
@@ -122,23 +189,31 @@ async function htmlToDocxParagraphs(html: string, docx: DocxModule): Promise<Doc
     };
 
     if (headingMap[tag]) {
-      paragraphs.push(await paragraphFromElement(child, docx, { heading: headingMap[tag] }));
+      blocks.push(await paragraphFromElement(child, docx, { heading: headingMap[tag] }));
+      continue;
+    }
+
+    if (tag === "table" || (tag === "div" && child.querySelector(":scope > table"))) {
+      const tableElement = tag === "table" ? child : child.querySelector(":scope > table");
+      if (tableElement) {
+        blocks.push(await tableFromElement(tableElement, docx));
+      }
       continue;
     }
 
     if (tag === "p" || tag === "div") {
-      paragraphs.push(await paragraphFromElement(child, docx));
+      blocks.push(await paragraphFromElement(child, docx));
       continue;
     }
   }
 
-  return paragraphs.length ? paragraphs : [new Paragraph("")];
+  return blocks.length ? blocks : [new Paragraph("")];
 }
 
 export async function buildDocxBlobFromHtml(html: string): Promise<Blob> {
   const docx = await import("docx");
   const { Document, Packer } = docx;
-  const children = await htmlToDocxParagraphs(html, docx);
+  const children = await htmlToDocxBlocks(html, docx);
   const doc = new Document({ sections: [{ children }] });
   return Packer.toBlob(doc);
 }

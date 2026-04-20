@@ -6,6 +6,7 @@ import BiblioExternaPanel from "@/features/ghost-writer/components/BiblioExterna
 import BiblioGeralPanel from "@/features/ghost-writer/components/BiblioGeralPanel";
 import BookSearchPanel from "@/features/ghost-writer/components/BookSearchPanel";
 import LexicalOverviewPanel from "@/features/ghost-writer/components/LexicalOverviewPanel";
+import LexicalCitationLookupPanel from "@/features/ghost-writer/components/LexicalCitationLookupPanel";
 import InsertRefBookPanel from "@/features/ghost-writer/components/InsertRefBookPanel";
 import InsertRefVerbetePanel from "@/features/ghost-writer/components/InsertRefVerbetePanel";
 import SemanticOverviewPanel from "@/features/ghost-writer/components/SemanticOverviewPanel";
@@ -54,8 +55,10 @@ interface AppsParameterSectionProps {
   lexicalBooks: string[];
   selectedLexicalBook: string;
   lexicalTerm: string;
+  lexicalCitationText: string;
   lexicalMaxResults: number;
   isRunningLexicalSearch: boolean;
+  isRunningLexicalCitationLookup: boolean;
   isRunningLexicalOverview: boolean;
   selectedSemanticSearchIndexId: string;
   semanticSearchIndexes: SemanticIndexOption[];
@@ -126,8 +129,11 @@ interface AppsParameterSectionProps {
   onBiblioExternaLlmSystemPromptChange: (value: string) => void;
   onSelectedLexicalBookChange: (value: string) => void;
   onLexicalTermChange: (value: string) => void;
+  onLexicalCitationTextChange: (value: string) => void;
+  onImportLexicalCitationText: () => void | Promise<void>;
   onLexicalMaxResultsChange: (value: number) => void;
   onRunLexicalSearch: () => void | Promise<void>;
+  onRunLexicalCitationLookup: () => void | Promise<void>;
   onRunLexicalOverview: () => void | Promise<void>;
   onSelectedSemanticSearchIndexIdChange: (value: string) => void;
   onSemanticSearchQueryChange: (value: string) => void;
@@ -200,8 +206,10 @@ const AppsParameterSection = ({
   lexicalBooks,
   selectedLexicalBook,
   lexicalTerm,
+  lexicalCitationText,
   lexicalMaxResults,
   isRunningLexicalSearch,
+  isRunningLexicalCitationLookup,
   isRunningLexicalOverview,
   selectedSemanticSearchIndexId,
   semanticSearchIndexes,
@@ -272,8 +280,11 @@ const AppsParameterSection = ({
   onBiblioExternaLlmSystemPromptChange,
   onSelectedLexicalBookChange,
   onLexicalTermChange,
+  onLexicalCitationTextChange,
+  onImportLexicalCitationText,
   onLexicalMaxResultsChange,
   onRunLexicalSearch,
+  onRunLexicalCitationLookup,
   onRunLexicalOverview,
   onSelectedSemanticSearchIndexIdChange,
   onSemanticSearchQueryChange,
@@ -467,6 +478,22 @@ const AppsParameterSection = ({
         onMaxResultsChange={onLexicalMaxResultsChange}
         onRunSearch={() => void onRunLexicalSearch()}
         isRunning={isRunningLexicalSearch}
+        showPanelChrome={false}
+      />
+    );
+  }
+
+  if (appId === "app14") {
+    return (
+      <LexicalCitationLookupPanel
+        title={parameterAppMeta.app14.title}
+        description={parameterAppMeta.app14.description}
+        citationText={lexicalCitationText}
+        hasDocumentOpen={hasDocumentOpen}
+        onCitationTextChange={onLexicalCitationTextChange}
+        onImportCitationText={() => void onImportLexicalCitationText()}
+        onRunCitationLookup={() => void onRunLexicalCitationLookup()}
+        isRunning={isRunningLexicalCitationLookup}
         showPanelChrome={false}
       />
     );

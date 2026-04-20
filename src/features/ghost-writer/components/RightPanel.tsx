@@ -46,6 +46,7 @@ const typeLabels: Record<AIResponse["type"], { label: string; icon: React.ReactN
 
   app_random_pensata: { label: "Pensata Sorteada", icon: <BookOpen className="h-3.5 w-3.5 text-primary" /> },
   app_book_search: { label: "Lexical Search", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
+  app_lexical_citation_lookup: { label: "Localiza Trechos", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_lexical_overview: { label: "Lexical Overview", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_semantic_search: { label: "Semantic Search", icon: <Search className="h-3.5 w-3.5 text-primary" /> },
   app_semantic_overview: { label: "Semantic Overview", icon: <Search className="h-3.5 w-3.5 text-primary" /> },

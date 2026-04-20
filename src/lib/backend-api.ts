@@ -282,6 +282,38 @@ export async function searchLexicalOverviewApp(payload: {
   });
 }
 
+export async function lookupLexicalCitationsApp(payload: {
+  text: string;
+  paginasAntes?: number;
+  paginasDepois?: number;
+}): Promise<{
+  ok: boolean;
+  result: {
+    inputText: string;
+    paragraphs: string[];
+    total: number;
+    indexOrigin: string;
+    availableBooks: string[];
+    results: Array<{
+      inputParagraph: string;
+      matchedParagraph: string;
+      book: string;
+      page: string;
+      similarity: number;
+      method: string;
+      matchedRow?: string | number;
+      matchedReference?: string | number;
+    }>;
+  };
+}> {
+  return fetchJsonWithRetry(apiUrl("/api/apps/lexical/citations/lookup"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+}
+
 export async function searchVerbeteApp(payload: {
   author?: string;
   title?: string;

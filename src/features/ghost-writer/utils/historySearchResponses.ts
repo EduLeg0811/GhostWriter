@@ -8,6 +8,16 @@ type HistorySearchResponsePayload = {
   querySummary: string;
 };
 
+type LexicalCitationLookupResult = {
+  inputParagraph: string;
+  matchedParagraph: string;
+  book: string;
+  page: string;
+  similarity: number;
+  method: string;
+  matchedRow?: string | number;
+};
+
 type LexicalOverviewResponsePayload = HistorySearchResponsePayload & {
   payload: LexicalOverviewHistoryPayload;
 };
@@ -50,6 +60,12 @@ const buildHistorySearchCards = <TMatch>(
 
 const truncateQuery = (query: string, maxLength: number): string =>
   query.length > maxLength ? `${query.slice(0, maxLength - 3)}...` : query;
+
+const escapeMarkdownTableCell = (value: unknown): string =>
+  String(value ?? "")
+    .replace(/\|/g, "\\|")
+    .replace(/\r?\n/g, " ")
+    .trim();
 
 const isQuestMatch = (match: LexicalHistoryMatch): boolean =>
   (match.book || "").trim().toUpperCase() === "QUEST" || Boolean((match.data?.quest || "").trim());
@@ -104,6 +120,35 @@ export const buildLexicalSearchHistoryResponsePayload = (params: {
   return {
     markdown,
     querySummary: `Livro: ${BOOK_OPTION_LABELS[book] ?? book} | Termo: ${term} | Total: ${totalFound}${shownInfo}`,
+  };
+};
+
+export const buildLexicalCitationLookupHistoryResponsePayload = (params: {
+  paragraphsCount: number;
+  results: LexicalCitationLookupResult[];
+}): HistorySearchResponsePayload => {
+  const rows = params.results.map((item) => [
+    escapeMarkdownTableCell(item.inputParagraph),
+    escapeMarkdownTableCell(item.matchedParagraph || "N/D"),
+    escapeMarkdownTableCell(item.book || "N/D"),
+    escapeMarkdownTableCell(item.page || "N/D"),
+    escapeMarkdownTableCell(
+      typeof item.similarity === "number" && Number.isFinite(item.similarity)
+        ? item.similarity.toFixed(2)
+        : "0.00",
+    ),
+    escapeMarkdownTableCell(item.method || "sem_match"),
+  ]);
+
+  const markdown = [
+    "| Trecho Original | Trecho Achado | Fonte | Pagina | Similaridade | Metodo |",
+    "| --- | --- | --- | --- | ---: | --- |",
+    ...rows.map((columns) => `| ${columns.join(" | ")} |`),
+  ].join("\n");
+
+  return {
+    markdown,
+    querySummary: `Localiza Trechos | Paragrafos: ${params.paragraphsCount} | Localizados: ${params.results.length}`,
   };
 };
 

@@ -69,7 +69,6 @@ const BookSearchPanel = ({
         ) : null}
 
         <Separator />
-
         <div className="space-y-2">
           <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Livro</Label>
           <div className="space-y-2">
@@ -99,7 +98,6 @@ const BookSearchPanel = ({
               onTermChange(e.target.value);
               resizeTermTextarea();
             }}
-            //placeholder="Digite uma palavra ou termo"
           />
         </div>
 
