@@ -289,11 +289,8 @@ export async function lookupLexicalCitationsApp(payload: {
 }): Promise<{
   ok: boolean;
   result: {
-    inputText: string;
-    paragraphs: string[];
+    paragraphsCount: number;
     total: number;
-    indexOrigin: string;
-    availableBooks: string[];
     results: Array<{
       inputParagraph: string;
       matchedParagraph: string;

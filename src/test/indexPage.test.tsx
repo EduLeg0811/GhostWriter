@@ -608,11 +608,8 @@ describe("Index page", () => {
     vi.mocked(backendApi.lookupLexicalCitationsApp).mockResolvedValue({
       ok: true,
       result: {
-        inputText: "Trecho original",
-        paragraphs: ["Trecho original"],
+        paragraphsCount: 1,
         total: 1,
-        indexOrigin: "cache_disco",
-        availableBooks: ["LO"],
         results: [
           {
             inputParagraph: "Trecho original",

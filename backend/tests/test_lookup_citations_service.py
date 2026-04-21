@@ -31,7 +31,7 @@ class LookupCitationsServiceTests(unittest.TestCase):
         result = lookup_citations(trecho)
 
         self.assertEqual(result["total"], 1)
-        self.assertEqual(result["paragraphs"], [trecho])
+        self.assertEqual(result["paragraphsCount"], 1)
         self.assertGreaterEqual(len(result["results"]), 1)
         self.assertNotEqual(result["results"][0]["book"], "N/D")
         self.assertNotEqual(result["results"][0]["page"], "N/D")
@@ -60,18 +60,18 @@ class LookupCitationsServiceTests(unittest.TestCase):
         entrada_esperada = next(
             entrada
             for entrada in indice_lexical["entradas"]
-            if entrada["arquivo"] == item["book"] and entrada["ordem"] == item["matchedRow"]
+            if entrada.arquivo == item["book"] and entrada.ordem == item["matchedRow"]
         )
 
-        self.assertEqual(item["matchedParagraph"], entrada_esperada["texto"])
+        self.assertEqual(item["matchedParagraph"], entrada_esperada.texto)
         self.assertEqual(item["matchedParagraph"], item["matchedParagraph"].strip())
 
     def test_encontrar_uses_global_fallback_when_context_window_has_no_match(self) -> None:
         indice_lexical = carregar_indice_lexical()
         entradas = indice_lexical["entradas"]
         self.assertGreater(len(entradas), 10)
-        texto = entradas[-1]["texto"]
-        entradas_contexto = entradas[:3]
+        texto = entradas[-1].texto
+        entradas_contexto = (0, 1, 2)
 
         result = encontrar(texto, indice_lexical, entradas_contexto, SCORE_MINIMO_FALLBACK)
 
@@ -86,14 +86,14 @@ class LookupCitationsServiceTests(unittest.TestCase):
         self.assertEqual(manifesto, coletar_manifesto_lexical())
         self.assertIs(indice_a, indice_b)
 
-    def test_processar_paragrafos_returns_dataframe_with_expected_columns(self) -> None:
+    def test_processar_paragrafos_returns_api_result_rows(self) -> None:
         indice_lexical = carregar_indice_lexical()
         trecho = (
             "Abdicações. As abdicações cosmoéticas, quando vividas com discernimento, "
             "podem qualificar a evolução consciencial."
         )
 
-        dataframe, _ = processar_paragrafos(
+        resultados, _ = processar_paragrafos(
             [trecho],
             indice_lexical,
             {},
@@ -103,10 +103,10 @@ class LookupCitationsServiceTests(unittest.TestCase):
             SCORE_MINIMO_FALLBACK,
         )
 
-        self.assertIn("Livro", dataframe.columns)
-        self.assertIn("Pagina", dataframe.columns)
-        self.assertIn("Similaridade", dataframe.columns)
-        self.assertEqual(len(dataframe), 1)
+        self.assertEqual(len(resultados), 1)
+        self.assertIn("book", resultados[0])
+        self.assertIn("page", resultados[0])
+        self.assertIn("similarity", resultados[0])
 
 
 class LookupCitationsApiTests(unittest.TestCase):

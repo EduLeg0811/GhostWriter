@@ -153,6 +153,12 @@ O projeto está configurado para deploy via Blueprint (`render.yaml`) com 2 serv
 - `VITE_OPENAI_VECTOR_STORE_LO`
 - `VITE_OPENAI_VECTOR_STORE_TRANSLATE_RAG`
 
+### Índice Lexical no Deploy
+- O backend agora pré-gera o índice lexical durante o `buildCommand` do Render executando `python backend/python/build_lexical_index.py`.
+- Esse passo cria ou atualiza `backend/functions/.lexical_index.pkl` a partir dos arquivos fixos em `backend/Files/Lexical/*.xlsx`.
+- Em runtime, a funcionalidade `Localiza Trechos` continua usando carregamento lazy: o índice só é carregado em memória na primeira chamada do recurso.
+- Isso evita reconstruir o índice dentro da requisição em produção e reduz o risco de pico de memória no plano `starter`.
+
 ## ✅ Checklist de Validação Manual
 
 1. **Upload de Documentos**

@@ -843,7 +843,6 @@ const useGhostWriterApps = ({
         paginasAntes: 2,
         paginasDepois: 3,
       });
-      const paragraphs = Array.isArray(data.result.paragraphs) ? data.result.paragraphs : [];
       const results = Array.isArray(data.result.results) ? data.result.results : [];
       if (results.length <= 0) {
         toast.info("Nenhum trecho localizado.");
@@ -851,7 +850,7 @@ const useGhostWriterApps = ({
       }
 
       const payload = buildLexicalCitationLookupHistoryResponsePayload({
-        paragraphsCount: paragraphs.length,
+        paragraphsCount: Number(data.result.paragraphsCount || results.length),
         results,
       });
       addResponse("app_lexical_citation_lookup", payload.querySummary, payload.markdown);

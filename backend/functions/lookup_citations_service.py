@@ -5,17 +5,23 @@ import re
 import unicodedata
 from bisect import bisect_left, bisect_right
 from collections import Counter, defaultdict
+from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
-from typing import Any
+from typing import Any, Iterable
 
-import pandas as pd
+try:
+    import openpyxl  # type: ignore
+except Exception as exc:  # pragma: no cover - import guard
+    raise RuntimeError("Dependency 'openpyxl' is required for lexical citation lookup.") from exc
+
 from rapidfuzz import fuzz
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 LEXICAL_DIR = BASE_DIR / "Files" / "Lexical"
 INDEX_CACHE_PATH = Path(__file__).resolve().parent / ".lexical_index.pkl"
+INDEX_CACHE_VERSION = 2
 STOPWORDS = {
     "a",
     "as",
@@ -49,8 +55,19 @@ MAX_TOKENS_CONSULTA = 12
 MAX_CANDIDATOS_GLOBAIS = 1200
 SCORE_MINIMO_FALLBACK = 70
 
-_PROCESS_INDEX_CACHE: dict[str, Any] = {"manifesto": None, "indice": None}
-_PROCESS_INDEX_CACHE_LOCK = Lock()
+PROCESS_INDEX_CACHE: dict[str, Any] = {"manifesto": None, "indice": None}
+PROCESS_INDEX_CACHE_LOCK = Lock()
+
+
+@dataclass(slots=True)
+class LexicalEntry:
+    arquivo: str
+    pagina: int | None
+    texto: str
+    texto_norm: str
+    alnum_len: int
+    ordem: int
+    referencia_contexto: int
 
 
 def normalizar(texto: Any) -> str:
@@ -81,15 +98,14 @@ def contar_alnum(texto: str) -> int:
     return sum(1 for char in texto if char.isalnum())
 
 
-def extrair_trecho(entrada: dict[str, Any], trecho: str, n: int = 200) -> str:
-    pos = entrada["texto_norm"].find(trecho)
-    if pos != -1:
-        return entrada["texto"][pos : pos + n]
-    return entrada["texto"][:n]
+def valor_ausente(valor: Any) -> bool:
+    if valor is None:
+        return True
+    return isinstance(valor, float) and valor != valor
 
 
 def pagina_valida(valor: Any) -> int | None:
-    if pd.isna(valor):
+    if valor_ausente(valor):
         return None
     try:
         return int(valor)
@@ -105,9 +121,6 @@ def criar_resultado_vazio() -> dict[str, Any]:
         "pagina": None,
         "score": 0,
         "metodo": None,
-        "arquivo_lexical": None,
-        "titulo_lexical": None,
-        "link_lexical": None,
         "paragrafo_lexical": "",
         "_arquivo": None,
         "_referencia_contexto": None,
@@ -115,32 +128,28 @@ def criar_resultado_vazio() -> dict[str, Any]:
     }
 
 
-def criar_resultado(entrada: dict[str, Any], score: float, metodo: str, trecho_busca: str) -> dict[str, Any]:
+def criar_resultado(entrada: LexicalEntry, score: float, metodo: str) -> dict[str, Any]:
     return {
-        "pagina": entrada["pagina"],
+        "pagina": entrada.pagina,
         "score": score,
         "metodo": metodo,
-        "arquivo_lexical": entrada["arquivo"],
-        "titulo_lexical": entrada["titulo"],
-        "link_lexical": entrada["link"],
-        "paragrafo_lexical": entrada["texto"],
-        "_arquivo": entrada["arquivo"],
-        "_referencia_contexto": entrada["referencia_contexto"],
-        "_ordem": entrada["ordem"],
+        "paragrafo_lexical": entrada.texto,
+        "_arquivo": entrada.arquivo,
+        "_referencia_contexto": entrada.referencia_contexto,
+        "_ordem": entrada.ordem,
     }
 
 
 def resultado_para_saida(paragrafo_entrada: str, resultado: dict[str, Any]) -> dict[str, Any]:
-    pagina = resultado["pagina"] if resultado["pagina"] is not None else "N/D"
     return {
-        "Paragrafo entrada": paragrafo_entrada,
-        "Paragrafo correspondente encontrado": resultado["paragrafo_lexical"],
-        "Livro": resultado["arquivo_lexical"] or "N/D",
-        "Pagina": pagina,
-        "Similaridade": round(float(resultado["score"]), 2),
-        "Metodo": resultado["metodo"] or "sem_match",
-        "Ordem": resultado["_ordem"] if resultado["_ordem"] is not None else "N/D",
-        "Referencia": resultado["_referencia_contexto"] if resultado["_referencia_contexto"] is not None else "N/D",
+        "inputParagraph": paragrafo_entrada,
+        "matchedParagraph": resultado["paragrafo_lexical"],
+        "book": resultado["_arquivo"] or "N/D",
+        "page": resultado["pagina"] if resultado["pagina"] is not None else "N/D",
+        "similarity": round(float(resultado["score"]), 2),
+        "method": resultado["metodo"] or "sem_match",
+        "matchedRow": resultado["_ordem"] if resultado["_ordem"] is not None else "N/D",
+        "matchedReference": resultado["_referencia_contexto"] if resultado["_referencia_contexto"] is not None else "N/D",
     }
 
 
@@ -160,64 +169,74 @@ def coletar_manifesto_lexical() -> list[dict[str, Any]]:
     return manifesto
 
 
+def indice_coluna(headers: list[str], nome: str) -> int | None:
+    try:
+        return headers.index(nome)
+    except ValueError:
+        return None
+
+
+def valor_coluna(linha: tuple[Any, ...], indice: int | None) -> Any:
+    if indice is None or indice >= len(linha):
+        return None
+    return linha[indice]
+
+
 def construir_indice_lexical() -> dict[str, Any]:
-    entradas: list[dict[str, Any]] = []
+    entradas: list[LexicalEntry] = []
     arquivos_indexados: dict[str, Any] = {}
     indice_tokens: dict[str, list[int]] = defaultdict(list)
 
     for caminho in sorted(LEXICAL_DIR.glob("*.xlsx")):
-        df = pd.read_excel(
-            caminho,
-            usecols=lambda coluna: str(coluna).strip().lower() in {"text", "pagina", "title", "link"},
-        )
-        colunas = {str(coluna).strip().lower(): coluna for coluna in df.columns}
-        coluna_texto = colunas.get("text")
+        workbook = openpyxl.load_workbook(caminho, read_only=True, data_only=True)
+        try:
+            sheet = workbook[workbook.sheetnames[0]]
+            header_row = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True), ())
+            headers = [str(col).strip().lower() if col is not None else "" for col in header_row]
+            coluna_texto = indice_coluna(headers, "text")
 
-        if coluna_texto is None:
-            continue
-
-        coluna_pagina = colunas.get("pagina")
-        coluna_titulo = colunas.get("title")
-        coluna_link = colunas.get("link")
-        entradas_arquivo: list[dict[str, Any]] = []
-
-        for ordem, row in enumerate(df.itertuples(index=False), start=1):
-            texto = getattr(row, coluna_texto)
-            if pd.isna(texto):
+            if coluna_texto is None:
                 continue
 
-            texto = str(texto).strip()
-            if not texto:
-                continue
+            coluna_pagina = indice_coluna(headers, "pagina")
+            entradas_arquivo: list[int] = []
+            referencias_arquivo: list[int] = []
 
-            texto_norm = normalizar(texto)
-            pagina = pagina_valida(getattr(row, coluna_pagina)) if coluna_pagina else None
-            titulo = str(getattr(row, coluna_titulo)).strip() if coluna_titulo and not pd.isna(getattr(row, coluna_titulo)) else None
-            link = str(getattr(row, coluna_link)).strip() if coluna_link and not pd.isna(getattr(row, coluna_link)) else None
-            referencia_contexto = pagina if pagina is not None else ordem
-            entrada = {
-                "arquivo": caminho.stem,
-                "pagina": pagina,
-                "titulo": titulo,
-                "link": link,
-                "texto": texto,
-                "texto_norm": texto_norm,
-                "tokens": set(tokenizar(texto_norm, MAX_TOKENS_DOCUMENTO)),
-                "alnum_len": contar_alnum(texto_norm),
-                "ordem": ordem,
-                "referencia_contexto": referencia_contexto,
+            for ordem, row in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=1):
+                texto_bruto = valor_coluna(row, coluna_texto)
+                if valor_ausente(texto_bruto):
+                    continue
+
+                texto = str(texto_bruto).strip()
+                if not texto:
+                    continue
+
+                texto_norm = normalizar(texto)
+                pagina = pagina_valida(valor_coluna(row, coluna_pagina))
+                referencia_contexto = pagina if pagina is not None else ordem
+                entrada = LexicalEntry(
+                    arquivo=caminho.stem,
+                    pagina=pagina,
+                    texto=texto,
+                    texto_norm=texto_norm,
+                    alnum_len=contar_alnum(texto_norm),
+                    ordem=ordem,
+                    referencia_contexto=referencia_contexto,
+                )
+                indice_entrada = len(entradas)
+                entradas.append(entrada)
+                entradas_arquivo.append(indice_entrada)
+                referencias_arquivo.append(referencia_contexto)
+
+                for token in tokenizar(texto_norm, MAX_TOKENS_DOCUMENTO):
+                    indice_tokens[token].append(indice_entrada)
+
+            arquivos_indexados[caminho.stem] = {
+                "indices": tuple(entradas_arquivo),
+                "referencias": tuple(referencias_arquivo),
             }
-            indice_entrada = len(entradas)
-            entradas.append(entrada)
-            entradas_arquivo.append(entrada)
-
-            for token in entrada["tokens"]:
-                indice_tokens[token].append(indice_entrada)
-
-        arquivos_indexados[caminho.stem] = {
-            "entradas": entradas_arquivo,
-            "referencias": [entrada["referencia_contexto"] for entrada in entradas_arquivo],
-        }
+        finally:
+            workbook.close()
 
     return {
         "entradas": entradas,
@@ -237,6 +256,8 @@ def carregar_indice_cacheado(manifesto_atual: list[dict[str, Any]]) -> dict[str,
     except (OSError, pickle.PickleError, EOFError, AttributeError, ValueError):
         return None
 
+    if payload.get("version") != INDEX_CACHE_VERSION:
+        return None
     if payload.get("manifesto") != manifesto_atual:
         return None
 
@@ -250,6 +271,7 @@ def carregar_indice_cacheado(manifesto_atual: list[dict[str, Any]]) -> dict[str,
 
 def salvar_indice_cacheado(manifesto_atual: list[dict[str, Any]], indice: dict[str, Any]) -> None:
     payload = {
+        "version": INDEX_CACHE_VERSION,
         "manifesto": manifesto_atual,
         "indice": {
             "entradas": indice["entradas"],
@@ -268,40 +290,46 @@ def carregar_indice_lexical() -> dict[str, Any]:
         raise FileNotFoundError(f"Pasta Lexical nao encontrada em {LEXICAL_DIR}")
 
     manifesto_atual = coletar_manifesto_lexical()
-    with _PROCESS_INDEX_CACHE_LOCK:
-        manifesto_cacheado = _PROCESS_INDEX_CACHE.get("manifesto")
-        indice_cacheado = _PROCESS_INDEX_CACHE.get("indice")
+    with PROCESS_INDEX_CACHE_LOCK:
+        manifesto_cacheado = PROCESS_INDEX_CACHE.get("manifesto")
+        indice_cacheado = PROCESS_INDEX_CACHE.get("indice")
         if manifesto_cacheado == manifesto_atual and isinstance(indice_cacheado, dict):
             return indice_cacheado
 
         indice_disco = carregar_indice_cacheado(manifesto_atual)
         if indice_disco is not None:
-            _PROCESS_INDEX_CACHE["manifesto"] = manifesto_atual
-            _PROCESS_INDEX_CACHE["indice"] = indice_disco
+            PROCESS_INDEX_CACHE["manifesto"] = manifesto_atual
+            PROCESS_INDEX_CACHE["indice"] = indice_disco
             return indice_disco
 
         indice = construir_indice_lexical()
         salvar_indice_cacheado(manifesto_atual, indice)
         indice["origem_indice"] = "reindexado"
-        _PROCESS_INDEX_CACHE["manifesto"] = manifesto_atual
-        _PROCESS_INDEX_CACHE["indice"] = indice
+        PROCESS_INDEX_CACHE["manifesto"] = manifesto_atual
+        PROCESS_INDEX_CACHE["indice"] = indice
         return indice
 
 
-def selecionar_janela_entradas(
+def iterar_indices(indice_lexical: dict[str, Any], indices: Iterable[int] | None) -> Iterable[int]:
+    if indices is None:
+        return range(len(indice_lexical["entradas"]))
+    return indices
+
+
+def selecionar_janela_indices(
     indice_lexical: dict[str, Any],
     ultimo_resultado: dict[str, Any] | None,
     paginas_antes: int,
     paginas_depois: int,
-) -> list[dict[str, Any]]:
+) -> tuple[int, ...] | None:
     if ultimo_resultado is None:
-        return indice_lexical["entradas"]
+        return None
 
     arquivo = ultimo_resultado["_arquivo"]
     referencia_base = ultimo_resultado["_referencia_contexto"]
     dados_arquivo = indice_lexical["arquivos"].get(arquivo)
     if not dados_arquivo or referencia_base is None:
-        return indice_lexical["entradas"]
+        return None
 
     inicio = referencia_base - paginas_antes
     fim = referencia_base + paginas_depois
@@ -309,46 +337,55 @@ def selecionar_janela_entradas(
     indice_inicio = bisect_left(referencias, inicio)
     indice_fim = bisect_right(referencias, fim)
 
-    janela = dados_arquivo["entradas"][indice_inicio:indice_fim]
-    return janela or dados_arquivo["entradas"]
+    janela = dados_arquivo["indices"][indice_inicio:indice_fim]
+    return janela or dados_arquivo["indices"]
 
 
-def match_inicio(trecho_inicio: str, entradas: list[dict[str, Any]]) -> dict[str, Any]:
+def match_inicio(trecho_inicio: str, indice_lexical: dict[str, Any], indices: Iterable[int] | None) -> dict[str, Any]:
     if not trecho_inicio:
         return criar_resultado_vazio()
 
-    for entrada in entradas:
-        if trecho_inicio in entrada["texto_norm"]:
-            return criar_resultado(entrada, 100, "inicio", trecho_inicio)
+    entradas = indice_lexical["entradas"]
+    for indice in iterar_indices(indice_lexical, indices):
+        entrada = entradas[indice]
+        if trecho_inicio in entrada.texto_norm:
+            return criar_resultado(entrada, 100, "inicio")
 
     return criar_resultado_vazio()
 
 
-def candidato_fuzzy_valido(entrada: dict[str, Any], tokens_consulta: set[str], tamanho_consulta: int) -> bool:
-    if entrada["alnum_len"] < max(8, min(24, tamanho_consulta // 4)):
+def candidato_fuzzy_valido(entrada: LexicalEntry, tokens_consulta: set[str], tamanho_consulta: int) -> bool:
+    if entrada.alnum_len < max(8, min(24, tamanho_consulta // 4)):
         return False
 
     if not tokens_consulta:
         return True
 
-    return bool(entrada["tokens"] & tokens_consulta)
+    return any(token in tokens_consulta for token in tokenizar(entrada.texto_norm, MAX_TOKENS_DOCUMENTO))
 
 
-def match_fuzzy_refinado(trecho_fuzzy: str, entradas: list[dict[str, Any]], tokens_consulta: set[str]) -> dict[str, Any]:
+def match_fuzzy_refinado(
+    trecho_fuzzy: str,
+    indice_lexical: dict[str, Any],
+    indices: Iterable[int] | None,
+    tokens_consulta: set[str],
+) -> dict[str, Any]:
     if not trecho_fuzzy:
         return criar_resultado_vazio()
 
-    melhor_entrada: dict[str, Any] | None = None
+    entradas = indice_lexical["entradas"]
+    melhor_entrada: LexicalEntry | None = None
     melhor_score = 0.0
     tamanho_consulta = contar_alnum(trecho_fuzzy)
 
-    for entrada in entradas:
+    for indice in iterar_indices(indice_lexical, indices):
+        entrada = entradas[indice]
         if not candidato_fuzzy_valido(entrada, tokens_consulta, tamanho_consulta):
             continue
 
         score = fuzz.partial_ratio(
             trecho_fuzzy,
-            entrada["texto_norm"],
+            entrada.texto_norm,
             score_cutoff=melhor_score,
         )
         if score > melhor_score:
@@ -358,27 +395,28 @@ def match_fuzzy_refinado(trecho_fuzzy: str, entradas: list[dict[str, Any]], toke
     if melhor_entrada is None:
         return criar_resultado_vazio()
 
-    return criar_resultado(melhor_entrada, melhor_score, "fuzzy_refinado", trecho_fuzzy)
+    return criar_resultado(melhor_entrada, melhor_score, "fuzzy_refinado")
 
 
-def selecionar_candidatos_globais(trecho_fuzzy: str, indice_lexical: dict[str, Any]) -> list[dict[str, Any]]:
+def selecionar_candidatos_globais(trecho_fuzzy: str, indice_lexical: dict[str, Any]) -> tuple[int, ...]:
     contagem_indices: Counter[int] = Counter()
+    entradas = indice_lexical["entradas"]
 
     for token in tokenizar(trecho_fuzzy, MAX_TOKENS_CONSULTA):
         for indice_entrada in indice_lexical["indice_tokens"].get(token, ()):
             contagem_indices[indice_entrada] += 1
 
     if not contagem_indices:
-        return indice_lexical["entradas"]
+        return ()
 
     indices_ordenados = sorted(
         contagem_indices,
         key=lambda indice_entrada: (
             -contagem_indices[indice_entrada],
-            abs(len(indice_lexical["entradas"][indice_entrada]["texto_norm"]) - len(trecho_fuzzy)),
+            abs(len(entradas[indice_entrada].texto_norm) - len(trecho_fuzzy)),
         ),
     )
-    return [indice_lexical["entradas"][indice] for indice in indices_ordenados[:MAX_CANDIDATOS_GLOBAIS]]
+    return tuple(indices_ordenados[:MAX_CANDIDATOS_GLOBAIS])
 
 
 def separar_paragrafos(texto: str) -> list[str]:
@@ -397,7 +435,7 @@ def separar_paragrafos(texto: str) -> list[str]:
 def encontrar(
     texto_original: str,
     indice_lexical: dict[str, Any],
-    entradas_contexto: list[dict[str, Any]],
+    entradas_contexto: Iterable[int] | None,
     score_minimo_fallback: int,
 ) -> dict[str, Any]:
     texto_original = str(texto_original)
@@ -408,24 +446,24 @@ def encontrar(
     trecho_fuzzy = normalizar(texto_original[:200])
     tokens_consulta = set(tokenizar(trecho_fuzzy, MAX_TOKENS_CONSULTA))
 
-    resultado = match_inicio(trecho_inicio, entradas_contexto)
+    resultado = match_inicio(trecho_inicio, indice_lexical, entradas_contexto)
     if resultado["_arquivo"] is None:
-        if entradas_contexto is indice_lexical["entradas"]:
+        if entradas_contexto is None:
             candidatos_globais = selecionar_candidatos_globais(trecho_fuzzy, indice_lexical)
-            resultado = match_fuzzy_refinado(trecho_fuzzy, candidatos_globais, tokens_consulta)
+            resultado = match_fuzzy_refinado(trecho_fuzzy, indice_lexical, candidatos_globais, tokens_consulta)
         else:
-            resultado = match_fuzzy_refinado(trecho_fuzzy, entradas_contexto, tokens_consulta)
+            resultado = match_fuzzy_refinado(trecho_fuzzy, indice_lexical, entradas_contexto, tokens_consulta)
 
-    usa_contexto = entradas_contexto is not indice_lexical["entradas"]
+    usa_contexto = entradas_contexto is not None
     if not usa_contexto and resultado["_arquivo"] is not None:
         return resultado
 
     if resultado["_arquivo"] is None or (usa_contexto and resultado["score"] < score_minimo_fallback):
         candidatos_globais = selecionar_candidatos_globais(trecho_fuzzy, indice_lexical)
-        resultado_global = match_inicio(trecho_inicio, candidatos_globais)
+        resultado_global = match_inicio(trecho_inicio, indice_lexical, candidatos_globais)
 
         if resultado_global["_arquivo"] is None:
-            resultado_global = match_fuzzy_refinado(trecho_fuzzy, candidatos_globais, tokens_consulta)
+            resultado_global = match_fuzzy_refinado(trecho_fuzzy, indice_lexical, candidatos_globais, tokens_consulta)
 
         if resultado["_arquivo"] is None or resultado_global["score"] > resultado["score"]:
             return resultado_global
@@ -441,7 +479,7 @@ def processar_paragrafos(
     paginas_antes: int,
     paginas_depois: int,
     score_minimo_fallback: int,
-) -> tuple[pd.DataFrame, dict[str, Any] | None]:
+) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
     resultados: list[dict[str, Any]] = []
     ultimo_resultado_lote = ultimo_resultado
 
@@ -451,7 +489,7 @@ def processar_paragrafos(
         if texto_original in cache_resultados:
             resultado = cache_resultados[texto_original]
         else:
-            entradas_contexto = selecionar_janela_entradas(
+            entradas_contexto = selecionar_janela_indices(
                 indice_lexical,
                 ultimo_resultado_lote,
                 paginas_antes,
@@ -470,7 +508,7 @@ def processar_paragrafos(
         if resultado["_arquivo"] is not None:
             ultimo_resultado_lote = resultado
 
-    return pd.DataFrame(resultados), ultimo_resultado_lote
+    return resultados, ultimo_resultado_lote
 
 
 def lookup_citations(
@@ -479,43 +517,23 @@ def lookup_citations(
     paginas_depois: int = 3,
     score_minimo_fallback: int = SCORE_MINIMO_FALLBACK,
 ) -> dict[str, Any]:
-    texto_entrada = str(text or "")
-    paragrafos = separar_paragrafos(texto_entrada)
+    paragrafos = separar_paragrafos(str(text or ""))
     if not paragrafos:
         raise ValueError("Informe ao menos um paragrafo separado por linhas em branco.")
 
     indice_lexical = carregar_indice_lexical()
-    cache_resultados: dict[str, dict[str, Any]] = {}
-    df_result, _ultimo_resultado = processar_paragrafos(
+    resultados, _ultimo_resultado = processar_paragrafos(
         paragrafos,
         indice_lexical,
-        cache_resultados,
+        {},
         None,
         max(0, int(paginas_antes)),
         max(0, int(paginas_depois)),
         int(score_minimo_fallback),
     )
 
-    resultados: list[dict[str, Any]] = []
-    for item in df_result.to_dict(orient="records"):
-        resultados.append(
-            {
-                "inputParagraph": item["Paragrafo entrada"],
-                "matchedParagraph": item["Paragrafo correspondente encontrado"],
-                "book": item["Livro"],
-                "page": item["Pagina"],
-                "similarity": item["Similaridade"],
-                "method": item["Metodo"],
-                "matchedRow": item["Ordem"],
-                "matchedReference": item["Referencia"],
-            }
-        )
-
     return {
-        "inputText": texto_entrada,
-        "paragraphs": paragrafos,
+        "paragraphsCount": len(paragrafos),
         "results": resultados,
         "total": len(resultados),
-        "indexOrigin": indice_lexical.get("origem_indice", "memoria"),
-        "availableBooks": indice_lexical.get("arquivos_disponiveis", []),
     }
