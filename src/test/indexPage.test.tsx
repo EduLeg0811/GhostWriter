@@ -615,6 +615,7 @@ describe("Index page", () => {
             inputParagraph: "Trecho original",
             matchedParagraph: "Trecho achado",
             book: "LO",
+            title: "Autopensenidade",
             page: "41",
             similarity: 97.32,
             method: "inicio",

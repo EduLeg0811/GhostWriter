@@ -21,7 +21,7 @@ from rapidfuzz import fuzz
 BASE_DIR = Path(__file__).resolve().parents[1]
 LEXICAL_DIR = BASE_DIR / "Files" / "Lexical"
 INDEX_CACHE_PATH = Path(__file__).resolve().parent / ".lexical_index.pkl"
-INDEX_CACHE_VERSION = 2
+INDEX_CACHE_VERSION = 3
 STOPWORDS = {
     "a",
     "as",
@@ -62,6 +62,7 @@ PROCESS_INDEX_CACHE_LOCK = Lock()
 @dataclass(slots=True)
 class LexicalEntry:
     arquivo: str
+    titulo: str
     pagina: int | None
     texto: str
     texto_norm: str
@@ -118,6 +119,7 @@ def pagina_valida(valor: Any) -> int | None:
 
 def criar_resultado_vazio() -> dict[str, Any]:
     return {
+        "titulo": "",
         "pagina": None,
         "score": 0,
         "metodo": None,
@@ -130,6 +132,7 @@ def criar_resultado_vazio() -> dict[str, Any]:
 
 def criar_resultado(entrada: LexicalEntry, score: float, metodo: str) -> dict[str, Any]:
     return {
+        "titulo": entrada.titulo,
         "pagina": entrada.pagina,
         "score": score,
         "metodo": metodo,
@@ -145,6 +148,7 @@ def resultado_para_saida(paragrafo_entrada: str, resultado: dict[str, Any]) -> d
         "inputParagraph": paragrafo_entrada,
         "matchedParagraph": resultado["paragrafo_lexical"],
         "book": resultado["_arquivo"] or "N/D",
+        "title": (resultado["titulo"] or "").strip() or "N/D",
         "page": resultado["pagina"] if resultado["pagina"] is not None else "N/D",
         "similarity": round(float(resultado["score"]), 2),
         "method": resultado["metodo"] or "sem_match",
@@ -198,6 +202,7 @@ def construir_indice_lexical() -> dict[str, Any]:
             if coluna_texto is None:
                 continue
 
+            coluna_titulo = indice_coluna(headers, "title")
             coluna_pagina = indice_coluna(headers, "pagina")
             entradas_arquivo: list[int] = []
             referencias_arquivo: list[int] = []
@@ -211,11 +216,14 @@ def construir_indice_lexical() -> dict[str, Any]:
                 if not texto:
                     continue
 
+                titulo_bruto = valor_coluna(row, coluna_titulo)
+                titulo = "" if valor_ausente(titulo_bruto) else str(titulo_bruto).strip()
                 texto_norm = normalizar(texto)
                 pagina = pagina_valida(valor_coluna(row, coluna_pagina))
                 referencia_contexto = pagina if pagina is not None else ordem
                 entrada = LexicalEntry(
                     arquivo=caminho.stem,
+                    titulo=titulo,
                     pagina=pagina,
                     texto=texto,
                     texto_norm=texto_norm,

@@ -295,6 +295,7 @@ export async function lookupLexicalCitationsApp(payload: {
       inputParagraph: string;
       matchedParagraph: string;
       book: string;
+      title?: string;
       page: string;
       similarity: number;
       method: string;

@@ -79,6 +79,7 @@ describe("historySearchResponses", () => {
           inputParagraph: "Trecho original",
           matchedParagraph: "Trecho achado",
           book: "LO",
+          title: "Autopensenidade",
           page: "41",
           similarity: 97.32,
           method: "inicio",
@@ -95,9 +96,9 @@ describe("historySearchResponses", () => {
     });
 
     expect(payload.querySummary).toBe("Localiza Trechos | Paragrafos: 2 | Localizados: 2");
-    expect(payload.markdown).toContain("| Trecho Original | Trecho Achado | Fonte | Pagina | Similaridade | Metodo |");
-    expect(payload.markdown).toContain("| Trecho original | Trecho achado | LO | 41 | 97.32 | inicio |");
-    expect(payload.markdown).toContain("| Outro trecho | N/D | N/D | N/D | 0.00 | sem_match |");
+    expect(payload.markdown).toContain("| Trecho Original | Trecho Achado | Fonte | Titulo | Pagina | Similaridade | Metodo |");
+    expect(payload.markdown).toContain("| Trecho original | Trecho achado | LO | Autopensenidade | 41 | 97.32 | inicio |");
+    expect(payload.markdown).toContain("| Outro trecho | N/D | N/D | N/D | N/D | 0.00 | sem_match |");
   });
 
   it("builds lexical overview payload grouped by book and appends page in text", () => {

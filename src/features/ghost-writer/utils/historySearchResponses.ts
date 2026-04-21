@@ -131,6 +131,7 @@ export const buildLexicalCitationLookupHistoryResponsePayload = (params: {
     escapeMarkdownTableCell(item.inputParagraph),
     escapeMarkdownTableCell(item.matchedParagraph || "N/D"),
     escapeMarkdownTableCell(item.book || "N/D"),
+    escapeMarkdownTableCell(item.title || "N/D"),
     escapeMarkdownTableCell(item.page || "N/D"),
     escapeMarkdownTableCell(
       typeof item.similarity === "number" && Number.isFinite(item.similarity)
@@ -141,8 +142,8 @@ export const buildLexicalCitationLookupHistoryResponsePayload = (params: {
   ]);
 
   const markdown = [
-    "| Trecho Original | Trecho Achado | Fonte | Pagina | Similaridade | Metodo |",
-    "| --- | --- | --- | --- | ---: | --- |",
+    "| Trecho Original | Trecho Achado | Fonte | Titulo | Pagina | Similaridade | Metodo |",
+    "| --- | --- | --- | --- | --- | ---: | --- |",
     ...rows.map((columns) => `| ${columns.join(" | ")} |`),
   ].join("\n");
 

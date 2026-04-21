@@ -47,6 +47,7 @@ class LookupCitationsServiceTests(unittest.TestCase):
 
         self.assertIn("matchedRow", item)
         self.assertIn("matchedReference", item)
+        self.assertIn("title", item)
 
     def test_lookup_citations_returns_full_cell_text_as_matched_paragraph(self) -> None:
         trecho = (
@@ -105,6 +106,7 @@ class LookupCitationsServiceTests(unittest.TestCase):
 
         self.assertEqual(len(resultados), 1)
         self.assertIn("book", resultados[0])
+        self.assertIn("title", resultados[0])
         self.assertIn("page", resultados[0])
         self.assertIn("similarity", resultados[0])
 
